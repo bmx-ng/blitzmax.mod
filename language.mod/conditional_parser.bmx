@@ -32,7 +32,13 @@ Type TConditionalExpressionParser
 	Method ParseOr:TConditionalExpressionSyntax()
 		Local left:TConditionalExpressionSyntax = ParseAnd()
 		While IsOperator("or")
-			left = MakeBinary(left, Current(), AdvanceAndParseAnd())
+			' Keep parser mutation out of a sibling call argument. Legacy bcc
+			' emits C whose argument evaluation order is platform-dependent, so
+			' advancing for the right operand could occur before Current().
+			Local operatorToken:TSyntaxToken = Current()
+			Advance()
+			Local right:TConditionalExpressionSyntax = ParseAnd()
+			left = MakeBinary(left, operatorToken, right)
 		Wend
 		Return left
 	End Method
@@ -45,11 +51,6 @@ Type TConditionalExpressionParser
 			left = MakeBinary(left, operatorToken, ParseNot())
 		Wend
 		Return left
-	End Method
-
-	Method AdvanceAndParseAnd:TConditionalExpressionSyntax()
-		Advance()
-		Return ParseAnd()
 	End Method
 
 	Method ParseNot:TConditionalExpressionSyntax()
