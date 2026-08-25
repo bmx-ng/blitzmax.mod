@@ -267,39 +267,39 @@ Type TCompilerInterfaceEmitter
 		If source = target Then Return True
 		If visiting.Contains(source.structId) Then Return False
 		visiting.Insert(source.structId, source)
-		For Local field:TCompilerIrStructField = EachIn source.fields
-			If StructFieldReachesStruct(field, target, visiting) Then Return True
+		For Local irField:TCompilerIrStructField = EachIn source.fields
+			If StructFieldReachesStruct(irField, target, visiting) Then Return True
 		Next
 		Return False
 	End Method
 
-	Method ClassFieldReachesStruct:Int(field:TCompilerIrClassField, target:TCompilerIrStruct, visiting:TMap)
-		If Not field Or Not target Then Return False
-		If TypeReachesStruct(field.semanticType, target, visiting) Then Return True
-		If field.isStaticArray And TypeReachesStruct(field.staticArrayElementType, target, visiting) Then Return True
-		If TypeReachesStruct(field.callableReturnType, target, visiting) Then Return True
-		If TypeReachesStruct(field.arrayCallableReturnType, target, visiting) Then Return True
-		For Local parameter:TCompilerIrParameter = EachIn field.callableParameters
+	Method ClassFieldReachesStruct:Int(irField:TCompilerIrClassField, target:TCompilerIrStruct, visiting:TMap)
+		If Not irField Or Not target Then Return False
+		If TypeReachesStruct(irField.semanticType, target, visiting) Then Return True
+		If irField.isStaticArray And TypeReachesStruct(irField.staticArrayElementType, target, visiting) Then Return True
+		If TypeReachesStruct(irField.callableReturnType, target, visiting) Then Return True
+		If TypeReachesStruct(irField.arrayCallableReturnType, target, visiting) Then Return True
+		For Local parameter:TCompilerIrParameter = EachIn irField.callableParameters
 			If ParameterReachesStruct(parameter, target, visiting) Then Return True
 		Next
-		For Local parameter:TCompilerIrParameter = EachIn field.arrayCallableParameters
+		For Local parameter:TCompilerIrParameter = EachIn irField.arrayCallableParameters
 			If ParameterReachesStruct(parameter, target, visiting) Then Return True
 		Next
 		Return False
 	End Method
 
-	Method StructFieldReachesStruct:Int(field:TCompilerIrStructField, target:TCompilerIrStruct, visiting:TMap)
-		If Not field Or Not target Then Return False
-		If field.structId.length And StructReachesStruct(StructById(field.structId), target, visiting) Then Return True
-		If field.staticArrayStructId.length And StructReachesStruct(StructById(field.staticArrayStructId), target, visiting) Then Return True
-		If TypeReachesStruct(field.semanticType, target, visiting) Then Return True
-		If field.isStaticArray And TypeReachesStruct(field.staticArrayElementType, target, visiting) Then Return True
-		If TypeReachesStruct(field.callableReturnType, target, visiting) Then Return True
-		If TypeReachesStruct(field.arrayCallableReturnType, target, visiting) Then Return True
-		For Local parameter:TCompilerIrParameter = EachIn field.callableParameters
+	Method StructFieldReachesStruct:Int(irField:TCompilerIrStructField, target:TCompilerIrStruct, visiting:TMap)
+		If Not irField Or Not target Then Return False
+		If irField.structId.length And StructReachesStruct(StructById(irField.structId), target, visiting) Then Return True
+		If irField.staticArrayStructId.length And StructReachesStruct(StructById(irField.staticArrayStructId), target, visiting) Then Return True
+		If TypeReachesStruct(irField.semanticType, target, visiting) Then Return True
+		If irField.isStaticArray And TypeReachesStruct(irField.staticArrayElementType, target, visiting) Then Return True
+		If TypeReachesStruct(irField.callableReturnType, target, visiting) Then Return True
+		If TypeReachesStruct(irField.arrayCallableReturnType, target, visiting) Then Return True
+		For Local parameter:TCompilerIrParameter = EachIn irField.callableParameters
 			If ParameterReachesStruct(parameter, target, visiting) Then Return True
 		Next
-		For Local parameter:TCompilerIrParameter = EachIn field.arrayCallableParameters
+		For Local parameter:TCompilerIrParameter = EachIn irField.arrayCallableParameters
 			If ParameterReachesStruct(parameter, target, visiting) Then Return True
 		Next
 		Return False
@@ -381,25 +381,25 @@ Type TCompilerInterfaceEmitter
 		Return False
 	End Method
 
-	Method StructFieldUsesEnum:Int(field:TCompilerIrStructField, irEnum:TCompilerIrEnum)
-		If Not field Or Not irEnum Then Return False
-		If TypeUsesEnum(field.semanticType, irEnum) Or TypeUsesEnum(field.staticArrayElementType, irEnum) Or TypeUsesEnum(field.callableReturnType, irEnum) Or TypeUsesEnum(field.arrayCallableReturnType, irEnum) Then Return True
-		For Local parameter:TCompilerIrParameter = EachIn field.callableParameters
+	Method StructFieldUsesEnum:Int(irField:TCompilerIrStructField, irEnum:TCompilerIrEnum)
+		If Not irField Or Not irEnum Then Return False
+		If TypeUsesEnum(irField.semanticType, irEnum) Or TypeUsesEnum(irField.staticArrayElementType, irEnum) Or TypeUsesEnum(irField.callableReturnType, irEnum) Or TypeUsesEnum(irField.arrayCallableReturnType, irEnum) Then Return True
+		For Local parameter:TCompilerIrParameter = EachIn irField.callableParameters
 			If ParameterUsesEnum(parameter, irEnum) Then Return True
 		Next
-		For Local parameter:TCompilerIrParameter = EachIn field.arrayCallableParameters
+		For Local parameter:TCompilerIrParameter = EachIn irField.arrayCallableParameters
 			If ParameterUsesEnum(parameter, irEnum) Then Return True
 		Next
 		Return False
 	End Method
 
-	Method ClassFieldUsesEnum:Int(field:TCompilerIrClassField, irEnum:TCompilerIrEnum)
-		If Not field Or Not irEnum Then Return False
-		If TypeUsesEnum(field.semanticType, irEnum) Or TypeUsesEnum(field.staticArrayElementType, irEnum) Or TypeUsesEnum(field.callableReturnType, irEnum) Or TypeUsesEnum(field.arrayCallableReturnType, irEnum) Then Return True
-		For Local parameter:TCompilerIrParameter = EachIn field.callableParameters
+	Method ClassFieldUsesEnum:Int(irField:TCompilerIrClassField, irEnum:TCompilerIrEnum)
+		If Not irField Or Not irEnum Then Return False
+		If TypeUsesEnum(irField.semanticType, irEnum) Or TypeUsesEnum(irField.staticArrayElementType, irEnum) Or TypeUsesEnum(irField.callableReturnType, irEnum) Or TypeUsesEnum(irField.arrayCallableReturnType, irEnum) Then Return True
+		For Local parameter:TCompilerIrParameter = EachIn irField.callableParameters
 			If ParameterUsesEnum(parameter, irEnum) Then Return True
 		Next
-		For Local parameter:TCompilerIrParameter = EachIn field.arrayCallableParameters
+		For Local parameter:TCompilerIrParameter = EachIn irField.arrayCallableParameters
 			If ParameterUsesEnum(parameter, irEnum) Then Return True
 		Next
 		Return False

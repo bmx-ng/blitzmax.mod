@@ -379,12 +379,12 @@ Type TCompilerCBackend
 		If Not irModule Or Not candidate Then Return False
 		For Local owner:TCompilerIrClass = EachIn irModule.classes
 			If Not owner.isPublished Then Continue
-			For Local field:TCompilerIrClassField = EachIn owner.fields
-				If RuntimeTypeUsesClass(field.semanticType, candidate) Or RuntimeTypeUsesClass(field.staticArrayElementType, candidate) Or RuntimeTypeUsesClass(field.callableReturnType, candidate) Or RuntimeTypeUsesClass(field.arrayCallableReturnType, candidate) Then Return True
-				For Local parameter:TCompilerIrParameter = EachIn field.callableParameters
+			For Local irField:TCompilerIrClassField = EachIn owner.fields
+				If RuntimeTypeUsesClass(irField.semanticType, candidate) Or RuntimeTypeUsesClass(irField.staticArrayElementType, candidate) Or RuntimeTypeUsesClass(irField.callableReturnType, candidate) Or RuntimeTypeUsesClass(irField.arrayCallableReturnType, candidate) Then Return True
+				For Local parameter:TCompilerIrParameter = EachIn irField.callableParameters
 					If RuntimeParameterUsesClass(parameter, candidate) Then Return True
 				Next
-				For Local parameter:TCompilerIrParameter = EachIn field.arrayCallableParameters
+				For Local parameter:TCompilerIrParameter = EachIn irField.arrayCallableParameters
 					If RuntimeParameterUsesClass(parameter, candidate) Then Return True
 				Next
 			Next

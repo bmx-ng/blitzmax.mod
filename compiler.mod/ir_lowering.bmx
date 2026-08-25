@@ -8744,8 +8744,8 @@ Type TCompilerIrLowerer
 		If comparison Then Return CallArgumentHasEvaluationEffect(comparison.left) Or CallArgumentHasEvaluationEffect(comparison.right)
 		Local conversion:TCompilerIrConversion = TCompilerIrConversion(argument)
 		If conversion Then Return CallArgumentHasEvaluationEffect(conversion.operand)
-		Local field:TCompilerIrFieldAccess = TCompilerIrFieldAccess(argument)
-		If field Then Return CallArgumentHasEvaluationEffect(field.receiver)
+		Local fieldAccess:TCompilerIrFieldAccess = TCompilerIrFieldAccess(argument)
+		If fieldAccess Then Return CallArgumentHasEvaluationEffect(fieldAccess.receiver)
 		Local address:TCompilerIrAddressOf = TCompilerIrAddressOf(argument)
 		If address Then Return CallArgumentHasEvaluationEffect(address.operand)
 		Return False

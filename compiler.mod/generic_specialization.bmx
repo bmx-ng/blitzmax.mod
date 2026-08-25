@@ -1058,8 +1058,8 @@ Type TCompilerGenericSpecializationLowerer
 			For Local constructor:TCompilerGenericMethodIr = EachIn result.constructors
 				BuildClosureEnvironment(constructor, result, diagnostics)
 			Next
-			For Local method:TCompilerGenericMethodIr = EachIn result.methods
-				BuildClosureEnvironment(method, result, diagnostics)
+			For Local irMethod:TCompilerGenericMethodIr = EachIn result.methods
+				BuildClosureEnvironment(irMethod, result, diagnostics)
 			Next
 		End If
 		If Not result.isRoutine And Not result.isInterface Then ValidateInterfaceImplementations(result, diagnostics)
@@ -2287,8 +2287,8 @@ Type TCompilerGenericCUnitEmitter
 			result :+ RuntimeTypeHeaderIncludesForSpecialization(argument, ir.specialization, emitted)
 		Next
 		If ir.routine Then result :+ RuntimeMethodHeaderIncludes(ir.routine, ir.specialization, emitted)
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			result :+ RuntimeMethodHeaderIncludes(method, ir.specialization, emitted)
+		For Local irMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			result :+ RuntimeMethodHeaderIncludes(irMethod, ir.specialization, emitted)
 		Next
 		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
 			result :+ RuntimeMethodHeaderIncludes(constructor, ir.specialization, emitted)
@@ -2296,11 +2296,11 @@ Type TCompilerGenericCUnitEmitter
 		Return result
 	End Function
 
-	Function RuntimeMethodHeaderIncludes:String(method:TCompilerGenericMethodIr, specialization:TGenericSpecializationNode, emitted:TMap)
-		If Not method Then Return ""
-		Local result:String = RuntimeTypeHeaderIncludesForSpecialization(method.returnType, specialization, emitted)
-		result :+ RuntimeTypeHeaderIncludesForSpecialization(method.receiverType, specialization, emitted)
-		For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+	Function RuntimeMethodHeaderIncludes:String(irMethod:TCompilerGenericMethodIr, specialization:TGenericSpecializationNode, emitted:TMap)
+		If Not irMethod Then Return ""
+		Local result:String = RuntimeTypeHeaderIncludesForSpecialization(irMethod.returnType, specialization, emitted)
+		result :+ RuntimeTypeHeaderIncludesForSpecialization(irMethod.receiverType, specialization, emitted)
+		For Local parameter:TGenericTemplateValueParameter = EachIn irMethod.parameters
 			If parameter Then result :+ RuntimeTypeHeaderIncludesForSpecialization(parameter.semanticType, specialization, emitted)
 		Next
 		Return result
@@ -4056,7 +4056,11 @@ Type TCompilerGenericCUnitEmitter
 		If node.kind = TEMPLATE_NODE_FUNCTION_LITERAL Then Return
 		If node.kind = TEMPLATE_NODE_YIELD Then
 			node.valueText = String(nextState)
-			states :+ [nextState]
+			' Production bcc mis-emits a Var parameter used directly in an array
+			' literal as a pointer element. Materialize its value first so bcc and
+			' bcc2 generate the same Int array.
+			Local resumeState:Int = nextState
+			states :+ [resumeState]
 			nextState :+ 1
 		End If
 		For Local child:TGenericTemplateNode = EachIn node.children
