@@ -1,0 +1,95 @@
+BlitzMax.Language is a reusable front end for understanding BlitzMax source code.
+It is independent of the C backend and the Language Server Protocol, so it can be
+used by compilers, editor tools, documentation generators, source analysers,
+interpreters, and refactoring tools.
+
+The module provides three related layers:
+
+* #TBlitzMaxParser creates a loss-aware syntax tree and parse diagnostics.
+* #TCompilationSnapshotBuilder resolves included files and imported module interfaces.
+* #TBlitzMaxLanguage runs the semantic pipeline and returns a #TLanguageAnalysis.
+
+## Parsing source
+
+Use #TBlitzMaxParser when only source structure is needed:
+
+```blitzmax
+SuperStrict
+
+Framework BRL.StandardIO
+Import BlitzMax.Language
+
+Local source:String = "Function Double:Int(value:Int)~nReturn value * 2~nEnd Function"
+Local parsed:TParseResult = TBlitzMaxParser.ParseText(source, "example.bmx")
+
+Print "members: " + parsed.syntaxTree.root.members.length
+For Local diagnostic:TDiagnostic = EachIn parsed.syntaxTree.diagnostics
+	Print diagnostic.Format(parsed.syntaxTree.source)
+Next
+```
+
+Parsing is recoverable: malformed source can still produce a useful tree alongside
+diagnostics. Parsing does not resolve names or types.
+
+## Analysing self-contained source
+
+#TBlitzMaxLanguage.AnalyzeText is the simplest semantic entry point:
+
+```blitzmax
+Local analysis:TLanguageAnalysis = TBlitzMaxLanguage.AnalyzeText(source, "example.bmx")
+
+If analysis.Succeeded() Then
+	Print "analysis succeeded"
+Else
+	For Local diagnostic:TDiagnostic = EachIn analysis.model.diagnostics
+		Print diagnostic.Format(analysis.syntaxTree.source)
+	Next
+End If
+```
+
+This form is appropriate for self-contained snippets. It does not resolve imported
+modules or included source files.
+
+## Analysing a project source file
+
+For real compilation units, implement #TSnapshotResolver and call
+#TBlitzMaxLanguage.BuildAndAnalyze. The resolver supplies included source,
+compact module interfaces, the core runtime interface, generic templates, and
+documentation. This separation lets a consumer load dependencies from a filesystem,
+an in-memory editor workspace, a cache, or another storage system.
+
+The resulting #TLanguageAnalysis keeps three diagnostic domains separate:
+
+* syntax diagnostics belong to each parsed #TSyntaxTree;
+* snapshot diagnostics describe missing or invalid dependencies;
+* semantic diagnostics belong to the shared #TSemanticModel.
+
+Use #TLanguageAnalysis.ViewForDocument to obtain syntax positions for a recursively
+included document while continuing to share the compilation's semantic model.
+
+## Source coordinates and navigation
+
+#TSourceText translates between absolute character offsets and zero-based
+#TSourcePosition values. A #TSourceSpan is a half-open source range.
+
+#TSyntaxNavigator adds parent and position queries to an immutable syntax tree:
+
+```blitzmax
+Local navigator:TSyntaxNavigator = TSyntaxNavigator.Create(analysis.syntaxTree)
+Local token:TSyntaxToken = navigator.TokenAt(10)
+Local node:TSyntaxNode = navigator.NodeAt(10)
+```
+
+BlitzMax String indexing defines language-model columns. Protocol adapters using a
+different coordinate encoding, such as LSP UTF-16 positions, should convert at their
+boundary.
+
+## Analysis options and cancellation
+
+#TLanguageAnalysisOptions can disable expression binding, compile-time evaluation,
+control-flow analysis, or data-flow analysis for consumers that need less work.
+The default enables the complete pipeline.
+
+Long-running consumers can provide a #TLanguageCancellationToken. Cancellation is
+cooperative and is observed at deterministic analysis boundaries, so token
+implementations must be safe to query from the analysis thread.

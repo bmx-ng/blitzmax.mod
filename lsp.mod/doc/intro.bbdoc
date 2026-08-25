@@ -1,0 +1,17 @@
+BlitzMax.LSP provides reusable JSON-RPC framing and a BlitzMax Language Server
+Protocol implementation.
+
+#TLspTransport reads and writes standard `Content-Length` framed UTF-8 messages over
+BlitzMax streams. #TBlitzMaxLspServer owns document and workspace state and dispatches
+requests to the services built on #BlitzMax.Language.
+
+An executable language-server host can create a transport for its input and output
+streams and pass it to #TBlitzMaxLspServer.Run. An application with its own message
+loop may instead pass individual JSON payloads to #HandlePayload and write the
+returned responses itself.
+
+The module also exposes small JSON-RPC construction helpers such as #JsonResponse,
+#JsonErrorResponse, and #JsonNotification.
+
+Consumers that need syntax trees, semantic models, diagnostics, or source navigation
+without the LSP protocol should use #BlitzMax.Language directly.

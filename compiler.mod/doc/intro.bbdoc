@@ -1,0 +1,29 @@
+BlitzMax.Compiler is the reusable staged compiler pipeline used by bcc2.
+
+Most consumers begin with #TBlitzMaxCompiler. #Compile accepts source text and a
+dependency resolver; #CompileFile loads a root source file and uses the standard
+filesystem resolver. Both return a #TCompilerResult containing language analysis,
+the generic application plan, typed compiler IR, timing information, and diagnostics.
+
+Compilation and output emission are deliberately separate. After checking
+#TCompilerResult.Succeeded, a build host may emit runtime-compatible C, a runtime
+header, a compact module interface, generic template artifacts, and a generic
+manifest. #PlanBuildOutputs combines those products into the file plan consumed by
+a build driver.
+
+```blitzmax
+Local options:TCompilerOptions = TCompilerOptions.CreateDefault()
+Local result:TCompilerResult = TBlitzMaxCompiler.CompileFile("program.bmx", options)
+
+If result.Succeeded() Then
+	Local diagnostics:TCompilerDiagnostic[]
+	Local cSource:String = TBlitzMaxCompiler.EmitRuntimeC(result, diagnostics)
+End If
+```
+
+#TCompilerOptions controls the target, build mode, conditional symbols,
+instrumentation, application identity, and other compilation details. Call
+#RefreshConditionalSymbols after changing target-related fields directly.
+
+Consumers interested only in parsing or semantic analysis should import
+#BlitzMax.Language instead; it has no dependency on compiler lowering or a backend.

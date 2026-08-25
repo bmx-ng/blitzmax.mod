@@ -1,0 +1,14 @@
+.DS_Store
+
+# BlitzMax intermediate build directories
+.bmx/
+
+# Generated module interfaces and libraries
+*.a
+*.bmxbuild
+*.bmxbuild.stamp
+*.i
+*.i2
+*.o
+
+.generics/
