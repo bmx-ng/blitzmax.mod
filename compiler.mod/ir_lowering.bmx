@@ -451,6 +451,30 @@ Type TCompilerIrLowerer
 				result.importedClasses :+ [importedClass]
 			Next
 		End If
+		' Publish every executable generic class shell before completing any
+		' specialization. Parameter and field-shape construction may import an
+		' ordinary class whose virtual slots mention a later specialization.
+		' A single create-and-complete pass made that valid ABI depend on unit
+		' ordering and fell back to the open generic declaration.
+		For Local unit:TCompilerGenericUnit = EachIn genericPlan.units
+			If Not unit Or Not unit.specialization Or Not unit.ir Then Continue
+			If unit.ir.isRoutine Or unit.ir.isInterface Or unit.ir.isStruct Then Continue
+			Local importedClass:TCompilerIrImportedClass = New TCompilerIrImportedClass
+			importedClass.importedClassId = "generic" + nextGenericId
+			nextGenericId :+ 1
+			importedClass.name = unit.specialization.artifact.identity.qualifiedName
+			importedClass.semanticType = GenericSemanticTypeName(unit.specialization)
+			importedClass.abiName = unit.specialization.readableAbiName
+			importedClass.originModule = unit.specialization.artifact.identity.moduleName
+			importedClass.isGenericSpecialization = True
+			importedClass.specializationIdentity = unit.specialization.identityDigest
+			importedClass.generatedUnit = unit.specialization.generatedUnit
+			importedClass.registerFunctionName = unit.specialization.readableAbiName + "_register"
+			importedBySpecialization.Insert(unit.specialization, importedClass)
+			IndexGenericTypeName(genericClassesByTypeName, importedClass.semanticType, importedClass)
+			importedClassesByAbiName.Insert(importedClass.abiName.ToLower(), importedClass)
+			result.importedClasses :+ [importedClass]
+		Next
 		For Local unit:TCompilerGenericUnit = EachIn genericPlan.units
 			If Not unit Or Not unit.specialization Then Continue
 			If unit.ir And unit.ir.isRoutine Then
@@ -629,18 +653,8 @@ Type TCompilerIrLowerer
 				result.genericInstances :+ [unit.specialization.identityDigest]
 				Continue
 			End If
-			Local importedClass:TCompilerIrImportedClass = New TCompilerIrImportedClass
-			importedClass.importedClassId = "generic" + nextGenericId
-			nextGenericId :+ 1
-			importedClass.name = unit.specialization.artifact.identity.qualifiedName
-			importedClass.semanticType = GenericSemanticTypeName(unit.specialization)
-			importedClass.abiName = unit.specialization.readableAbiName
-			importedClass.originModule = unit.specialization.artifact.identity.moduleName
-			importedClass.isGenericSpecialization = True
-			importedClass.specializationIdentity = unit.specialization.identityDigest
-			importedClass.generatedUnit = unit.specialization.generatedUnit
-			importedClass.registerFunctionName = unit.specialization.readableAbiName + "_register"
-			importedBySpecialization.Insert(unit.specialization, importedClass)
+			Local importedClass:TCompilerIrImportedClass = TCompilerIrImportedClass(importedBySpecialization.ValueForKey(unit.specialization))
+			If Not importedClass Then Continue
 			BuildGenericStaticGlobals(unit, importedClass.semanticType)
 			For Local irField:TCompilerGenericFieldIr = EachIn unit.ir.fields
 				If irField.semanticType And (irField.semanticType.kind = TEMPLATE_TYPE_NAMED Or irField.semanticType.CanonicalName() = "string" Or irField.semanticType.CanonicalName() = "object") Then importedClass.hasManagedFields = True
@@ -728,9 +742,6 @@ Type TCompilerIrLowerer
 				constructor.objectNewAbiName = unit.specialization.readableAbiName + "_New"
 				importedClass.constructors :+ [constructor]
 			End If
-			IndexGenericTypeName(genericClassesByTypeName, importedClass.semanticType, importedClass)
-			importedClassesByAbiName.Insert(importedClass.abiName.ToLower(), importedClass)
-			result.importedClasses :+ [importedClass]
 			result.genericInstances :+ [unit.specialization.identityDigest]
 		Next
 		For Local unit:TCompilerGenericUnit = EachIn genericPlan.units

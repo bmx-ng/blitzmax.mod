@@ -142,6 +142,7 @@ Type TCompilerGenericApplicationPlanner
 	Field diagnostics:TCompilerDiagnostic[] = New TCompilerDiagnostic[0]
 	Field expansionLimitExceeded:Int
 	Field discoveredScopes:TMap = New TMap
+	Field sourceSyntaxNodes:TMap = New TMap
 
 	Function Build:TCompilerGenericApplicationPlan(analysis:TLanguageAnalysis, options:TCompilerOptions, diagnostics:TCompilerDiagnostic[] Var, backendUnitCache:TCompilerGenericBackendUnitCache = Null)
 		Local planner:TCompilerGenericApplicationPlanner = New TCompilerGenericApplicationPlanner
@@ -158,6 +159,7 @@ Type TCompilerGenericApplicationPlanner
 			planner.IndexTemplateArtifacts(analysis.model.globalScope)
 			planner.plan.indexMilliseconds = MilliSecs() - started
 			started = MilliSecs()
+			planner.IndexSourceSyntaxNodes()
 			planner.DiscoverScope(analysis.model.globalScope)
 			planner.DiscoverTypeMap()
 			planner.DiscoverExpressionMap()
@@ -188,6 +190,18 @@ Type TCompilerGenericApplicationPlanner
 		diagnostics = planner.diagnostics
 		Return planner.plan
 	End Function
+
+	Method IndexSourceSyntaxNodes()
+		If Not analysis Or Not analysis.snapshot Then Return
+		For Local document:TSourceDocumentModel = EachIn analysis.snapshot.documents
+			If Not document Or Not document.tree Then Continue
+			Local navigator:TSyntaxNavigator = TSyntaxNavigator.Create(document.tree)
+			If Not navigator Then Continue
+			For Local node:TSyntaxNode = EachIn navigator.nodes
+				sourceSyntaxNodes.Insert(node, node)
+			Next
+		Next
+	End Method
 
 	Method RecordGraphCounts()
 		If Not plan Or Not plan.registry Then Return
@@ -924,15 +938,28 @@ Type TCompilerGenericApplicationPlanner
 			If symbol And symbol.memberScope Then DiscoverScope(symbol.memberScope)
 		Next
 		For Local child:TScope = EachIn scope.children
+			' A source interface owned by an imported module also has a hidden
+			' path-addressable scope. Its declarations are merged into the visible
+			' nominal module scope, so discovering both would create a second
+			' specialization identity named after the physical .bmx file.
+			If scope = analysis.model.globalScope And child.kind = SCOPE_INTERFACE_MODULE And Not IsVisibleImportedScope(child) Then Continue
 			DiscoverScope(child)
 		Next
+	End Method
+
+	Method IsVisibleImportedScope:Int(scope:TScope)
+		If Not scope Or Not analysis Or Not analysis.model Then Return False
+		For Local importedScope:TScope = EachIn analysis.model.importedScopes
+			If importedScope = scope Then Return True
+		Next
+		Return False
 	End Method
 
 	Method DiscoverTypeMap()
 		If Not analysis Or Not analysis.model Then Return
 		For Local value:Object = EachIn analysis.model.typeMap.Keys()
 			Local syntax:TTypeReferenceSyntax = TTypeReferenceSyntax(value)
-			If syntax Then DiscoverType(analysis.model.TypeOf(syntax), syntax, GENERIC_REQUEST_TYPE_USE)
+			If syntax And sourceSyntaxNodes.Contains(syntax) Then DiscoverType(analysis.model.TypeOf(syntax), syntax, GENERIC_REQUEST_TYPE_USE)
 		Next
 	End Method
 
@@ -940,7 +967,7 @@ Type TCompilerGenericApplicationPlanner
 		If Not analysis Or Not analysis.model Then Return
 		For Local value:Object = EachIn analysis.model.expressionTypeMap.Keys()
 			Local syntax:TExpressionSyntax = TExpressionSyntax(value)
-			If Not syntax Then Continue
+			If Not syntax Or Not sourceSyntaxNodes.Contains(syntax) Then Continue
 			Local reason:Int = GENERIC_REQUEST_TYPE_USE
 			If TNewExpressionSyntax(syntax) Then reason = GENERIC_REQUEST_ALLOCATION
 			If TCallExpressionSyntax(syntax) Or TMemberAccessExpressionSyntax(syntax) Then reason = GENERIC_REQUEST_MEMBER_CALL
@@ -1002,6 +1029,7 @@ Type TCompilerGenericApplicationPlanner
 		If Not analysis Or Not analysis.model Then Return
 		For Local value:Object = EachIn analysis.model.resolvedCallMap.Keys()
 			Local syntax:TSyntaxNode = TSyntaxNode(value)
+			If Not syntax Or Not sourceSyntaxNodes.Contains(syntax) Then Continue
 			Local resolved:TResolvedCall = TResolvedCall(analysis.model.resolvedCallMap.ValueForKey(value))
 			If resolved And resolved.routine Then DemandClosedGenericOwnerMethod(syntax, resolved)
 			If Not resolved Or Not IsTemplateSymbol(resolved.routine) Or resolved.routine.kind <> SYMBOL_ROUTINE Then Continue
