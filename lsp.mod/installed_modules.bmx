@@ -4,6 +4,7 @@
 SuperStrict
 
 Import BRL.FileSystem
+Import BRL.LinkedList
 Import BRL.Map
 Import BlitzMax.Language
 
@@ -28,11 +29,13 @@ End Type
 Type TLspInstalledModuleNames
 	Field configurationKey:String
 	Field names:String[] = New String[0]
+	Field discoveryWarnings:TList = New TList
 
 	Method Refresh(configuration:TLspWorkspaceConfiguration)
 		configurationKey = TLspInstalledModuleCatalogue.ConfigurationKeyFor(configuration)
 		names = New String[0]
-		Local discovered:TMap = TLspInstalledModuleCatalogue.Discover(configuration)
+		discoveryWarnings = New TList
+		Local discovered:TMap = TLspInstalledModuleCatalogue.Discover(configuration, discoveryWarnings)
 		For Local value:Object = EachIn discovered.Values()
 			Local item:TLspDiscoveredModule = TLspDiscoveredModule(value)
 			If item And Not item.isCore Then names :+ [item.name]
@@ -46,6 +49,7 @@ Type TLspInstalledModuleCatalogue
 	Field entries:TMap = New TMap
 	Field catalogue:TModuleSymbolCatalogue = New TModuleSymbolCatalogue
 	Field generation:Int
+	Field discoveryWarnings:TList = New TList
 
 	Method Refresh:Int(configuration:TLspWorkspaceConfiguration, dependencies:TLspDependencyCache)
 		If Not configuration Or Not dependencies Or Not configuration.sdkPath.length Then Return False
@@ -57,7 +61,8 @@ Type TLspInstalledModuleCatalogue
 			changed = True
 		End If
 
-		Local discovered:TMap = Discover(configuration)
+		discoveryWarnings = New TList
+		Local discovered:TMap = Discover(configuration, discoveryWarnings)
 		Local removed:String[]
 		For Local value:Object = EachIn entries.Keys()
 			Local key:String = String(value)
@@ -128,15 +133,19 @@ Type TLspInstalledModuleCatalogue
 		Return SnapshotPathKey(configuration.sdkPath) + "|" + configuration.InterfaceMung() + "|" + configuration.targetPlatform
 	End Function
 
-	Function Discover:TMap(configuration:TLspWorkspaceConfiguration)
+	Function Discover:TMap(configuration:TLspWorkspaceConfiguration, warnings:TList = Null)
 		Local result:TMap = New TMap
 		Local moduleRoot:String = NormalizeWorkspacePath(configuration.sdkPath) + "/mod"
 		If FileType(moduleRoot) <> FILETYPE_DIR Then Return result
-		For Local item:TModuleDirectory = EachIn EnumModuleDirectories(moduleRoot)
+		Local issues:TList = New TList
+		For Local item:TModuleDirectory = EachIn EnumModuleDirectories(moduleRoot, "", Null, 0, issues)
 			If FileType(item.SourcePath()) <> FILETYPE_FILE Then Continue
 			Local interfacePath:String = item.path + "/" + item.identifier.ToLower() + "." + configuration.InterfaceMung() + ".i"
 			If FileType(interfacePath) <> FILETYPE_FILE Then Continue
 			AddDiscovered(result, item.name, interfacePath, False)
+		Next
+		For Local issue:String = EachIn issues
+			If warnings Then warnings.AddLast(issue)
 		Next
 
 		Local coreDirectory:String = moduleRoot + "/brl.mod/blitz.mod"
