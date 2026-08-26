@@ -153,6 +153,7 @@ Type TModuleSymbolCatalogue
 	Field modules:TModuleCatalogueEntry[] = New TModuleCatalogueEntry[0]
 	Field symbols:TModuleCatalogueSymbol[] = New TModuleCatalogueSymbol[0]
 	Field typeSymbols:TModuleCatalogueSymbol[] = New TModuleCatalogueSymbol[0]
+	Field exportedTopLevelSymbols:TModuleCatalogueSymbol[] = New TModuleCatalogueSymbol[0]
 	Field modulesByName:TMap = New TMap
 	Field symbolsByName:TMap = New TMap
 	Field symbolsByQualifiedName:TMap = New TMap
@@ -161,6 +162,7 @@ Type TModuleSymbolCatalogue
 	Private Field moduleBuffer:TModuleCatalogueEntryBuffer
 	Private Field symbolBuffer:TModuleCatalogueSymbolBuffer
 	Private Field typeSymbolBuffer:TModuleCatalogueSymbolBuffer
+	Private Field exportedTopLevelIndexDirty:Int
 	Public
 
 	' Catalogue discovery is naturally a bulk operation. Keep exact public
@@ -200,6 +202,10 @@ Type TModuleSymbolCatalogue
 		Next
 		FinalizeIndex(symbolsByName)
 		FinalizeIndex(symbolsByQualifiedName)
+		If exportedTopLevelIndexDirty Then
+			RebuildExportedTopLevelSymbols()
+			exportedTopLevelIndexDirty = False
+		End If
 	End Method
 	Public
 
@@ -251,6 +257,28 @@ Type TModuleSymbolCatalogue
 		Local result:TModuleCatalogueSymbol[]
 		For Local symbol:TModuleCatalogueSymbol = EachIn SymbolsNamed(name)
 			If symbol.IsType() Then result :+ [symbol]
+		Next
+		Return result
+	End Method
+
+	' Returns public module-level declarations whose names start with prefix.
+	' The sorted index keeps live completion queries proportional to the matching
+	' slice rather than to every declaration installed in the SDK.
+	Method ExportedTopLevelSymbolsWithPrefix:TModuleCatalogueSymbol[](prefix:String, limit:Int = 64)
+		Local result:TModuleCatalogueSymbol[]
+		Local normalizedPrefix:String = prefix.ToLower()
+		If Not normalizedPrefix.length Or limit <= 0 Then Return result
+		Local first:Int
+		Local last:Int = exportedTopLevelSymbols.length
+		While first < last
+			Local middle:Int = first + (last - first) / 2
+			If exportedTopLevelSymbols[middle].normalizedName < normalizedPrefix Then first = middle + 1 Else last = middle
+		Wend
+		For Local index:Int = first Until exportedTopLevelSymbols.length
+			Local symbol:TModuleCatalogueSymbol = exportedTopLevelSymbols[index]
+			If Not symbol.normalizedName.StartsWith(normalizedPrefix) Then Exit
+			result :+ [symbol]
+			If result.length >= limit Then Exit
 		Next
 		Return result
 	End Method
@@ -440,6 +468,7 @@ Type TModuleSymbolCatalogue
 		symbol.originLine = sourceLocation.line
 		symbol.originColumn = sourceLocation.column
 		symbol.isPublic = record.visibility = VISIBILITY_PUBLIC
+		If Not parent Then exportedTopLevelIndexDirty = True
 		symbolBuffer.Add(symbol)
 		If symbol.IsType() Then typeSymbolBuffer.Add(symbol)
 		AddToIndex(symbolsByName, symbol.normalizedName, symbol)
@@ -482,6 +511,47 @@ Type TModuleSymbolCatalogue
 			End If
 		Next
 	End Method
+
+	Method RebuildExportedTopLevelSymbols()
+		Local values:TModuleCatalogueSymbol[]
+		For Local symbol:TModuleCatalogueSymbol = EachIn symbols
+			If Not symbol Or symbol.parent Or Not symbol.isPublic Or Not symbol.name.length Then Continue
+			If Not symbol.moduleEntry Or symbol.moduleEntry.isCore Then Continue
+			If TInterfaceSymbolImporter.IsLegacyGenericImplementation(symbol.record) Then Continue
+			Select symbol.kind
+				Case SYMBOL_TYPE, SYMBOL_STRUCT, SYMBOL_INTERFACE, SYMBOL_ENUM, SYMBOL_ROUTINE, SYMBOL_GLOBAL, SYMBOL_CONST
+					values :+ [symbol]
+			End Select
+		Next
+		If values.length > 1 Then SortExportedSymbols(values, 0, values.length - 1)
+		exportedTopLevelSymbols = values
+	End Method
+
+	Function SortExportedSymbols(values:TModuleCatalogueSymbol[] Var, first:Int, last:Int)
+		Local left:Int = first
+		Local right:Int = last
+		Local pivot:TModuleCatalogueSymbol = values[first + (last - first) / 2]
+		While left <= right
+			While ExportedSymbolComesBefore(values[left], pivot); left :+ 1; Wend
+			While ExportedSymbolComesBefore(pivot, values[right]); right :- 1; Wend
+			If left <= right Then
+				Local swap:TModuleCatalogueSymbol = values[left]
+				values[left] = values[right]
+				values[right] = swap
+				left :+ 1
+				right :- 1
+			End If
+		Wend
+		If first < right Then SortExportedSymbols(values, first, right)
+		If left < last Then SortExportedSymbols(values, left, last)
+	End Function
+
+	Function ExportedSymbolComesBefore:Int(left:TModuleCatalogueSymbol, right:TModuleCatalogueSymbol)
+		If left.normalizedName <> right.normalizedName Then Return left.normalizedName < right.normalizedName
+		If left.moduleEntry.normalizedName <> right.moduleEntry.normalizedName Then Return left.moduleEntry.normalizedName < right.moduleEntry.normalizedName
+		If left.kind <> right.kind Then Return left.kind < right.kind
+		Return left.record.signatureText.ToLower() < right.record.signatureText.ToLower()
+	End Function
 End Type
 
 Type TModuleCatalogueSymbolGroup

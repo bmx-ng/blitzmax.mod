@@ -10,6 +10,7 @@ Import BlitzMax.Language
 Import "documents.bmx"
 Import "hover.bmx"
 Import "import_completion.bmx"
+Import "auto_import_completion.bmx"
 Import "positions.bmx"
 Import "protocol.bmx"
 Import "workspaces.bmx"
@@ -31,14 +32,18 @@ Type TBlitzMaxLspCompletion
 		Local ranking:TCompletionRankingContext = TCompletionRankingContext.Query(analysis.model, navigator, offset)
 		Local completion:TMemberCompletionResult = TMemberCompletion.Query(analysis.model, navigator, offset)
 		Local symbols:TSymbol[]
+		Local typeContext:TTypeCompletionResult
 		If completion Then
 			symbols = completion.symbols
 		Else
-			Local types:TTypeCompletionResult = TTypeCompletion.Query(analysis.model, navigator, offset)
-			If types Then Return TypeItems(types, analysis.model, document.uri, analysis.syntaxTree.source, offset)
-			Local contextual:TContextualCompletionResult = TContextualCompletion.Query(analysis.model, navigator, offset)
-			If Not contextual Then Return items
-			symbols = contextual.symbols
+			typeContext = TTypeCompletion.Query(analysis.model, navigator, offset)
+			If typeContext Then
+				items = TypeItems(typeContext, analysis.model, document.uri, analysis.syntaxTree.source, offset)
+			Else
+				Local contextual:TContextualCompletionResult = TContextualCompletion.Query(analysis.model, navigator, offset)
+				If Not contextual Then Return items
+				symbols = contextual.symbols
+			End If
 		End If
 		Local seen:TMap = New TMap
 		Local sourceOrder:Int
@@ -75,7 +80,15 @@ Type TBlitzMaxLspCompletion
 			items.Append(item)
 			sourceOrder :+ 1
 		Next
+		If Not completion Then AppendItems(items, TBlitzMaxLspAutoImportCompletion.Query(document, workspace, analysis, analysis.syntaxTree.source, offset, items, typeContext, ranking, snippetSupport))
 		Return items
+	End Function
+
+	Function AppendItems(target:TJSONArray, values:TJSONArray)
+		If Not target Or Not values Then Return
+		For Local index:Int = 0 Until values.Size()
+			target.Append(values.Get(index))
+		Next
 	End Function
 
 	Function ShouldInsertCallSnippet:Int(symbol:TSymbol, ranking:TCompletionRankingContext, source:TSourceText, offset:Int)
@@ -223,6 +236,7 @@ Type TBlitzMaxLspCompletion
 		Local analysis:TLanguageAnalysis = workspace.LatestAnalysis(document.uri)
 		If Not analysis Then analysis = workspace.Analyze(document)
 		If Not analysis Or Not analysis.model Then Return item
+		If data.GetString("autoImportModule").length Then Return ResolveAutoImport(item, data, analysis, workspace)
 		Local symbol:TSymbol = FindSymbol(analysis.model.globalScope, data)
 		If Not symbol Then Return item
 		Local documentation:TDocumentationComment = workspace.Documentation(symbol)
@@ -235,6 +249,48 @@ Type TBlitzMaxLspCompletion
 		End If
 		If markdown.length Then item.Set("documentation", TBlitzMaxLspDocumentation.MarkupContent(markdown))
 		Return item
+	End Function
+
+	Function ResolveAutoImport:TJSONObject(item:TJSONObject, data:TJSONObject, analysis:TLanguageAnalysis, workspace:TLspWorkspaceContext)
+		Local symbol:TModuleCatalogueSymbol = FindAutoImportSymbol(workspace, data)
+		If Not symbol Then Return item
+		Local declaration:String = data.GetString("detail")
+		Local markdown:String
+		If declaration.length Then markdown = "```blitzmax~n" + declaration + "~n```~n~nAuto import from `" + symbol.moduleEntry.name + "`."
+		Local documentation:TDocumentationComment = symbol.record.documentation
+		If Not documentation Then
+			Local temporary:TSymbol = New TSymbol
+			temporary.name = symbol.name
+			temporary.kind = symbol.kind
+			temporary.originPath = symbol.originPath
+			temporary.originLine = symbol.originLine
+			documentation = workspace.Documentation(temporary)
+		End If
+		Local rendered:String = TBlitzMaxLspDocumentation.Markdown(documentation, Null, analysis.model)
+		If rendered.length Then
+			If markdown.length Then markdown :+ "~n~n"
+			markdown :+ rendered
+		End If
+		If markdown.length Then item.Set("documentation", TBlitzMaxLspDocumentation.MarkupContent(markdown))
+		Return item
+	End Function
+
+	Function FindAutoImportSymbol:TModuleCatalogueSymbol(workspace:TLspWorkspaceContext, data:TJSONObject)
+		If Not workspace Or Not data Then Return Null
+		Local moduleName:String = data.GetString("autoImportModule")
+		Local name:String = data.GetString("name")
+		Local kind:Int = Int(data.GetInteger("symbolKind"))
+		Local signature:String = data.GetString("signature")
+		Local originPath:String = data.GetString("originPath")
+		Local installed:TLspInstalledModuleCatalogue = workspace.InstalledCatalogue()
+		If Not installed Or Not installed.catalogue Then Return Null
+		For Local symbol:TModuleCatalogueSymbol = EachIn installed.catalogue.SymbolsQualified(moduleName + "." + name)
+			If Not symbol Or symbol.parent Or symbol.kind <> kind Then Continue
+			If signature.length And symbol.record.signatureText <> signature Then Continue
+			If originPath.length And SnapshotPathKey(symbol.originPath) <> SnapshotPathKey(originPath) Then Continue
+			Return symbol
+		Next
+		Return Null
 	End Function
 
 	Function FindSymbol:TSymbol(scope:TScope, data:TJSONObject)
