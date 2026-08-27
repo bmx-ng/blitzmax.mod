@@ -409,7 +409,7 @@ Type TBlitzMaxLspNavigation
 			Local openDocument:TLspDocument = documents.GetByPath(path)
 			If openDocument Then Return openDocument.uri
 		End If
-		Return "file://" + path.Replace(" ", "%20")
+		Return FileUriForPath(path)
 	End Function
 End Type
 

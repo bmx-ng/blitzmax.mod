@@ -35,7 +35,8 @@ Type TBlitzMaxLspHover
 			Local documentation:TDocumentationComment = workspace.Documentation(sourceSymbol)
 			Local documentationMarkdown:String = TBlitzMaxLspDocumentation.Markdown(documentation, location.symbol, analysis.model)
 			If documentationMarkdown.length Then markdown :+ "~n~n" + documentationMarkdown
-			If sourceSymbol And sourceSymbol.originPath.length Then markdown :+ "~n~nDefined in `" + sourceSymbol.originPath.Replace("`", "") + "`"
+			Local sourceLocation:String = TBlitzMaxLspDocumentation.SourceLocationMarkdown(sourceSymbol)
+			If sourceLocation.length Then markdown :+ "~n~n" + sourceLocation
 		End If
 		contents.Set("value", markdown)
 		Local result:TJSONObject = JsonObject()

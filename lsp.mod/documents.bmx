@@ -108,6 +108,34 @@ Function FileUriToPath:String(uri:String)
 	Return uri
 End Function
 
+' Produces a standards-compliant file URI for Markdown links and protocol
+' locations. Encode UTF-8 bytes rather than String characters so non-ASCII
+' source paths round-trip through FileUriToPath.
+Function FileUriForPath:String(path:String)
+	If path.ToLower().StartsWith("file://") Then Return path
+	Local normalized:String = path.Replace("\", "/")
+	?win32
+	If normalized.length > 1 And normalized[0] <> 47 And normalized[1] = 58 Then normalized = "/" + normalized
+	?
+	Local source:Byte Ptr = normalized.ToUTF8String()
+	Local result:String = "file://"
+	Local digits:String = "0123456789ABCDEF"
+	Local index:Int
+	While source[index]
+		Local value:Int = source[index] & 255
+		If (value >= 65 And value <= 90) Or (value >= 97 And value <= 122) Or (value >= 48 And value <= 57) Or value = 45 Or value = 46 Or value = 47 Or value = 58 Or value = 95 Or value = 126 Then
+			result :+ Chr(value)
+		Else
+			Local high:Int = (value Shr 4) & 15
+			Local low:Int = value & 15
+			result :+ "%" + digits[high..high + 1] + digits[low..low + 1]
+		End If
+		index :+ 1
+	Wend
+	MemFree(source)
+	Return result
+End Function
+
 Function PercentDecode:String(value:String)
 	Local bytes:Byte[]
 	Local index:Int

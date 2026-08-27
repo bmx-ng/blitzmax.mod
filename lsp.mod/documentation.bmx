@@ -104,6 +104,19 @@ Type TBlitzMaxLspDocumentation
 		Return content
 	End Function
 
+	Function SourceLocationMarkdown:String(symbol:TSymbol)
+		If Not symbol Or Not symbol.originPath.length Then Return ""
+		Local path:String = symbol.originPath.Replace("`", "")
+		If symbol.originLine <= 0 Or Not path.ToLower().EndsWith(".bmx") Then Return "Defined in `" + path + "`"
+		Local slash:Int = Max(path.FindLast("/"), path.FindLast("\"))
+		Local label:String = path
+		If slash >= 0 Then label = path[slash + 1..]
+		label :+ ":" + symbol.originLine
+		Local result:String = "Defined in "
+		If symbol.originModule.length Then result :+ "`" + symbol.originModule.Replace("`", "") + "` · "
+		Return result + "[`" + label + "`](" + FileUriForPath(symbol.originPath) + "#L" + symbol.originLine + ")"
+	End Function
+
 	Function AppendSection(target:String Var, value:String)
 		If Not value.length Then Return
 		If target.length Then target :+ "~n~n"
@@ -156,7 +169,7 @@ Type TBlitzMaxLspDocumentation
 	Function ReferenceMarkdown:String(name:String, context:TSymbol, model:TSemanticModel)
 		Local target:TSymbol = ResolveReference(name, context, model)
 		If target And target.originPath.length And target.originLine > 0 Then
-			Local uri:String = "file://" + target.originPath.Replace(" ", "%20") + "#L" + target.originLine
+			Local uri:String = FileUriForPath(target.originPath) + "#L" + target.originLine
 			Return "[" + name + "](" + uri + ")"
 		End If
 		Return "`" + name + "`"
