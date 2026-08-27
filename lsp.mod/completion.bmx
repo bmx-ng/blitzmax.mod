@@ -29,6 +29,10 @@ Type TBlitzMaxLspCompletion
 		Local navigator:TSyntaxNavigator = workspace.LatestNavigator(document.uri)
 		If Not navigator Then navigator = TSyntaxNavigator.Create(analysis.syntaxTree)
 		Local offset:Int = TLspPositions.Offset(analysis.syntaxTree.source, line, character)
+		' A quote is a completion trigger for Import and Include paths, but ordinary
+		' symbol completion inside String content only adds noise. The specialised
+		' path query above has already had the opportunity to handle that context.
+		If IsStringContentPosition(navigator, offset) Then Return items
 		Local ranking:TCompletionRankingContext = TCompletionRankingContext.Query(analysis.model, navigator, offset)
 		Local completion:TMemberCompletionResult = TMemberCompletion.Query(analysis.model, navigator, offset)
 		Local symbols:TSymbol[]
@@ -82,6 +86,34 @@ Type TBlitzMaxLspCompletion
 		Next
 		If Not completion Then AppendItems(items, TBlitzMaxLspAutoImportCompletion.Query(document, workspace, analysis, analysis.syntaxTree.source, offset, items, typeContext, ranking, snippetSupport))
 		Return items
+	End Function
+
+	Function IsStringContentPosition:Int(navigator:TSyntaxNavigator, offset:Int)
+		If Not navigator Or Not navigator.tree Or Not navigator.tree.source Then Return False
+		Local source:TSourceText = navigator.tree.source
+		Local cursor:Int = Max(0, Min(offset, source.Length()))
+		Local token:TSyntaxToken = navigator.TokenAt(cursor)
+		If IsStringToken(token) And cursor > token.span.start Then Return True
+
+		' An unterminated literal ends exactly at the editor cursor, outside its
+		' half-open token span. Look one character back so live typing remains quiet.
+		If cursor > 0 Then
+			token = navigator.TokenAt(cursor - 1)
+			If IsStringToken(token) And cursor = token.span.EndOffset() And Not HasClosingStringDelimiter(token) Then Return True
+		End If
+		Return False
+	End Function
+
+	Function IsStringToken:Int(token:TSyntaxToken)
+		Return token And (token.kind = TOKEN_STRING_LITERAL Or token.kind = TOKEN_MULTILINE_STRING_LITERAL)
+	End Function
+
+	Function HasClosingStringDelimiter:Int(token:TSyntaxToken)
+		If Not IsStringToken(token) Then Return False
+		If token.kind = TOKEN_MULTILINE_STRING_LITERAL Then
+			Return token.text.length >= 6 And token.text[token.text.length - 1] = 34 And token.text[token.text.length - 2] = 34 And token.text[token.text.length - 3] = 34
+		End If
+		Return token.text.length >= 2 And token.text[token.text.length - 1] = 34
 	End Function
 
 	Function AppendItems(target:TJSONArray, values:TJSONArray)
