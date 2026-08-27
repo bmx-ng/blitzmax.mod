@@ -11,7 +11,7 @@ Import BlitzMax.Language
 Import "abi_naming.bmx"
 
 Const GENERIC_SPECIALIZATION_MANIFEST_VERSION:Int = 1
-Const GENERIC_SPECIALIZATION_UNIT_POLICY_VERSION:Int = 107
+Const GENERIC_SPECIALIZATION_UNIT_POLICY_VERSION:Int = 108
 Const GENERIC_SPECIALIZATION_OUTPUT_DIRECTORY:String = ".generics"
 
 Const GENERIC_REQUEST_TYPE_USE:Int = 1
@@ -9091,13 +9091,17 @@ Type TCompilerGenericCUnitEmitter
 
 	Function BinaryOperandsSupported:Int(operatorText:String, left:TTemplateTypeReference, right:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr)
 		Local comparison:String = operatorText.ToLower()
+		Local leftString:Int = left And left.kind = TEMPLATE_TYPE_BUILTIN And left.symbolName.ToLower() = "string"
+		Local rightString:Int = right And right.kind = TEMPLATE_TYPE_BUILTIN And right.symbolName.ToLower() = "string"
+		If leftString And rightString Then
+			Select comparison
+				Case "<", "<=", ">", ">=", "=", "<>" Return True
+			End Select
+		End If
 		If comparison = "=" Or comparison = "<>" Then
 			If left And right And left.kind = TEMPLATE_TYPE_NAMED And right.kind = TEMPLATE_TYPE_NAMED And left.runtimeKind = TEMPLATE_RUNTIME_ENUM And right.runtimeKind = TEMPLATE_RUNTIME_ENUM Then
 				If left.CanonicalName() = right.CanonicalName() And TCompilerGenericSpecializationLowerer.EnumValueTypeSupported(left.runtimeValueType) Then Return True
 			End If
-			Local leftString:Int = left And left.kind = TEMPLATE_TYPE_BUILTIN And left.symbolName.ToLower() = "string"
-			Local rightString:Int = right And right.kind = TEMPLATE_TYPE_BUILTIN And right.symbolName.ToLower() = "string"
-			If leftString And rightString Then Return True
 			If ManagedReferenceType(left, ir) And ManagedReferenceType(right, ir) Then Return True
 			If IsNullType(left) And ManagedReferenceType(right, ir) Then Return True
 			If IsNullType(right) And ManagedReferenceType(left, ir) Then Return True

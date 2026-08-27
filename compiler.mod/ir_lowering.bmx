@@ -1226,6 +1226,24 @@ Type TCompilerIrLowerer
 		Return Null
 	End Method
 
+	' A specialization rejected by generic lowering or C-unit emission remains
+	' in the registry but deliberately has no executable unit. Application IR
+	' must not reinterpret a reference to that missing unit as an unsupported
+	' ordinary expression and produce a secondary diagnostic.
+	Method MissingExecutableGenericSpecialization:Int(value:TSemanticType)
+		If Not value Or Not genericPlan Or Not genericPlan.registry Then Return False
+		Local semanticName:String = TypeName(value).ToLower()
+		For Local candidate:TGenericSpecializationNode = EachIn genericPlan.registry.nodes
+			If Not candidate Or candidate.IsAbiReferenceOnly() Then Continue
+			If GenericSemanticTypeName(candidate).ToLower() <> semanticName Then Continue
+			For Local unit:TCompilerGenericUnit = EachIn genericPlan.units
+				If unit And unit.specialization = candidate Then Return False
+			Next
+			Return True
+		Next
+		Return False
+	End Method
+
 	Method GenericIrSource:TCompilerSourceLocation(value:TTemplateSourceLocation)
 		If Not value Then Return Null
 		Local result:TCompilerSourceLocation = New TCompilerSourceLocation
@@ -7718,6 +7736,7 @@ Type TCompilerIrLowerer
 
 		Local passthrough:TBoundPassthroughExpression = TBoundPassthroughExpression(bound)
 		If passthrough Then Return LowerExpression(passthrough.operand)
+		If creation And MissingExecutableGenericSpecialization(creation.createdType) Then Return Null
 
 		AddUnsupported("BMXC1015", "Bound expression kind '" + bound.boundKind + "' is not implemented", bound.syntax)
 		Return Null
