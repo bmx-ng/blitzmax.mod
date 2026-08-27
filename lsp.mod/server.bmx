@@ -43,6 +43,7 @@ Type TBlitzMaxLspServer
 	Field cleanExit:Int
 	Field activeQueue:TLspMessageQueue
 	Field completionSnippetSupport:Int
+	Field workspaceSnippetEditSupport:Int
 
 	Method New()
 		workspaces.SetDocuments(documents)
@@ -222,6 +223,7 @@ Type TBlitzMaxLspServer
 		Local codeActions:TJSONObject = JsonObject()
 		Local codeActionKinds:TJSONArray = JsonArray()
 		codeActionKinds.Append(New TJSONString.Create("quickfix"))
+		codeActionKinds.Append(New TJSONString.Create("refactor.rewrite"))
 		codeActions.Set("codeActionKinds", codeActionKinds)
 		codeActions.Set("resolveProvider", New TJSONBool.Create(False))
 		capabilities.Set("codeActionProvider", codeActions)
@@ -397,7 +399,7 @@ Type TBlitzMaxLspServer
 	Method CodeActions:String[](id:TJSON, params:TJSONObject)
 		Local document:TLspDocument = RequestDocument(params)
 		If Not document Then Return [JsonResponse(id, JsonArray()).SaveString(JSON_COMPACT)]
-		Local result:TJSON = TBlitzMaxLspCodeActions.Query(document, DocumentWorkspace(document), params)
+		Local result:TJSON = TBlitzMaxLspCodeActions.Query(document, DocumentWorkspace(document), params, workspaceSnippetEditSupport)
 		Return [JsonResponse(id, result).SaveString(JSON_COMPACT)]
 	End Method
 
@@ -469,15 +471,23 @@ Type TBlitzMaxLspServer
 
 	Method CaptureClientCapabilities(params:TJSONObject)
 		completionSnippetSupport = False
+		workspaceSnippetEditSupport = False
 		If Not params Then Return
 		Local capabilities:TJSONObject = TJSONObject(params.Get("capabilities"))
 		If Not capabilities Then Return
 		Local textDocument:TJSONObject = TJSONObject(capabilities.Get("textDocument"))
-		If Not textDocument Then Return
-		Local completion:TJSONObject = TJSONObject(textDocument.Get("completion"))
-		If Not completion Then Return
-		Local completionItem:TJSONObject = TJSONObject(completion.Get("completionItem"))
-		If completionItem Then completionSnippetSupport = completionItem.GetBool("snippetSupport")
+		If textDocument Then
+			Local completion:TJSONObject = TJSONObject(textDocument.Get("completion"))
+			If completion Then
+				Local completionItem:TJSONObject = TJSONObject(completion.Get("completionItem"))
+				If completionItem Then completionSnippetSupport = completionItem.GetBool("snippetSupport")
+			End If
+		End If
+		Local workspace:TJSONObject = TJSONObject(capabilities.Get("workspace"))
+		If workspace Then
+			Local workspaceEdit:TJSONObject = TJSONObject(workspace.Get("workspaceEdit"))
+			If workspaceEdit Then workspaceSnippetEditSupport = workspaceEdit.GetBool("snippetEditSupport")
+		End If
 	End Method
 
 	Method ApplyWorkspaceOverrides(options:TJSONObject)
