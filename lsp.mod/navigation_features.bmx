@@ -118,9 +118,10 @@ Type TBlitzMaxLspNavigation
 			Local item:TJSONObject = JsonObject()
 			item.Set("name", symbol.name)
 			item.Set("kind", SymbolKind(symbol))
-			item.Set("range", TLspPositions.Range(source, symbol.declaration.span))
 			Local selection:TSourceSpan = symbol.declaration.span
 			If symbol.nameToken Then selection = symbol.nameToken.span
+			Local fullRange:TSourceSpan = ContainingSpan(symbol.declaration.span, selection)
+			item.Set("range", TLspPositions.Range(source, fullRange))
 			item.Set("selectionRange", TLspPositions.Range(source, selection))
 			If symbol.memberScope And (symbol.kind = SYMBOL_TYPE Or symbol.kind = SYMBOL_STRUCT Or symbol.kind = SYMBOL_INTERFACE Or symbol.kind = SYMBOL_ENUM) Then
 				Local children:TJSONArray = JsonArray()
@@ -129,6 +130,14 @@ Type TBlitzMaxLspNavigation
 			End If
 			target.Append(item)
 		Next
+	End Function
+
+	Function ContainingSpan:TSourceSpan(fullRange:TSourceSpan, selection:TSourceSpan)
+		If Not fullRange Then Return selection
+		If Not selection Then Return fullRange
+		Local start:Int = Min(fullRange.start, selection.start)
+		Local finish:Int = Max(fullRange.EndOffset(), selection.EndOffset())
+		Return TSourceSpan.Create(start, finish - start)
 	End Function
 
 	Function Highlights:TJSON(document:TLspDocument, workspace:TLspWorkspaceContext, line:Int, character:Int)
