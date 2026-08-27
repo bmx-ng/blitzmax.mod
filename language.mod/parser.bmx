@@ -253,7 +253,15 @@ Type TBlitzMaxSyntaxParser
 		Else
 			AddDiagnostic("BMX2012", "Expected 'End Enum' before end of file.", Current().span)
 		End If
-		Local endOffset:Int = start
+		' During live editing an unfinished Rem immediately after the header can
+		' hide every value and the terminator from the lexer. Keep the recovered
+		' declaration span large enough to contain every header token we did parse.
+		Local endOffset:Int = node.enumToken.span.EndOffset()
+		If node.nameToken Then endOffset = Max(endOffset, node.nameToken.span.EndOffset())
+		For Local token:TSyntaxToken = EachIn node.typeTokens
+			endOffset = Max(endOffset, token.span.EndOffset())
+		Next
+		If node.flagsToken Then endOffset = Max(endOffset, node.flagsToken.span.EndOffset())
 		If node.values.length Then endOffset = node.values[node.values.length - 1].span.EndOffset()
 		If node.terminator Then endOffset = node.terminator.span.EndOffset()
 		node.span = TSourceSpan.Create(start, endOffset - start)
