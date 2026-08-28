@@ -801,7 +801,16 @@ Type TTypeResolver
 	End Function
 
 	Method ReportUnresolved(syntax:TTypeReferenceSyntax, name:String)
-		If options.reportUnresolvedTypes Then AddDiagnostic("BMX3100", "Type '" + name + "' could not be resolved in the available scopes.", syntax.span)
+		If Not options.reportUnresolvedTypes Then Return
+		Local diagnosticName:String = name
+		If diagnosticName.StartsWith(":") Or diagnosticName.StartsWith("/") Then diagnosticName = diagnosticName[1..]
+		Local diagnosticSpan:TSourceSpan = syntax.span
+		If syntax.nameTokens.length Then
+			Local first:TSyntaxToken = syntax.nameTokens[0]
+			Local last:TSyntaxToken = syntax.nameTokens[syntax.nameTokens.length - 1]
+			diagnosticSpan = TSourceSpan.Create(first.span.start, last.span.EndOffset() - first.span.start)
+		End If
+		AddDiagnostic("BMX3100", "Type '" + diagnosticName + "' could not be resolved in the available scopes.", diagnosticSpan)
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)

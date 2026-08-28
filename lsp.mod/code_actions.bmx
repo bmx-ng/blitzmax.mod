@@ -156,7 +156,15 @@ Type TBlitzMaxLspCodeActions
 					If Not analysis.model Then Continue
 					For Local diagnostic:TDiagnostic = EachIn analysis.model.diagnostics
 						If Not Matches(document, analysis.syntaxTree.source, diagnostic, requestedRange, "BMX3300") Then Continue
-						Local action:TJSONObject = AddMissingImportAction(document, workspace, analysis, diagnostic, requested)
+						Local action:TJSONObject = AddMissingImportAction(document, workspace, analysis, diagnostic, requested, False)
+						If action Then result.Append(action)
+						Exit
+					Next
+				Case "BMX3100"
+					If Not analysis.model Then Continue
+					For Local diagnostic:TDiagnostic = EachIn analysis.model.diagnostics
+						If Not Matches(document, analysis.syntaxTree.source, diagnostic, requestedRange, "BMX3100") Then Continue
+						Local action:TJSONObject = AddMissingImportAction(document, workspace, analysis, diagnostic, requested, True)
 						If action Then result.Append(action)
 						Exit
 					Next
@@ -296,11 +304,20 @@ Type TBlitzMaxLspCodeActions
 		Return SameRange(TLspPositions.Range(source, diagnostic.span), requestedRange)
 	End Function
 
-	Function AddMissingImportAction:TJSONObject(document:TLspDocument, workspace:TLspWorkspaceContext, analysis:TLanguageAnalysis, diagnostic:TDiagnostic, requested:TJSONObject)
-		If Not diagnostic.message.StartsWith("Name '") Then Return Null
+	Function AddMissingImportAction:TJSONObject(document:TLspDocument, workspace:TLspWorkspaceContext, analysis:TLanguageAnalysis, diagnostic:TDiagnostic, requested:TJSONObject, typeOnly:Int)
+		If typeOnly Then
+			If Not diagnostic.message.StartsWith("Type '") Then Return Null
+		Else
+			If Not diagnostic.message.StartsWith("Name '") Then Return Null
+		End If
 		Local name:String = analysis.syntaxTree.source.Slice(diagnostic.span)
 		If Not IsIdentifier(name) Then Return Null
-		Local moduleName:String = UniqueModuleForValue(workspace, name)
+		Local moduleName:String
+		If typeOnly Then
+			moduleName = UniqueModuleForType(workspace, name)
+		Else
+			moduleName = UniqueModuleForValue(workspace, name)
+		End If
 		If Not moduleName.length Then Return Null
 		Local families:TMap = New TMap
 		Local imported:TMap = New TMap
@@ -326,6 +343,14 @@ Type TBlitzMaxLspCodeActions
 	End Function
 
 	Function UniqueModuleForValue:String(workspace:TLspWorkspaceContext, name:String)
+		Return UniqueModuleForSymbol(workspace, name, False)
+	End Function
+
+	Function UniqueModuleForType:String(workspace:TLspWorkspaceContext, name:String)
+		Return UniqueModuleForSymbol(workspace, name, True)
+	End Function
+
+	Function UniqueModuleForSymbol:String(workspace:TLspWorkspaceContext, name:String, typeOnly:Int)
 		If Not workspace Or Not name.length Then Return ""
 		Local installed:TLspInstalledModuleCatalogue = workspace.InstalledCatalogue()
 		If Not installed Or Not installed.catalogue Then Return ""
@@ -333,7 +358,11 @@ Type TBlitzMaxLspCodeActions
 		For Local symbol:TModuleCatalogueSymbol = EachIn installed.catalogue.SymbolsNamed(name)
 			If Not symbol Or symbol.parent Or Not symbol.isPublic Or Not symbol.moduleEntry Or symbol.moduleEntry.isCore Then Continue
 			If TInterfaceSymbolImporter.IsLegacyGenericImplementation(symbol.record) Then Continue
-			If symbol.kind <> SYMBOL_ROUTINE And symbol.kind <> SYMBOL_GLOBAL And symbol.kind <> SYMBOL_CONST Then Continue
+			If typeOnly Then
+				If Not symbol.IsType() Then Continue
+			Else
+				If symbol.kind <> SYMBOL_ROUTINE And symbol.kind <> SYMBOL_GLOBAL And symbol.kind <> SYMBOL_CONST Then Continue
+			End If
 			If Not moduleName.length Then
 				moduleName = symbol.moduleEntry.name
 			Else If moduleName.ToLower() <> symbol.moduleEntry.normalizedName Then
