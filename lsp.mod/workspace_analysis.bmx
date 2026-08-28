@@ -84,6 +84,8 @@ Type TLspWorkspaceConfiguration
 
 	Method AnalysisOptions:TLanguageAnalysisOptions()
 		Local result:TLanguageAnalysisOptions = TLanguageAnalysisOptions.Create()
+		result.typeResolution = New TTypeResolutionOptions
+		result.typeResolution.reportUnresolvedTypes = True
 		result.controlFlow = TControlFlowAnalysisOptions.Create()
 		result.controlFlow.reportImplicitDefaultReturns = warnImplicitDefaultReturns
 		result.controlFlow.implicitDefaultReturnSeverity = DIAGNOSTIC_WARNING

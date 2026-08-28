@@ -179,7 +179,7 @@ Type TBlitzMaxLanguage
 		Local model:TSemanticModel = result.model
 		If Not model Or Not options.bindExpressions Then Return
 		Local started:Int = MilliSecs()
-		TExpressionBinder.Bind(model)
+		TExpressionBinder.Bind(model, options.typeResolution)
 		result.bindingMilliseconds = MilliSecs() - started
 		If options.evaluateCompileTime Then
 			started = MilliSecs()

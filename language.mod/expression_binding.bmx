@@ -41,12 +41,13 @@ Type TExpressionBinder
 	Field nextDeconstructionLocal:Int
 	Field eachInResolutions:TMap = New TMap
 
-	Function Bind:TSemanticModel(model:TSemanticModel)
+	Function Bind:TSemanticModel(model:TSemanticModel, typeResolutionOptions:TTypeResolutionOptions = Null)
 		Local binder:TExpressionBinder = New TExpressionBinder
 		binder.model = model
 		binder.typeResolver = New TTypeResolver
 		binder.typeResolver.model = model
-		binder.typeResolver.options = New TTypeResolutionOptions
+		binder.typeResolver.options = typeResolutionOptions
+		If Not binder.typeResolver.options Then binder.typeResolver.options = New TTypeResolutionOptions
 		binder.inheritanceValidator = New TInheritanceValidator
 		binder.inheritanceValidator.model = model
 		binder.conversions = TConversionClassifier.Create(model)
@@ -55,6 +56,7 @@ Type TExpressionBinder
 		If model.snapshot Then binder.currentDocument = model.snapshot.rootDocument
 		binder.BuildBoundTrees()
 		model.diagnostics = MergeDiagnostics(model.diagnostics, DiagnosticsToArray(binder.diagnostics))
+		model.diagnostics = MergeDiagnostics(model.diagnostics, DiagnosticsToArray(binder.typeResolver.diagnostics))
 		Return model
 	End Function
 
@@ -1137,7 +1139,7 @@ Type TExpressionBinder
 				If nameText = "self" Then result = SelfType(scope)
 				If nameText = "super" Then
 					If name.qualifiedSuperType Then
-						result = typeResolver.Resolve(name.qualifiedSuperType, scope)
+						result = ResolveType(name.qualifiedSuperType, scope)
 						Local qualifiedInterface:TNamedSemanticType = TNamedSemanticType(result)
 						If Not qualifiedInterface Or Not qualifiedInterface.symbol Or qualifiedInterface.symbol.kind <> SYMBOL_INTERFACE Then
 							AddDiagnostic("BMX3324", "Qualified Super requires an Interface type.", name.span)
@@ -1218,7 +1220,7 @@ Type TExpressionBinder
 							Local ascription:TTypeAscriptionExpressionSyntax = TTypeAscriptionExpressionSyntax(expression)
 							If ascription Then
 								BindExpression(ascription.expression, scope)
-								result = typeResolver.Resolve(ascription.targetType, scope)
+								result = ResolveType(ascription.targetType, scope)
 							Else
 								Local creation:TNewExpressionSyntax = TNewExpressionSyntax(expression)
 								If creation Then
@@ -1233,7 +1235,7 @@ Type TExpressionBinder
 								If dynamicInstance Then
 									result = dynamicInstance
 								Else
-									result = typeResolver.Resolve(creation.createdType, scope)
+									result = ResolveType(creation.createdType, scope)
 								End If
 								If creation.dimensionRanks.length = 0 Then
 									Local createdNamed:TNamedSemanticType = TNamedSemanticType(result)
@@ -1538,7 +1540,7 @@ Type TExpressionBinder
 			routine.parameters[index] = semanticParameter
 		Next
 		If literal.returnType Then
-			Local writtenReturn:TSemanticType = typeResolver.Resolve(literal.returnType, literalScope)
+			Local writtenReturn:TSemanticType = ResolveType(literal.returnType, literalScope)
 			If writtenReturn And callable.returnType And Not TGenericRoutineInference.SameType(writtenReturn, callable.returnType) Then AddDiagnostic("BMX3345", "Function literal return type '" + writtenReturn.DisplayName() + "' does not match target return type '" + callable.returnType.DisplayName() + "'.", literal.returnType.span)
 		End If
 
@@ -2000,7 +2002,7 @@ Type TExpressionBinder
 			result.symbol = symbol
 			result.typeArguments = New TSemanticType[call.typeArguments.length]
 			For Local index:Int = 0 Until call.typeArguments.length
-				result.typeArguments[index] = typeResolver.Resolve(call.typeArguments[index], scope)
+				result.typeArguments[index] = ResolveType(call.typeArguments[index], scope)
 			Next
 			Return result
 		Next
@@ -2198,7 +2200,7 @@ Type TExpressionBinder
 	Method BindSpecializedRoutineReference:TSemanticType(reference:TExpressionSyntax, referenceName:String, explicitSyntax:TTypeReferenceSyntax[], candidates:TSymbol[], containingSubstitutions:TMap, receiverType:TSemanticType, scope:TScope)
 		Local explicitTypes:TSemanticType[] = New TSemanticType[explicitSyntax.length]
 		For Local index:Int = 0 Until explicitSyntax.length
-			explicitTypes[index] = typeResolver.Resolve(explicitSyntax[index], scope)
+			explicitTypes[index] = ResolveType(explicitSyntax[index], scope)
 		Next
 		Local applicable:TList = New TList
 		Local bestTier:Int = -1
@@ -2300,7 +2302,7 @@ Type TExpressionBinder
 		If explicitSyntax.length Then
 			explicitTypes = New TSemanticType[explicitSyntax.length]
 			For Local index:Int = 0 Until explicitSyntax.length
-				explicitTypes[index] = typeResolver.Resolve(explicitSyntax[index], scope)
+				explicitTypes[index] = ResolveType(explicitSyntax[index], scope)
 			Next
 		End If
 		Return ResolveCandidates(callSyntax, callee, CalleeName(callee), arguments, argumentTypes, explicitSyntax, explicitTypes, candidates, ReceiverSubstitutions(callee, scope), ReceiverType(callee, scope), scope)
@@ -3411,7 +3413,7 @@ Type TExpressionBinder
 		result.symbol = symbol
 		result.typeArguments = New TSemanticType[typeArguments.length]
 		For Local index:Int = 0 Until typeArguments.length
-			result.typeArguments[index] = typeResolver.Resolve(typeArguments[index], scope)
+			result.typeArguments[index] = ResolveType(typeArguments[index], scope)
 		Next
 		model.referencedSymbolMap.Insert(expression, symbol)
 		genericTypeQualifierTypes.Insert(expression, result)
@@ -3570,7 +3572,7 @@ Type TExpressionBinder
 
 	Method BindCast:TSemanticType(cast:TCastExpressionSyntax, scope:TScope)
 		Local actual:TSemanticType = BindExpression(cast.expression, scope)
-		Local required:TSemanticType = typeResolver.Resolve(cast.targetType, scope)
+		Local required:TSemanticType = ResolveType(cast.targetType, scope)
 		If actual And required And Not conversions.ClassifyExplicit(actual, required).Exists() Then
 			AddDiagnostic("BMX3312", "Type '" + actual.DisplayName() + "' cannot be explicitly converted to '" + required.DisplayName() + "'.", cast.span)
 		End If
@@ -3876,6 +3878,11 @@ Type TExpressionBinder
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, CurrentSourcePath()))
+	End Method
+
+	Method ResolveType:TSemanticType(syntax:TTypeReferenceSyntax, scope:TScope)
+		typeResolver.currentPath = CurrentSourcePath()
+		Return typeResolver.Resolve(syntax, scope)
 	End Method
 
 	Method CurrentSourcePath:String()
