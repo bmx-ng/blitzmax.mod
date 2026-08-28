@@ -13,32 +13,44 @@ Import "positions.bmx"
 Import "protocol.bmx"
 Import "workspaces.bmx"
 
-' Current-document references. Symbol identity comes from semantic binding;
-' unopened files are deliberately not searched until a workspace source index
-' can provide complete results.
+' References within the requesting semantic compilation unit. A BlitzMax root
+' and its recursive Include files share one model, so every source tree already
+' has exact symbol identity without requiring a speculative workspace scan.
 Type TBlitzMaxLspReferences
 	Function Query:TJSON(document:TLspDocument, workspace:TLspWorkspaceContext, line:Int, character:Int, includeDeclaration:Int)
 		Local result:TJSONArray = JsonArray()
 		Local context:TLspFeatureContext = TLspFeatureContext.Create(document, workspace, line, character)
 		If Not context Or Not context.location Or Not context.location.symbol Then Return result
 		Local symbol:TSymbol = context.location.symbol
-		Local source:TSourceText = context.analysis.syntaxTree.source
 		Local seen:TMap = New TMap
-		For Local node:TSyntaxNode = EachIn context.navigator.nodes
-			Local matches:Int = ReferencesSymbol(context.analysis.model, node, symbol)
-			If includeDeclaration And context.analysis.model.DeclaredSymbol(node) = symbol Then matches = True
+		If context.analysis.snapshot And context.analysis.snapshot.documents.length Then
+			For Local sourceDocument:TSourceDocumentModel = EachIn context.analysis.snapshot.documents
+				If Not sourceDocument Or Not sourceDocument.tree Then Continue
+				AppendDocument(result, seen, context.analysis.model, symbol, sourceDocument.tree, sourceDocument.path, workspace, includeDeclaration)
+			Next
+		Else
+			AppendDocument(result, seen, context.analysis.model, symbol, context.analysis.syntaxTree, document.path, workspace, includeDeclaration)
+		End If
+		Return result
+	End Function
+
+	Function AppendDocument(target:TJSONArray, seen:TMap, model:TSemanticModel, symbol:TSymbol, tree:TSyntaxTree, path:String, workspace:TLspWorkspaceContext, includeDeclaration:Int)
+		If Not tree Or Not tree.source Then Return
+		Local navigator:TSyntaxNavigator = TSyntaxNavigator.Create(tree)
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local matches:Int = ReferencesSymbol(model, node, symbol)
+			If includeDeclaration And model.DeclaredSymbol(node) = symbol Then matches = True
 			If Not matches Then Continue
 			Local span:TSourceSpan = TBlitzMaxLspNavigation.ReferenceSpan(node)
 			If Not span Then Continue
-			Local key:String = span.start + ":" + span.length
+			Local key:String = SnapshotPathKey(path) + "|" + span.start + ":" + span.length
 			If seen.Contains(key) Then Continue
 			seen.Insert(key, span)
 			Local location:TJSONObject = JsonObject()
-			location.Set("uri", document.uri)
-			location.Set("range", TLspPositions.Range(source, span))
-			result.Append(location)
+			location.Set("uri", TBlitzMaxLspNavigation.UriForPath(path, workspace.documents))
+			location.Set("range", TLspPositions.Range(tree.source, span))
+			target.Append(location)
 		Next
-		Return result
 	End Function
 
 	Function ReferencesSymbol:Int(model:TSemanticModel, node:TSyntaxNode, symbol:TSymbol)
