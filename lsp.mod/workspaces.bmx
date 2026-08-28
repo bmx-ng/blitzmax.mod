@@ -53,6 +53,10 @@ Type TLspWorkspaceContext
 	Field includeOwners:TMap = New TMap
 	Field compilationDocuments:TMap = New TMap
 	Field liveInterfaces:TMap = New TMap
+	Field projectAnalyses:TMap = New TMap
+	Field projectDependencies:TMap = New TMap
+	Field projectOwners:TMap = New TMap
+	Field projectGraphDirty:Int = True
 	Field documentationCache:TLspDocumentationCache = New TLspDocumentationCache
 	Field installedCatalogues:TLspInstalledModuleCatalogueStore
 
@@ -77,6 +81,17 @@ Type TLspWorkspaceContext
 	End Method
 
 	Method Analyze:TLanguageAnalysis(document:TLspDocument, cancellationToken:TLanguageCancellationToken = Null)
+		EnsureProjectGraph(cancellationToken)
+		Local projectRoot:String = ProjectRootForPath(document.path)
+		If projectRoot.length Then
+			Local projectAnalysis:TLanguageAnalysis = TLanguageAnalysis(projectAnalyses.ValueForKey(SnapshotPathKey(projectRoot)))
+			If projectAnalysis Then
+				Local projectView:TLanguageAnalysis = projectAnalysis.ViewForDocument(document.path)
+				If Not projectView Then projectView = projectAnalysis
+				CacheView(document, projectView, TMap(projectDependencies.ValueForKey(SnapshotPathKey(projectRoot))))
+				Return projectView
+			End If
+		End If
 		Local rootPath:String = CompilationRootForPath(document.path)
 		Local rootDocument:TLspDocument = document
 		Local rootText:String = document.text
@@ -118,6 +133,102 @@ Type TLspWorkspaceContext
 			Return view
 		End If
 		Return result
+	End Method
+
+	Method EnsureProjectGraph(cancellationToken:TLanguageCancellationToken = Null)
+		If Not projectGraphDirty Then Return
+		ClearProjectGraph()
+		projectGraphDirty = False
+		Local rootPath:String = configuration.rootSourcePath
+		If Not rootPath.length Or Not rootPath.ToLower().EndsWith(".bmx") Or FileType(rootPath) <> FILETYPE_FILE Then Return
+		AnalyzeProjectRoot(rootPath, New TMap, cancellationToken)
+	End Method
+
+	Method AnalyzeProjectRoot(rootPath:String, states:TMap, cancellationToken:TLanguageCancellationToken = Null)
+		Local rootKey:String = SnapshotPathKey(rootPath)
+		If states.Contains(rootKey) Then Return
+		states.Insert(rootKey, "visiting")
+		Local rootText:String = SourceTextForPath(rootPath)
+		If rootText = Null Then Return
+
+		' The discovery pass records quoted source imports even when their disk
+		' interfaces are missing or stale. Analyse those roots first, publish live
+		' interfaces for them, then rebuild this root against the current graph.
+		Local discoveryResolver:TLspFileSnapshotResolver = TLspFileSnapshotResolver.Create(configuration, dependencyCache, documents, liveInterfaces)
+		Local discovery:TLanguageAnalysis = TBlitzMaxLanguage.BuildAndAnalyze(rootPath, rootText, discoveryResolver, configuration.SnapshotOptions(), ProjectAnalysisOptions(cancellationToken))
+		If discovery.cancelled Then Return
+		For Local value:Object = EachIn discoveryResolver.sourceImportDependencies.Values()
+			Local dependencyPath:String = String(value)
+			If SnapshotPathKey(dependencyPath) <> rootKey Then AnalyzeProjectRoot(dependencyPath, states, cancellationToken)
+		Next
+
+		Local resolver:TLspFileSnapshotResolver = TLspFileSnapshotResolver.Create(configuration, dependencyCache, documents, liveInterfaces)
+		Local analysis:TLanguageAnalysis = TBlitzMaxLanguage.BuildAndAnalyze(rootPath, rootText, resolver, configuration.SnapshotOptions(), ProjectAnalysisOptions(cancellationToken))
+		If analysis.cancelled Then Return
+		RegisterCompilationUnit(rootPath, analysis, resolver.sourceDependencies)
+		projectAnalyses.Insert(rootKey, analysis)
+		projectDependencies.Insert(rootKey, resolver.sourceDependencies)
+		projectOwners.Insert(rootKey, rootPath)
+		If analysis.snapshot Then
+			For Local sourceDocument:TSourceDocumentModel = EachIn analysis.snapshot.documents
+				If sourceDocument Then projectOwners.Insert(SnapshotPathKey(sourceDocument.path), rootPath)
+			Next
+		End If
+		Local sourceInterface:TInterfaceFile = TBlitzMaxSourceInterfaceBuilder.Build(rootPath, rootText, resolver, configuration.SnapshotOptions())
+		liveInterfaces.Insert(rootKey, TSnapshotText.CreateInterface(rootPath, sourceInterface))
+		states.Insert(rootKey, "loaded")
+	End Method
+
+	Method ProjectAnalysisOptions:TLanguageAnalysisOptions(cancellationToken:TLanguageCancellationToken)
+		Local result:TLanguageAnalysisOptions = configuration.AnalysisOptions()
+		result.cancellationToken = cancellationToken
+		Return result
+	End Method
+
+	Method SourceTextForPath:String(sourcePath:String)
+		If documents Then
+			Local document:TLspDocument = documents.GetByPath(sourcePath)
+			If document Then Return document.text
+		End If
+		If FileType(sourcePath) = FILETYPE_FILE Then Return LoadText(sourcePath)
+		Return Null
+	End Method
+
+	Method ProjectRootForPath:String(documentPath:String)
+		Return String(projectOwners.ValueForKey(SnapshotPathKey(documentPath)))
+	End Method
+
+	Method ProjectAnalysisCount:Int()
+		Local count:Int
+		For Local value:Object = EachIn projectAnalyses.Values()
+			count :+ 1
+		Next
+		Return count
+	End Method
+
+	Method MarkProjectGraphDirty(changedPath:String = "")
+		If Not configuration.rootSourcePath.length Or projectGraphDirty Then Return
+		If Not changedPath.length Or SnapshotPathKey(changedPath) = SnapshotPathKey(configuration.rootSourcePath) Or projectOwners.Contains(SnapshotPathKey(changedPath)) Then
+			projectGraphDirty = True
+			Return
+		End If
+		For Local value:Object = EachIn projectDependencies.Values()
+			Local dependencies:TMap = TMap(value)
+			If dependencies And dependencies.Contains(SnapshotPathKey(changedPath)) Then projectGraphDirty = True; Return
+		Next
+	End Method
+
+	Method ClearProjectGraph()
+		For Local value:Object = EachIn projectAnalyses.Values()
+			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
+			If analysis And analysis.snapshot And analysis.snapshot.rootDocument Then
+				ClearCompilationUnit(analysis.snapshot.rootDocument.path)
+				liveInterfaces.Remove(SnapshotPathKey(analysis.snapshot.rootDocument.path))
+			End If
+		Next
+		projectAnalyses.Clear()
+		projectDependencies.Clear()
+		projectOwners.Clear()
 	End Method
 
 	Method RefreshLiveInterface(rootPath:String, rootText:String, analysis:TLanguageAnalysis, resolver:TLspFileSnapshotResolver)
@@ -306,6 +417,10 @@ Type TLspWorkspaceContext
 		includeOwners.Clear()
 		compilationDocuments.Clear()
 		liveInterfaces.Clear()
+		projectAnalyses.Clear()
+		projectDependencies.Clear()
+		projectOwners.Clear()
+		projectGraphDirty = True
 		documentationCache.Clear()
 	End Method
 End Type

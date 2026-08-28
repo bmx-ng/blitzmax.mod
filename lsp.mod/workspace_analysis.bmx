@@ -15,6 +15,7 @@ Import "documents.bmx"
 
 Type TLspWorkspaceConfiguration
 	Field sdkPath:String
+	Field rootSourcePath:String
 	Field buildMode:String = "release"
 	Field targetPlatform:String = HostTargetPlatform()
 	Field targetArchitecture:String = HostTargetArchitecture()
@@ -37,6 +38,7 @@ Type TLspWorkspaceConfiguration
 	Method Copy:TLspWorkspaceConfiguration()
 		Local result:TLspWorkspaceConfiguration = New TLspWorkspaceConfiguration
 		result.sdkPath = sdkPath
+		result.rootSourcePath = rootSourcePath
 		result.buildMode = buildMode
 		result.targetPlatform = targetPlatform
 		result.targetArchitecture = targetArchitecture
@@ -50,6 +52,7 @@ Type TLspWorkspaceConfiguration
 	Method ApplyJson(settings:TJSONObject)
 		If Not settings Then Return
 		If settings.Get("sdkPath") Then sdkPath = settings.GetString("sdkPath")
+		If settings.Get("rootSourcePath") Then rootSourcePath = NormalizeWorkspacePath(settings.GetString("rootSourcePath"))
 		If settings.Get("buildMode") Then buildMode = settings.GetString("buildMode").ToLower()
 		If settings.Get("targetPlatform") Then targetPlatform = settings.GetString("targetPlatform").ToLower()
 		If settings.Get("targetArchitecture") Then targetArchitecture = settings.GetString("targetArchitecture").ToLower()
@@ -167,6 +170,8 @@ Type TLspFileSnapshotResolver Extends TSnapshotResolver
 	Field documents:TLspDocumentStore
 	Field liveInterfaces:TMap
 	Field sourceDependencies:TMap = New TMap
+	Field includeDependencies:TMap = New TMap
+	Field sourceImportDependencies:TMap = New TMap
 
 	Function Create:TLspFileSnapshotResolver(configuration:TLspWorkspaceConfiguration, dependencies:TLspDependencyCache, documents:TLspDocumentStore = Null, liveInterfaces:TMap = Null)
 		Local result:TLspFileSnapshotResolver = New TLspFileSnapshotResolver
@@ -180,6 +185,7 @@ Type TLspFileSnapshotResolver Extends TSnapshotResolver
 	Method ResolveInclude:TSnapshotText(includingPath:String, includePath:String)
 		Local path:String = ResolveRelativePath(includingPath, includePath)
 		RecordSourceDependency(path)
+		includeDependencies.Insert(SnapshotPathKey(path), path)
 		Local document:TLspDocument = OpenDocument(path)
 		If document Then Return TSnapshotText.Create(document.path, document.text)
 		If FileType(path) <> FILETYPE_FILE Then Return Null
@@ -192,6 +198,7 @@ Type TLspFileSnapshotResolver Extends TSnapshotResolver
 			Local sourcePath:String = ResolveRelativePath(importingPath, target)
 			If sourcePath.ToLower().EndsWith(".bmx") Then
 				RecordSourceDependency(sourcePath)
+				sourceImportDependencies.Insert(SnapshotPathKey(sourcePath), sourcePath)
 				If liveInterfaces Then
 					Local live:TSnapshotText = TSnapshotText(liveInterfaces.ValueForKey(SnapshotPathKey(sourcePath)))
 					If live Then Return live

@@ -52,6 +52,13 @@ Type TBlitzMaxLspTypeHierarchy
 			Local analysis:TLanguageAnalysis = workspace.LatestAnalysis(analysisUri)
 			If analysis And analysis.model Then AppendSubtypes(result, analysis.model.globalScope, analysis, analysisUri, targetKey, documents, seen)
 		Next
+		For Local value:Object = EachIn workspace.projectAnalyses.Values()
+			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
+			If analysis And analysis.model And analysis.snapshot And analysis.snapshot.rootDocument Then
+				Local analysisUri:String = FileUriForPath(analysis.snapshot.rootDocument.path)
+				AppendSubtypes(result, analysis.model.globalScope, analysis, analysisUri, targetKey, documents, seen)
+			End If
+		Next
 		Return result
 	End Function
 
@@ -172,6 +179,11 @@ Type TBlitzMaxLspTypeHierarchy
 			Local analysis:TLanguageAnalysis = workspace.LatestAnalysis(analysisUri)
 			symbol = FindSymbol(analysis, data)
 			If symbol Then Return TLspTypeHierarchyResolution.Create(symbol, analysis, analysisUri)
+		Next
+		For Local value:Object = EachIn workspace.projectAnalyses.Values()
+			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
+			symbol = FindSymbol(analysis, data)
+			If symbol And analysis.snapshot And analysis.snapshot.rootDocument Then Return TLspTypeHierarchyResolution.Create(symbol, analysis, FileUriForPath(analysis.snapshot.rootDocument.path))
 		Next
 		Return Null
 	End Function

@@ -71,6 +71,15 @@ Type TBlitzMaxLspImplementation
 				AppendLiveTypes(target, seen, requested, analysis, documents)
 			End If
 		Next
+		For Local value:Object = EachIn workspace.projectAnalyses.Values()
+			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
+			If Not analysis Or Not analysis.model Then Continue
+			If requested.kind = SYMBOL_ROUTINE Then
+				AppendLiveRoutines(target, seen, requested, analysis, documents)
+			Else
+				AppendLiveTypes(target, seen, requested, analysis, documents)
+			End If
+		Next
 	End Function
 
 	Function AppendLiveTypes(target:TJSONArray, seen:TMap, requested:TSymbol, analysis:TLanguageAnalysis, documents:TLspDocumentStore)
