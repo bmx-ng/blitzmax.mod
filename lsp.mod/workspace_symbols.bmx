@@ -64,6 +64,10 @@ Type TBlitzMaxLspWorkspaceSymbols
 			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
 			If analysis And analysis.model Then AppendLiveScope(entries, query, analysis.model.globalScope, analysis, documents)
 		Next
+		For Local rootPath:String = EachIn context.ProjectCandidateRoots(query)
+			Local analysis:TLanguageAnalysis = context.ProjectFeatureAnalysis(rootPath)
+			If analysis And analysis.model Then AppendLiveScope(entries, query, analysis.model.globalScope, analysis, documents)
+		Next
 		Local installed:TLspInstalledModuleCatalogue = context.InstalledCatalogue()
 		If Not installed Or Not installed.catalogue Or seenCatalogues.Contains(installed.catalogue) Then Return
 		seenCatalogues.Insert(installed.catalogue, installed.catalogue)

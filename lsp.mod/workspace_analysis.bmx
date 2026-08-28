@@ -194,9 +194,12 @@ Type TLspFileSnapshotResolver Extends TSnapshotResolver
 
 	Method ResolveInterface:TSnapshotText(importingPath:String, target:String, isFileImport:Int, isFramework:Int)
 		Local path:String
+		Local sourcePath:String
+		Local isSourceImport:Int
 		If isFileImport Then
-			Local sourcePath:String = ResolveRelativePath(importingPath, target)
-			If sourcePath.ToLower().EndsWith(".bmx") Then
+			sourcePath = ResolveRelativePath(importingPath, target)
+			isSourceImport = sourcePath.ToLower().EndsWith(".bmx")
+			If isSourceImport Then
 				RecordSourceDependency(sourcePath)
 				sourceImportDependencies.Insert(SnapshotPathKey(sourcePath), sourcePath)
 				If liveInterfaces Then
@@ -208,13 +211,21 @@ Type TLspFileSnapshotResolver Extends TSnapshotResolver
 					Local sourceInterface:TInterfaceFile = TBlitzMaxSourceInterfaceBuilder.Build(document.path, document.text, Self, configuration.SnapshotOptions())
 					Return TSnapshotText.CreateInterface(document.path, sourceInterface)
 				End If
-				sourcePath = LocalSourceInterfacePath(sourcePath, configuration.InterfaceMung())
+				path = LocalSourceInterfacePath(sourcePath, configuration.InterfaceMung())
+			Else
+				path = sourcePath
 			End If
-			path = sourcePath
 		Else
 			path = ModuleInterfacePath(configuration.sdkPath, target, configuration.InterfaceMung())
 		End If
-		Return dependencies.LoadInterface(path)
+		Local resolved:TSnapshotText = dependencies.LoadInterface(path)
+		If resolved And isSourceImport And FileTime(sourcePath) > FileTime(path) Then resolved = Null
+		If resolved Or Not isSourceImport Or FileType(sourcePath) <> FILETYPE_FILE Then Return resolved
+		Local sourceText:String = LoadText(sourcePath)
+		Local sourceInterface:TInterfaceFile = TBlitzMaxSourceInterfaceBuilder.Build(sourcePath, sourceText, Self, configuration.SnapshotOptions())
+		resolved = TSnapshotText.CreateInterface(sourcePath, sourceInterface)
+		If liveInterfaces Then liveInterfaces.Insert(SnapshotPathKey(sourcePath), resolved)
+		Return resolved
 	End Method
 
 	Method OpenDocument:TLspDocument(path:String)

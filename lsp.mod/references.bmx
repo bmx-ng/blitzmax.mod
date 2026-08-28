@@ -30,6 +30,10 @@ Type TBlitzMaxLspReferences
 			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
 			AppendAnalysis(result, seen, seenModels, analysis, symbol, workspace, includeDeclaration)
 		Next
+		For Local rootPath:String = EachIn workspace.ProjectCandidateRoots(symbol.name, symbol.originPath)
+			Local analysis:TLanguageAnalysis = workspace.ProjectFeatureAnalysis(rootPath)
+			AppendAnalysis(result, seen, seenModels, analysis, symbol, workspace, includeDeclaration)
+		Next
 		For Local value:Object = EachIn workspace.projectAnalyses.Values()
 			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
 			AppendAnalysis(result, seen, seenModels, analysis, symbol, workspace, includeDeclaration)
