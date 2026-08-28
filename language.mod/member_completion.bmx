@@ -12,6 +12,7 @@ Import "generic_routine_inference.bmx"
 Import "semantic_model.bmx"
 Import "symbol_accessibility.bmx"
 Import "syntax_navigation.bmx"
+Import "type_resolution.bmx"
 
 ' A protocol-independent description of the member access being completed.
 ' The semantic symbols remain sourced from the analyzed model, including
@@ -143,6 +144,22 @@ Type TMemberCompletion
 			If builtin And builtin.runtimeSymbol Then
 				result.owner = builtin.runtimeSymbol
 				result.isStatic = True
+			End If
+		End If
+
+		' Imported type names are visible through type resolution rather than the
+		' lexical scope chain. Use the same lookup as semantic binding so an
+		' incomplete qualifier such as TPath. exposes its Type Functions.
+		If receiverName And receiverName.nameToken And result.accessScope And Not result.owner Then
+			Local typeResolver:TTypeResolver = New TTypeResolver
+			typeResolver.model = model
+			typeResolver.options = New TTypeResolutionOptions
+			typeResolver.InitializeImportedScopeSet()
+			Local typeCandidates:TSymbol[] = typeResolver.LookupTypeCandidates(result.accessScope, receiverName.nameToken.text)
+			If typeCandidates.length = 1 Then
+				result.owner = typeCandidates[0]
+				result.isStatic = True
+				If receiverName.typeArguments.length = 0 Then result.receiverType = typeCandidates[0].declaredType
 			End If
 		End If
 
