@@ -334,6 +334,16 @@ Type TInheritanceEdge
 	Field isImplicit:Int
 End Type
 
+' One inherited abstract routine which a concrete Type still needs to provide.
+' Types are already substituted through the constructed inheritance edge so
+' protocol adapters do not need to recreate generic inheritance semantics.
+Type TAbstractRoutineObligation
+	Field routine:TSymbol
+	Field ownerType:TNamedSemanticType
+	Field returnType:TSemanticType
+	Field parameterTypes:TSemanticType[] = New TSemanticType[0]
+End Type
+
 Type TGenericConstraintInfo
 	Field syntax:TGenericConstraintSyntax
 	Field parameterSymbol:TSymbol
@@ -1025,6 +1035,7 @@ Type TSemanticModel
 	Field builtinTypes:TMap = New TMap
 	Field inheritanceInfoMap:TMap = New TMap
 	Field abstractTypeMap:TMap = New TMap
+	Field abstractObligationMap:TMap = New TMap
 	Field importedModuleScopes:TMap = New TMap
 	Field importedInterfaceScopes:TMap = New TMap
 	Field importedScopes:TScope[] = New TScope[0]
@@ -1240,6 +1251,13 @@ Type TSemanticModel
 
 	Method IsAbstractType:Int(symbol:TSymbol)
 		Return symbol And abstractTypeMap.Contains(symbol)
+	End Method
+
+	Method AbstractObligations:TAbstractRoutineObligation[](symbol:TSymbol)
+		If Not symbol Then Return New TAbstractRoutineObligation[0]
+		Local obligations:TAbstractRoutineObligation[] = TAbstractRoutineObligation[](abstractObligationMap.ValueForKey(symbol))
+		If Not obligations Then Return New TAbstractRoutineObligation[0]
+		Return obligations
 	End Method
 
 	Method AddImportedScope(name:String, scope:TScope, interfacePath:String = "", visible:Int = True)

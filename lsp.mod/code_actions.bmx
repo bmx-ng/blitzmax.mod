@@ -123,6 +123,10 @@ Type TBlitzMaxLspCodeActions
 			Local action:TJSONObject = GenerateBBDocAction(document, analysis, TJSONObject(params.Get("range")), workspaceSnippetEditSupport)
 			If action Then result.Append(action)
 		End If
+		If AllowsKind(only, "refactor.rewrite.implement") Then
+			Local action:TJSONObject = ImplementMissingMembersAction(document, analysis, TJSONObject(params.Get("range")), workspaceSnippetEditSupport)
+			If action Then result.Append(action)
+		End If
 		Return result
 	End Function
 
@@ -226,6 +230,171 @@ Type TBlitzMaxLspCodeActions
 		action.Set("kind", "refactor.rewrite.bbdoc")
 		action.Set("edit", workspaceEdit)
 		Return action
+	End Function
+
+	Function ImplementMissingMembersAction:TJSONObject(document:TLspDocument, analysis:TLanguageAnalysis, requestedRange:TJSONObject, snippetSupport:Int)
+		If Not document Or Not analysis Or Not analysis.model Or Not requestedRange Then Return Null
+		Local source:TSourceText = analysis.syntaxTree.source
+		Local startPosition:TJSONObject = TJSONObject(requestedRange.Get("start"))
+		Local endPosition:TJSONObject = TJSONObject(requestedRange.Get("end"))
+		If Not source Or Not startPosition Or Not endPosition Then Return Null
+		Local requestedStart:Int = TLspPositions.Offset(source, Int(startPosition.GetInteger("line")), Int(startPosition.GetInteger("character")))
+		Local requestedEnd:Int = TLspPositions.Offset(source, Int(endPosition.GetInteger("line")), Int(endPosition.GetInteger("character")))
+		If requestedEnd < requestedStart Then requestedEnd = requestedStart
+		Local target:TTypeDeclarationSyntax
+		Local targetSymbol:TSymbol
+		Local navigator:TSyntaxNavigator = TSyntaxNavigator.Create(analysis.syntaxTree)
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local declaration:TTypeDeclarationSyntax = TTypeDeclarationSyntax(node)
+			If Not declaration Or Not declaration.header Or Not declaration.terminator Or Not declaration.terminator.endToken Then Continue
+			Local symbol:TSymbol = analysis.model.DeclaredSymbol(declaration)
+			If Not symbol Or symbol.kind <> SYMBOL_TYPE Or symbol.isImported Or SnapshotPathKey(symbol.originPath) <> SnapshotPathKey(document.path) Then Continue
+			Local headerStart:Int = declaration.declarationToken.span.start
+			Local headerEnd:Int = declaration.header.span.EndOffset()
+			If requestedEnd < headerStart Or requestedStart > headerEnd Then Continue
+			If Not target Or declaration.span.length < target.span.length Then target = declaration; targetSymbol = symbol
+		Next
+		If Not target Or Not targetSymbol Then Return Null
+		Local obligations:TAbstractRoutineObligation[] = analysis.model.AbstractObligations(targetSymbol)
+		If Not obligations.length Then Return Null
+
+		Local eol:String = PreferredEol(source.text)
+		Local endLine:Int = source.Position(target.terminator.endToken.span.start).line
+		Local insertionOffset:Int = source.Offset(endLine, 0)
+		Local typeIndent:String = source.text[insertionOffset..target.terminator.endToken.span.start]
+		Local memberIndent:String = MissingMemberIndent(source, target, typeIndent)
+		Local bodyIndent:String = memberIndent + IndentUnit(memberIndent, typeIndent)
+		Local generated:String
+		Local placeholder:Int = 1
+		For Local obligation:TAbstractRoutineObligation = EachIn obligations
+			If generated.length Then generated :+ eol
+			generated :+ MissingMemberText(obligation, memberIndent, bodyIndent, eol, snippetSupport, placeholder)
+		Next
+		If snippetSupport Then generated :+ "$0"
+
+		Local edit:TJSONObject = JsonObject()
+		edit.Set("range", TLspPositions.Range(source, TSourceSpan.Create(insertionOffset, 0)))
+		If snippetSupport Then
+			Local snippetValue:TJSONObject = JsonObject()
+			snippetValue.Set("kind", "snippet")
+			snippetValue.Set("value", generated)
+			edit.Set("snippet", snippetValue)
+		Else
+			edit.Set("newText", generated)
+		End If
+		Local edits:TJSONArray = JsonArray()
+		edits.Append(edit)
+		Local identifier:TJSONObject = JsonObject()
+		identifier.Set("uri", document.uri)
+		identifier.Set("version", document.version)
+		Local documentEdit:TJSONObject = JsonObject()
+		documentEdit.Set("textDocument", identifier)
+		documentEdit.Set("edits", edits)
+		Local documentChanges:TJSONArray = JsonArray()
+		documentChanges.Append(documentEdit)
+		Local workspaceEdit:TJSONObject = JsonObject()
+		workspaceEdit.Set("documentChanges", documentChanges)
+		Local action:TJSONObject = JsonObject()
+		action.Set("title", "Implement " + obligations.length + " missing member" + PluralSuffix(obligations.length) + " in " + targetSymbol.name)
+		action.Set("kind", "refactor.rewrite.implement")
+		action.Set("edit", workspaceEdit)
+		Return action
+	End Function
+
+	Function MissingMemberText:String(obligation:TAbstractRoutineObligation, memberIndent:String, bodyIndent:String, eol:String, snippet:Int, placeholder:Int Var)
+		Local routine:TSymbol = obligation.routine
+		Local keyword:String = "Function"
+		If TMemberCompletion.IsInstanceRoutine(routine) Then keyword = "Method"
+		Local result:String = memberIndent + keyword + " " + routine.name + RoutineTypeParameters(routine)
+		If obligation.returnType And obligation.returnType.DisplayName().ToLower() <> "void" Then result :+ ":" + obligation.returnType.DisplayName()
+		result :+ "("
+		For Local index:Int = 0 Until obligation.parameterTypes.length
+			If index Then result :+ ", "
+			Local parameterType:TSemanticType = obligation.parameterTypes[index]
+			If TStaticArraySemanticType(parameterType) Then result :+ "StaticArray "
+			Local parameterName:String = "arg" + (index + 1)
+			If index < routine.parameters.length And routine.parameters[index] And routine.parameters[index].symbol Then parameterName = routine.parameters[index].symbol.name
+			result :+ parameterName + ":"
+			If parameterType Then result :+ parameterType.DisplayName() Else result :+ "Object"
+			If index < routine.parameters.length And routine.parameters[index] Then
+				If routine.parameters[index].passingMode = PARAMETER_PASS_VAR Then result :+ " Var"
+				If routine.parameters[index].optional Then
+					result :+ " = "
+					If routine.parameters[index].defaultValue Then result :+ routine.parameters[index].defaultValue.DisplayValue() Else result :+ "Null"
+				End If
+			End If
+		Next
+		result :+ ")" + RoutineConstraints(routine, obligation.ownerType) + eol
+		result :+ bodyIndent + "Throw ~q"
+		If snippet Then
+			result :+ Placeholder(placeholder, "Not implemented")
+			placeholder :+ 1
+		Else
+			result :+ "Not implemented"
+		End If
+		result :+ "~q" + eol + memberIndent + "End " + keyword + eol
+		Return result
+	End Function
+
+	Function RoutineTypeParameters:String(routine:TSymbol)
+		If Not routine Or Not routine.genericArity Then Return ""
+		Local result:String = "<"
+		Local added:Int
+		If routine.memberScope Then
+			For Local symbol:TSymbol = EachIn routine.memberScope.declaredSymbols
+				If symbol.kind <> SYMBOL_TYPE_PARAMETER Then Continue
+				If added Then result :+ ", "
+				result :+ symbol.name
+				added :+ 1
+			Next
+		End If
+		While added < routine.genericArity
+			If added Then result :+ ", "
+			result :+ "T" + (added + 1)
+			added :+ 1
+		Wend
+		Return result + ">"
+	End Function
+
+	Function RoutineConstraints:String(routine:TSymbol, ownerType:TNamedSemanticType)
+		If Not routine Or Not routine.genericConstraints.length Then Return ""
+		Local substitutions:TMap = TMemberCompletion.TypeSubstitutions(ownerType)
+		Local result:String = " Where "
+		For Local constraintIndex:Int = 0 Until routine.genericConstraints.length
+			Local constraint:TGenericConstraintInfo = routine.genericConstraints[constraintIndex]
+			If constraintIndex Then result :+ ", "
+			If constraint.parameterSymbol Then result :+ constraint.parameterSymbol.name Else result :+ "T" + (constraintIndex + 1)
+			result :+ " Extends "
+			For Local boundIndex:Int = 0 Until constraint.bounds.length
+				If boundIndex Then result :+ " And "
+				Local bound:TSemanticType = TGenericRoutineInference.Substitute(constraint.bounds[boundIndex], substitutions)
+				If bound Then result :+ bound.DisplayName() Else result :+ "Object"
+			Next
+		Next
+		Return result
+	End Function
+
+	Function MissingMemberIndent:String(source:TSourceText, declaration:TTypeDeclarationSyntax, typeIndent:String)
+		If declaration.body Then
+			For Local statement:TSyntaxNode = EachIn declaration.body.statements
+				If Not statement Or Not statement.span Then Continue
+				Local line:Int = source.Position(statement.span.start).line
+				Local lineStart:Int = source.Offset(line, 0)
+				Local indent:String = source.text[lineStart..statement.span.start]
+				If indent.Trim().length = 0 And indent.length > typeIndent.length Then Return indent
+			Next
+		End If
+		Return typeIndent + "~t"
+	End Function
+
+	Function IndentUnit:String(memberIndent:String, typeIndent:String)
+		If memberIndent.length > typeIndent.length Then Return memberIndent[typeIndent.length..]
+		Return "~t"
+	End Function
+
+	Function PluralSuffix:String(count:Int)
+		If count = 1 Then Return ""
+		Return "s"
 	End Function
 
 	Function HasAttachedBBDoc:Int(token:TSyntaxToken, source:TSourceText)
