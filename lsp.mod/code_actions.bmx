@@ -324,7 +324,9 @@ Type TBlitzMaxLspCodeActions
 				End If
 			End If
 		Next
-		result :+ ")" + RoutineConstraints(routine, obligation.ownerType) + eol
+		result :+ ")" + RoutineConstraints(routine, obligation.ownerType)
+		If keyword = "Method" Then result :+ " Override"
+		result :+ eol
 		result :+ bodyIndent + "Throw ~q"
 		If snippet Then
 			result :+ Placeholder(placeholder, "Not implemented")
