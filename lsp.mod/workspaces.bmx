@@ -69,7 +69,19 @@ Type TLspWorkspaceContext
 	Field projectSourceSearchTerms:TMap = New TMap
 	Field projectRootSearchTerms:TMap = New TMap
 	Field projectExactTermRoots:TMap = New TMap
+	Field projectSourceCallTerms:TMap = New TMap
+	Field projectRootCallTerms:TMap = New TMap
+	Field projectExactCallTermRoots:TMap = New TMap
 	Field projectReachability:TMap = New TMap
+	' Compact derived call indexes are owned by the workspace rather than the
+	' Language model. Their root keys follow the same invalidation lifecycle as
+	' project and live analyses without retaining discarded semantic models.
+	Field callHierarchyIndexes:TMap = New TMap
+	Field callHierarchyIndexBuilds:Int
+	Field callHierarchyIndexHits:Int
+	Field callHierarchyIndexedNodes:Int
+	Field callHierarchyIndexedEdges:Int
+	Field callHierarchyIndexMilliseconds:Int
 	Field projectGraphDirty:Int = True
 	Field documentationCache:TLspDocumentationCache = New TLspDocumentationCache
 	Field installedCatalogues:TLspInstalledModuleCatalogueStore
@@ -226,12 +238,23 @@ Type TLspWorkspaceContext
 		Return BuildProjectAnalysis(rootPath, False, cancellationToken)
 	End Method
 
-	Method BuildProjectAnalysis:TLanguageAnalysis(rootPath:String, retain:Int, cancellationToken:TLanguageCancellationToken = Null)
+	Method CallHierarchyFeatureAnalysis:TLanguageAnalysis(rootPath:String, cancellationToken:TLanguageCancellationToken = Null)
+		Local existing:TLanguageAnalysis = TLanguageAnalysis(projectAnalyses.ValueForKey(SnapshotPathKey(rootPath)))
+		If existing Then Return existing
+		Local options:TLanguageAnalysisOptions = ProjectAnalysisOptions(cancellationToken)
+		options.evaluateCompileTime = False
+		options.analyzeControlFlow = False
+		options.analyzeDataFlow = False
+		Return BuildProjectAnalysis(rootPath, False, cancellationToken, options)
+	End Method
+
+	Method BuildProjectAnalysis:TLanguageAnalysis(rootPath:String, retain:Int, cancellationToken:TLanguageCancellationToken = Null, analysisOptions:TLanguageAnalysisOptions = Null)
 		Local rootKey:String = SnapshotPathKey(rootPath)
 		Local rootText:String = SourceTextForPath(rootPath)
 		If rootText = Null Then Return Null
 		Local resolver:TLspFileSnapshotResolver = TLspFileSnapshotResolver.Create(configuration, dependencyCache, documents, liveInterfaces)
-		Local analysis:TLanguageAnalysis = TBlitzMaxLanguage.BuildAndAnalyze(rootPath, rootText, resolver, configuration.SnapshotOptions(), ProjectAnalysisOptions(cancellationToken))
+		If Not analysisOptions Then analysisOptions = ProjectAnalysisOptions(cancellationToken)
+		Local analysis:TLanguageAnalysis = TBlitzMaxLanguage.BuildAndAnalyze(rootPath, rootText, resolver, configuration.SnapshotOptions(), analysisOptions)
 		If Not analysis.cancelled And retain Then
 			RegisterCompilationUnit(rootPath, analysis, resolver.sourceDependencies)
 			projectAnalyses.Insert(rootKey, analysis)
@@ -255,6 +278,26 @@ Type TLspWorkspaceContext
 			Local rootPath:String = String(value)
 			If targetRoot.length And Not ProjectRootReaches(rootPath, targetRoot) Then Continue
 			If targetRoot.length Or ProjectRootContains(rootPath, normalized) Then result :+ [rootPath]
+		Next
+		Return result
+	End Method
+
+	' Incoming-call discovery needs exact call-shaped uses, not every declaration,
+	' comment, or string which happens to contain a common routine name. This
+	' lexical gate is deliberately conservative; semantic analysis still decides
+	' whether each surviving use actually targets the requested routine.
+	Method ProjectCallCandidateRoots:String[](identifier:String, targetOriginPath:String = "", cancellationToken:TLanguageCancellationToken = Null)
+		EnsureProjectGraph(cancellationToken)
+		Local normalized:String = identifier.Trim().ToLower()
+		If Not normalized.length Then Return []
+		Local candidateRoots:TMap = TMap(projectExactCallTermRoots.ValueForKey(normalized))
+		If Not candidateRoots Then Return []
+		Local targetRoot:String = ProjectRootForPath(targetOriginPath)
+		Local result:String[]
+		For Local value:Object = EachIn candidateRoots.Values()
+			Local rootPath:String = String(value)
+			If targetRoot.length And Not ProjectRootReaches(rootPath, targetRoot) Then Continue
+			result :+ [rootPath]
 		Next
 		Return result
 	End Method
@@ -294,6 +337,7 @@ Type TLspWorkspaceContext
 		Local text:String = SourceTextForPath(sourcePath)
 		If text = Null Then
 			projectSourceSearchTerms.Remove(SnapshotPathKey(sourcePath))
+			projectSourceCallTerms.Remove(SnapshotPathKey(sourcePath))
 			Return
 		End If
 		Local terms:TMap = New TMap
@@ -309,7 +353,57 @@ Type TLspWorkspaceContext
 				start = -1
 			End If
 		Next
-		projectSourceSearchTerms.Insert(SnapshotPathKey(sourcePath), terms)
+		Local sourceKey:String = SnapshotPathKey(sourcePath)
+		projectSourceSearchTerms.Insert(sourceKey, terms)
+		Local callTerms:TMap = New TMap
+		Local lineStart:Int
+		Local inRem:Int
+		While lineStart < text.length
+			Local lineEnd:Int = text.Find("~n", lineStart)
+			If lineEnd < 0 Then lineEnd = text.length
+			Local line:String = text[lineStart..lineEnd]
+			Local trimmed:String = line.Trim().ToLower()
+			If inRem Then
+				If trimmed.StartsWith("end rem") Or trimmed.StartsWith("endrem") Then inRem = False
+				lineStart = lineEnd + 1
+				Continue
+			End If
+			If trimmed = "rem" Or trimmed.StartsWith("rem ") Or trimmed.StartsWith("rem~t") Then
+				inRem = True
+				lineStart = lineEnd + 1
+				Continue
+			End If
+			Local cursor:Int
+			Local previousWord:String
+			While cursor < line.length
+				Local character:Int = line[cursor]
+				If character = 39 Then Exit
+				If character = 34 Then
+					cursor :+ 1
+					While cursor < line.length
+						If line[cursor] = 126 Then cursor :+ 2; Continue
+						If line[cursor] = 34 Then cursor :+ 1; Exit
+						cursor :+ 1
+					Wend
+					Continue
+				End If
+				Local isIdentifier:Int = character >= Asc("A") And character <= Asc("Z") Or character >= Asc("a") And character <= Asc("z") Or character >= Asc("0") And character <= Asc("9") Or character = Asc("_") Or character > 127
+				If Not isIdentifier Then cursor :+ 1; Continue
+				Local wordStart:Int = cursor
+				While cursor < line.length
+					character = line[cursor]
+					isIdentifier = character >= Asc("A") And character <= Asc("Z") Or character >= Asc("a") And character <= Asc("z") Or character >= Asc("0") And character <= Asc("9") Or character = Asc("_") Or character > 127
+					If Not isIdentifier Then Exit
+					cursor :+ 1
+				Wend
+				Local word:String = line[wordStart..cursor]
+				Local declaration:Int = previousWord = "method" Or previousWord = "function"
+				If Not declaration Then callTerms.Insert(word.ToLower(), word)
+				previousWord = word.ToLower()
+			Wend
+			lineStart = lineEnd + 1
+		Wend
+		projectSourceCallTerms.Insert(sourceKey, callTerms)
 	End Method
 
 	Method IndexProjectRootSearch(rootPath:String)
@@ -345,6 +439,40 @@ Type TLspWorkspaceContext
 			If Not roots Then
 				roots = New TMap
 				projectExactTermRoots.Insert(term, roots)
+			End If
+			roots.Insert(rootKey, rootPath)
+		Next
+
+		Local previousCalls:TMap = TMap(projectRootCallTerms.ValueForKey(rootKey))
+		If previousCalls Then
+			For Local term:Object = EachIn previousCalls.Keys()
+				Local roots:TMap = TMap(projectExactCallTermRoots.ValueForKey(term))
+				If Not roots Then Continue
+				roots.Remove(rootKey)
+				Local hasRoot:Int
+				For Local unused:Object = EachIn roots.Keys()
+					hasRoot = True
+					Exit
+				Next
+				If Not hasRoot Then projectExactCallTermRoots.Remove(term)
+			Next
+		End If
+		Local callTerms:TMap = New TMap
+		If sources Then
+			For Local sourceValue:Object = EachIn sources.Values()
+				Local sourceTerms:TMap = TMap(projectSourceCallTerms.ValueForKey(SnapshotPathKey(String(sourceValue))))
+				If Not sourceTerms Then Continue
+				For Local term:Object = EachIn sourceTerms.Keys()
+					callTerms.Insert(term, term)
+				Next
+			Next
+		End If
+		projectRootCallTerms.Insert(rootKey, callTerms)
+		For Local term:Object = EachIn callTerms.Keys()
+			Local roots:TMap = TMap(projectExactCallTermRoots.ValueForKey(term))
+			If Not roots Then
+				roots = New TMap
+				projectExactCallTermRoots.Insert(term, roots)
 			End If
 			roots.Insert(rootKey, rootPath)
 		Next
@@ -491,6 +619,7 @@ Type TLspWorkspaceContext
 
 	Method InvalidateProjectAnalysis(rootPath:String)
 		Local rootKey:String = SnapshotPathKey(rootPath)
+		InvalidateCallHierarchyIndex(rootPath)
 		Local previous:TLanguageAnalysis = TLanguageAnalysis(projectAnalyses.ValueForKey(rootKey))
 		projectAnalyses.Remove(rootKey)
 		If Not previous Then Return
@@ -569,7 +698,11 @@ Type TLspWorkspaceContext
 		projectSourceSearchTerms.Clear()
 		projectRootSearchTerms.Clear()
 		projectExactTermRoots.Clear()
+		projectSourceCallTerms.Clear()
+		projectRootCallTerms.Clear()
+		projectExactCallTermRoots.Clear()
 		projectReachability.Clear()
+		callHierarchyIndexes.Clear()
 	End Method
 
 	Method RefreshLiveInterface(rootPath:String, rootText:String, analysis:TLanguageAnalysis, resolver:TLspFileSnapshotResolver)
@@ -592,6 +725,7 @@ Type TLspWorkspaceContext
 
 	Method CacheView(document:TLspDocument, analysis:TLanguageAnalysis, dependencies:TMap)
 		If Not document Or Not analysis Then Return
+		InvalidateCallHierarchyIndex(AnalysisRootPath(analysis))
 		analyses.Insert(document.uri, analysis)
 		If analysis.syntaxTree Then navigators.Insert(document.uri, TSyntaxNavigator.Create(analysis.syntaxTree)) Else navigators.Remove(document.uri)
 		If dependencies Then sourceDependencies.Insert(document.uri, dependencies) Else sourceDependencies.Insert(document.uri, New TMap)
@@ -740,6 +874,8 @@ Type TLspWorkspaceContext
 	End Method
 
 	Method Forget(uri:String)
+		Local previous:TLanguageAnalysis = TLanguageAnalysis(analyses.ValueForKey(uri))
+		If previous Then InvalidateCallHierarchyIndex(AnalysisRootPath(previous))
 		analyses.Remove(uri)
 		navigators.Remove(uri)
 		sourceDependencies.Remove(uri)
@@ -768,10 +904,24 @@ Type TLspWorkspaceContext
 		projectSourceSearchTerms.Clear()
 		projectRootSearchTerms.Clear()
 		projectExactTermRoots.Clear()
+		projectSourceCallTerms.Clear()
+		projectRootCallTerms.Clear()
+		projectExactCallTermRoots.Clear()
 		projectReachability.Clear()
+		callHierarchyIndexes.Clear()
 		projectGraphDirty = True
 		documentationCache.Clear()
 	End Method
+
+	Method InvalidateCallHierarchyIndex(rootPath:String)
+		If rootPath.length Then callHierarchyIndexes.Remove(SnapshotPathKey(rootPath))
+	End Method
+
+	Function AnalysisRootPath:String(analysis:TLanguageAnalysis)
+		If analysis And analysis.snapshot And analysis.snapshot.rootDocument Then Return analysis.snapshot.rootDocument.path
+		If analysis And analysis.syntaxTree And analysis.syntaxTree.source Then Return analysis.syntaxTree.source.path
+		Return ""
+	End Function
 End Type
 
 Type TLspWorkspaceStore
