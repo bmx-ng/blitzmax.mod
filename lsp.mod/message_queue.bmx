@@ -229,7 +229,7 @@ Type TLspMessageQueue
 	Function RequestPriority:Int(message:TLspQueuedMessage)
 		If Not message Or Not message.requestKey.length Then Return 0
 		Select message.methodName
-			Case "textDocument/hover", "textDocument/completion", "completionItem/resolve", "textDocument/definition", "textDocument/typeDefinition", "textDocument/implementation", "textDocument/documentHighlight", "textDocument/references", "textDocument/signatureHelp", "textDocument/codeAction", "textDocument/prepareRename", "textDocument/rename", "textDocument/selectionRange", "textDocument/prepareTypeHierarchy", "typeHierarchy/supertypes", "typeHierarchy/subtypes", "workspace/symbol"
+			Case "textDocument/hover", "textDocument/completion", "completionItem/resolve", "textDocument/definition", "textDocument/typeDefinition", "textDocument/implementation", "textDocument/documentHighlight", "textDocument/references", "textDocument/signatureHelp", "textDocument/codeAction", "textDocument/prepareRename", "textDocument/rename", "textDocument/selectionRange", "textDocument/prepareTypeHierarchy", "typeHierarchy/supertypes", "typeHierarchy/subtypes", "textDocument/prepareCallHierarchy", "callHierarchy/incomingCalls", "callHierarchy/outgoingCalls", "workspace/symbol"
 				Return 2
 		End Select
 		Return 1

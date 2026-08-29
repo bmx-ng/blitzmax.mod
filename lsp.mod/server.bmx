@@ -18,6 +18,7 @@ Import "inlay_hints.bmx"
 Import "navigation_features.bmx"
 Import "type_hierarchy.bmx"
 Import "implementation.bmx"
+Import "call_hierarchy.bmx"
 Import "folding_ranges.bmx"
 Import "selection_ranges.bmx"
 Import "workspace_symbols.bmx"
@@ -251,6 +252,12 @@ Type TBlitzMaxLspServer
 				Return TypeHierarchySupertypes(id, TJSONObject(request.Get("params")))
 			Case "typeHierarchy/subtypes"
 				Return TypeHierarchySubtypes(id, TJSONObject(request.Get("params")))
+			Case "textDocument/prepareCallHierarchy"
+				Return PrepareCallHierarchy(id, TJSONObject(request.Get("params")))
+			Case "callHierarchy/incomingCalls"
+				Return CallHierarchyIncoming(id, TJSONObject(request.Get("params")))
+			Case "callHierarchy/outgoingCalls"
+				Return CallHierarchyOutgoing(id, TJSONObject(request.Get("params")))
 			Case "workspace/didChangeWorkspaceFolders"
 				Return DidChangeWorkspaceFolders(TJSONObject(request.Get("params")))
 			Case "workspace/didChangeConfiguration"
@@ -315,6 +322,7 @@ Type TBlitzMaxLspServer
 		codeActions.Set("resolveProvider", New TJSONBool.Create(False))
 		capabilities.Set("codeActionProvider", codeActions)
 		capabilities.Set("typeHierarchyProvider", New TJSONBool.Create(True))
+		capabilities.Set("callHierarchyProvider", New TJSONBool.Create(True))
 		Local signatureHelp:TJSONObject = JsonObject()
 		Local signatureTriggers:TJSONArray = JsonArray()
 		signatureTriggers.Append(New TJSONString.Create("("))
@@ -520,6 +528,40 @@ Type TBlitzMaxLspServer
 		Local workspace:TLspWorkspaceContext
 		If document Then workspace = DocumentWorkspace(document) Else workspace = workspaces.ContextForPath(FileUriToPath(item.GetString("uri")))
 		Return [JsonResponse(id, TBlitzMaxLspTypeHierarchy.Subtypes(item, workspace, documents)).SaveString(JSON_COMPACT)]
+	End Method
+
+	Method PrepareCallHierarchy:String[](id:TJSON, params:TJSONObject)
+		Local document:TLspDocument = RequestDocument(params)
+		Local position:TJSONObject = RequestPosition(params)
+		If Not document Or Not position Then Return [JsonResponse(id, JsonNull()).SaveString(JSON_COMPACT)]
+		Local result:TJSON = TBlitzMaxLspCallHierarchy.Prepare(document, DocumentWorkspace(document), documents, Int(position.GetInteger("line")), Int(position.GetInteger("character")))
+		Return [JsonResponse(id, result).SaveString(JSON_COMPACT)]
+	End Method
+
+	Method CallHierarchyIncoming:String[](id:TJSON, params:TJSONObject)
+		Local item:TJSONObject
+		If params Then item = TJSONObject(params.Get("item"))
+		If Not item Then Return [JsonResponse(id, JsonArray()).SaveString(JSON_COMPACT)]
+		Local workspace:TLspWorkspaceContext = CallHierarchyWorkspace(item)
+		Return [JsonResponse(id, TBlitzMaxLspCallHierarchy.Incoming(item, workspace, documents)).SaveString(JSON_COMPACT)]
+	End Method
+
+	Method CallHierarchyOutgoing:String[](id:TJSON, params:TJSONObject)
+		Local item:TJSONObject
+		If params Then item = TJSONObject(params.Get("item"))
+		If Not item Then Return [JsonResponse(id, JsonArray()).SaveString(JSON_COMPACT)]
+		Local workspace:TLspWorkspaceContext = CallHierarchyWorkspace(item)
+		Return [JsonResponse(id, TBlitzMaxLspCallHierarchy.Outgoing(item, workspace, documents)).SaveString(JSON_COMPACT)]
+	End Method
+
+	Method CallHierarchyWorkspace:TLspWorkspaceContext(item:TJSONObject)
+		If Not item Then Return Null
+		Local data:TJSONObject = TJSONObject(item.Get("data"))
+		If data Then
+			Local document:TLspDocument = documents.Get(data.GetString("analysisUri"))
+			If document Then Return DocumentWorkspace(document)
+		End If
+		Return workspaces.ContextForPath(FileUriToPath(item.GetString("uri")))
 	End Method
 
 	Method RequestDocument:TLspDocument(params:TJSONObject)
