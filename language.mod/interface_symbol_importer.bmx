@@ -133,6 +133,11 @@ Type TInterfaceSymbolImporter
 		symbol.isReadOnly = record.flags.Contains("R")
 		symbol.isAbstract = record.flags.Contains("A") Or kind = SYMBOL_INTERFACE
 		If kind = SYMBOL_ROUTINE And scope And scope.owner And scope.owner.kind = SYMBOL_INTERFACE Then
+			' Compact Interface records imply that bodyless methods are abstract;
+			' unlike Type methods they do not need a separate A flag. Keep the
+			' general abstract state in step with the Interface-specific kind so
+			' imported obligations are treated exactly like source declarations.
+			symbol.isAbstract = True
 			symbol.interfaceMethodKind = INTERFACE_METHOD_ABSTRACT
 			If record.flags.Contains("D") Then
 				symbol.interfaceMethodKind = INTERFACE_METHOD_DEFAULT

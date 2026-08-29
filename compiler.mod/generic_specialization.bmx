@@ -9580,6 +9580,7 @@ Type TCompilerGenericTemplateBuilder
 		artifact.identity.arity = header.genericParameters.length
 		artifact.identity.declarationKind = GENERIC_DECLARATION_TYPE
 		artifact.languageLinkageRevision = languageLinkageRevision
+		artifact.source = SourceLocation(symbol.declaration, model)
 		artifact.visibility = symbol.visibility
 		artifact.isAbstract = symbol.isAbstract
 		artifact.metadata = TemplateMetadata(symbol, model)
