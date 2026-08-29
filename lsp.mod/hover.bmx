@@ -46,7 +46,7 @@ Type TBlitzMaxLspHover
 	End Function
 
 	Function HoverDisplay:String(location:TSemanticLocation)
-		If location.symbol Then Return SymbolDisplay(location.symbol, location.resolvedCall, location.constantValue, location.semanticType)
+		If location.symbol Then Return SymbolDisplay(location.symbol, ResolvedCallForSymbol(location), location.constantValue, location.semanticType)
 		If location.semanticType Then Return location.semanticType.DisplayName()
 		Return ""
 	End Function
@@ -54,8 +54,9 @@ Type TBlitzMaxLspHover
 	Function GenericDeclarationDisplay:String(location:TSemanticLocation)
 		If Not location Or Not location.symbol Then Return ""
 		If location.symbol.kind = SYMBOL_ROUTINE Then
-			If Not location.resolvedCall Then Return ""
-			Local resolvedDisplay:String = RoutineDisplay(location.symbol, location.resolvedCall)
+			Local resolved:TResolvedCall = ResolvedCallForSymbol(location)
+			If Not resolved Then Return ""
+			Local resolvedDisplay:String = RoutineDisplay(location.symbol, resolved)
 			Local declaredDisplay:String = RoutineDisplay(location.symbol, Null)
 			If resolvedDisplay <> declaredDisplay Then Return declaredDisplay
 			Return ""
@@ -63,6 +64,12 @@ Type TBlitzMaxLspHover
 		If Not location.semanticType Or Not location.symbol.declaredType Then Return ""
 		If location.semanticType.DisplayName() = location.symbol.declaredType.DisplayName() Then Return ""
 		Return SymbolDisplay(location.symbol, Null, location.constantValue)
+	End Function
+
+	Function ResolvedCallForSymbol:TResolvedCall(location:TSemanticLocation)
+		If Not location Or Not location.symbol Or location.symbol.kind <> SYMBOL_ROUTINE Or Not location.resolvedCall Then Return Null
+		If location.resolvedCall.routine = location.symbol Then Return location.resolvedCall
+		Return Null
 	End Function
 
 	Function SymbolDisplay:String(symbol:TSymbol, resolved:TResolvedCall, constant:TConstantValue, useSiteType:TSemanticType = Null)
