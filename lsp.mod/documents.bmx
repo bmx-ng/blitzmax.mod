@@ -14,6 +14,9 @@ Type TLspDocument
 	Field version:Int
 	Field text:String
 	Field workspaceUri:String
+	' Latest version for which the server completed diagnostic analysis. This
+	' distinguishes a filesystem echo of an editor save from an external change.
+	Field analyzedVersion:Int = -1
 	' An unmodified source opened for navigation remains passive. It becomes a
 	' live Include/quoted-Import overlay after an editor change, or immediately
 	' when the didOpen text already differs from the file on disk.

@@ -11,6 +11,7 @@ Import BlitzMax.Language
 Import "protocol.bmx"
 
 Const LSP_CHANGE_DEBOUNCE_MS:Int = 200
+Const LSP_WATCH_DEBOUNCE_MS:Int = 75
 
 Type TLspQueuedMessage
 	Field payload:String
@@ -21,7 +22,7 @@ Type TLspQueuedMessage
 	Field requestKey:String
 	Field readyAt:Int
 
-	Function Parse:TLspQueuedMessage(payload:String, debounceMs:Int)
+	Function Parse:TLspQueuedMessage(payload:String, debounceMs:Int, watchDebounceMs:Int)
 		Local error:TJSONError
 		Local request:TJSONObject = TJSONObject(TJSON.Load(payload, 0, error))
 		Local result:TLspQueuedMessage = New TLspQueuedMessage
@@ -52,6 +53,7 @@ Type TLspQueuedMessage
 			End If
 		End If
 		If result.methodName = "textDocument/didChange" Then result.readyAt = MilliSecs() + Max(0, debounceMs)
+		If result.methodName = "workspace/didChangeWatchedFiles" Then result.readyAt = MilliSecs() + Max(0, watchDebounceMs)
 		Return result
 	End Function
 
@@ -79,17 +81,29 @@ Type TLspMessageQueue
 	Field changed:TCondVar = TCondVar.Create()
 	Field closed:Int
 	Field debounceMs:Int
+	Field watchDebounceMs:Int
 
-	Method New(debounceMs:Int = LSP_CHANGE_DEBOUNCE_MS)
+	Method New(debounceMs:Int = LSP_CHANGE_DEBOUNCE_MS, watchDebounceMs:Int = LSP_WATCH_DEBOUNCE_MS)
 		Self.debounceMs = Max(0, debounceMs)
+		Self.watchDebounceMs = Max(0, watchDebounceMs)
 	End Method
 
 	Method Enqueue(payload:String)
-		Local message:TLspQueuedMessage = TLspQueuedMessage.Parse(payload, debounceMs)
+		Local message:TLspQueuedMessage = TLspQueuedMessage.Parse(payload, debounceMs, watchDebounceMs)
 		mutex.Lock()
 		If closed Then
 			mutex.Unlock()
 			Return
+		End If
+		If message.methodName = "workspace/didChangeWatchedFiles" And messages.length Then
+			Local existing:TLspQueuedMessage = messages[messages.length - 1]
+			If existing.methodName = message.methodName Then
+				existing.payload = MergeWatchedFilePayload(existing.payload, message.payload)
+				existing.readyAt = message.readyAt
+				changed.Broadcast()
+				mutex.Unlock()
+				Return
+			End If
 		End If
 		If message.methodName = "$/cancelRequest" Then
 			Local error:TJSONError
@@ -148,7 +162,7 @@ Type TLspMessageQueue
 			End If
 			Local index:Int = NextMessageIndex()
 			Local message:TLspQueuedMessage = messages[index]
-			If message.methodName = "textDocument/didChange" And debounceMs > 0 Then
+			If message.readyAt > 0 Then
 				Local remaining:Int = message.readyAt - MilliSecs()
 				If remaining > 0 Then
 					changed.TimedWait(mutex, remaining)
@@ -161,6 +175,40 @@ Type TLspMessageQueue
 			Return message
 		Wend
 	End Method
+
+	Function MergeWatchedFilePayload:String(firstPayload:String, secondPayload:String)
+		Local firstError:TJSONError
+		Local first:TJSONObject = TJSONObject(TJSON.Load(firstPayload, 0, firstError))
+		Local secondError:TJSONError
+		Local second:TJSONObject = TJSONObject(TJSON.Load(secondPayload, 0, secondError))
+		If Not first Or Not second Then Return secondPayload
+		Local firstParams:TJSONObject = TJSONObject(first.Get("params"))
+		Local secondParams:TJSONObject = TJSONObject(second.Get("params"))
+		If Not firstParams Or Not secondParams Then Return secondPayload
+		Local firstChanges:TJSONArray = TJSONArray(firstParams.Get("changes"))
+		Local secondChanges:TJSONArray = TJSONArray(secondParams.Get("changes"))
+		If Not firstChanges Or Not secondChanges Then Return secondPayload
+		Local order:String[]
+		Local latest:TMap = New TMap
+		AppendWatchedChanges(order, latest, firstChanges)
+		AppendWatchedChanges(order, latest, secondChanges)
+		Local merged:TJSONArray = JsonArray()
+		For Local uri:String = EachIn order
+			merged.Append(TJSON(latest.ValueForKey(uri)))
+		Next
+		firstParams.Set("changes", merged)
+		Return first.SaveString(JSON_COMPACT)
+	End Function
+
+	Function AppendWatchedChanges(order:String[] Var, latest:TMap, changes:TJSONArray)
+		For Local index:Int = 0 Until changes.Size()
+			Local change:TJSONObject = TJSONObject(changes.Get(index))
+			If Not change Then Continue
+			Local uri:String = change.GetString("uri")
+			If Not latest.Contains(uri) Then order :+ [uri]
+			latest.Insert(uri, change)
+		Next
+	End Function
 
 	Method NextMessageIndex:Int()
 		If messages.length < 2 Or IsOrderingBarrier(messages[0].methodName) Or IsDocumentLifecycle(messages[0].methodName) Then Return 0
