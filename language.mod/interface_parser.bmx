@@ -350,10 +350,17 @@ Type TInterfaceFileParser
 	End Function
 
 	Function FlagsBeforeAssignment:String(text:String, assignment:Int)
-		If assignment < 0 Then Return ""
-		Local closeParen:Int = text[..assignment].FindLast(")")
+		Local flagsEnd:Int = assignment
+		If flagsEnd < 0 Then flagsEnd = text.length
+		Local closeParen:Int = text[..flagsEnd].FindLast(")")
 		If closeParen < 0 Then Return ""
-		Return text[closeParen + 1..assignment]
+		Local result:String
+		For Local index:Int = closeParen + 1 Until flagsEnd
+			Local flag:String = text[index..index + 1]
+			If "ADEFGIPRSW".Find(flag) < 0 Then Exit
+			result :+ flag
+		Next
+		Return result
 	End Function
 
 	Function VisibilityFromRoutineFlags:Int(flags:String)
