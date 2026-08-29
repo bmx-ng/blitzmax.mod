@@ -3,6 +3,8 @@
 
 SuperStrict
 
+Import BRL.FileSystem
+Import BRL.TextStream
 Import Text.Json
 Import "protocol.bmx"
 Import "message_queue.bmx"
@@ -529,7 +531,8 @@ Type TBlitzMaxLspServer
 		For Local index:Int = 0 Until changes.Size()
 			Local change:TJSONObject = TJSONObject(changes.Get(index))
 			If Not change Then Continue
-			Local path:String = FileUriToPath(change.GetString("uri"))
+			Local path:String = CanonicalDocumentPath(FileUriToPath(change.GetString("uri")))
+			If IsAnalyzedOpenDocumentEcho(path) Then Continue
 			Local key:String = SnapshotPathKey(path)
 			If Not path.length Or seen.Contains(key) Then Continue
 			seen.Insert(key, path)
@@ -542,6 +545,17 @@ Type TBlitzMaxLspServer
 			workspaces.RefreshWatchedPath(path)
 		Next
 		Return ReanalyzeWatchedPaths(changedPaths)
+	End Method
+
+	Method IsAnalyzedOpenDocumentEcho:Int(path:String)
+		If Not path.ToLower().EndsWith(".bmx") Or FileType(path) <> FILETYPE_FILE Then Return False
+		Local document:TLspDocument = documents.GetByPath(path)
+		If Not document Or document.analyzedVersion <> document.version Then Return False
+		If LoadText(path) <> document.text Then Return False
+		' The editor buffer and saved file now describe the same generation. Keep
+		' the completed live analysis and let a later genuine edit recreate overlay state.
+		document.liveOverlay = False
+		Return True
 	End Method
 
 	Method DidChangeWorkspaceFolders:String[](params:TJSONObject)
@@ -581,6 +595,7 @@ Type TBlitzMaxLspServer
 		Local responses:String[]
 		For Local document:TLspDocument = EachIn documents.documents.Values()
 			responses :+ [TBlitzMaxLspDiagnostics.Publish(document, DocumentWorkspace(document)).SaveString(JSON_COMPACT)]
+			document.analyzedVersion = document.version
 		Next
 		Return responses
 	End Method
@@ -688,6 +703,7 @@ Type TBlitzMaxLspServer
 			If activeQueue Then cancellationToken = TLspDocumentVersionCancellation.Create(activeQueue, candidate.uri, candidate.version)
 			Local publication:TJSONObject = TBlitzMaxLspDiagnostics.Publish(candidate, DocumentWorkspace(candidate), cancellationToken)
 			If activeQueue And activeQueue.HasNewerDocumentVersion(candidate.uri, candidate.version) Then Continue
+			candidate.analyzedVersion = candidate.version
 			responses :+ [publication.SaveString(JSON_COMPACT)]
 			published.Insert(candidate.uri, candidate)
 			Local workspace:TLspWorkspaceContext = DocumentWorkspace(candidate)
@@ -709,6 +725,7 @@ Type TBlitzMaxLspServer
 			If activeQueue Then cancellationToken = TLspDocumentVersionCancellation.Create(activeQueue, candidate.uri, candidate.version)
 			Local publication:TJSONObject = TBlitzMaxLspDiagnostics.Publish(candidate, workspace, cancellationToken)
 			If activeQueue And activeQueue.HasNewerDocumentVersion(candidate.uri, candidate.version) Then Continue
+			candidate.analyzedVersion = candidate.version
 			responses :+ [publication.SaveString(JSON_COMPACT)]
 			published.Insert(candidate.uri, candidate)
 		Next
