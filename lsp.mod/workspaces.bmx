@@ -59,6 +59,7 @@ Type TLspWorkspaceContext
 	Field projectAnalyses:TMap = New TMap
 	Field projectDependencies:TMap = New TMap
 	Field projectOwners:TMap = New TMap
+	Field projectInterfaceFingerprints:TMap = New TMap
 	Field projectGraphDirty:Int = True
 	Field documentationCache:TLspDocumentationCache = New TLspDocumentationCache
 	Field installedCatalogues:TLspInstalledModuleCatalogueStore
@@ -171,6 +172,8 @@ Type TLspWorkspaceContext
 		projectRoots.Insert(rootKey, rootPath)
 		projectUnitSources.Insert(rootKey, unitSources)
 		projectDependencies.Insert(rootKey, resolver.sourceDependencies)
+		projectInterfaceFingerprints.Insert(rootKey, ProjectInterfaceFingerprint(sourceInterface))
+		liveInterfaces.Insert(rootKey, TSnapshotText.CreateInterface(rootPath, sourceInterface))
 		Local imports:TMap = New TMap
 		For Local item:TInterfaceImport = EachIn sourceInterface.imports
 			If Not item.isFileImport Or Not item.name.ToLower().EndsWith(".bmx") Then Continue
@@ -286,15 +289,138 @@ Type TLspWorkspaceContext
 		Return count
 	End Method
 
-	Method MarkProjectGraphDirty(changedPath:String = "")
-		If Not configuration.rootSourcePath.length Or projectGraphDirty Then Return
-		If Not changedPath.length Or SnapshotPathKey(changedPath) = SnapshotPathKey(configuration.rootSourcePath) Or projectOwners.Contains(SnapshotPathKey(changedPath)) Then
+	' Refreshes the lightweight source interface for one project root. Routine-body
+	' edits retain importing analyses; declaration changes invalidate only roots
+	' which can reach the changed source. Include/import membership changes still
+	' request a complete graph discovery because ownership may have changed.
+	Method RefreshProjectPath(changedPath:String)
+		If Not configuration.rootSourcePath.length Or projectGraphDirty Or Not changedPath.length Then Return
+		Local changedKey:String = SnapshotPathKey(changedPath)
+		Local ownerPath:String = ProjectRootForPath(changedPath)
+		If Not ownerPath.length Then
+			For Local value:Object = EachIn projectDependencies.Values()
+				Local dependencies:TMap = TMap(value)
+				If dependencies And dependencies.Contains(changedKey) Then projectGraphDirty = True; Return
+			Next
+			Return
+		End If
+
+		Local ownerKey:String = SnapshotPathKey(ownerPath)
+		Local sourceText:String = SourceTextForPath(ownerPath)
+		If sourceText = Null Then projectGraphDirty = True; Return
+		Local resolver:TLspFileSnapshotResolver = TLspFileSnapshotResolver.Create(configuration, dependencyCache, documents, liveInterfaces)
+		Local sourceInterface:TInterfaceFile = TBlitzMaxSourceInterfaceBuilder.Build(ownerPath, sourceText, resolver, configuration.SnapshotOptions())
+		Local unitSources:TMap = New TMap
+		unitSources.Insert(ownerKey, ownerPath)
+		For Local value:Object = EachIn resolver.includeDependencies.Values()
+			Local includePath:String = String(value)
+			unitSources.Insert(SnapshotPathKey(includePath), includePath)
+		Next
+		Local imports:TMap = ProjectSourceImports(ownerPath, sourceInterface, resolver)
+		If Not MapsHaveSameKeys(unitSources, TMap(projectUnitSources.ValueForKey(ownerKey))) Or Not MapsHaveSameKeys(imports, TMap(projectImports.ValueForKey(ownerKey))) Then
 			projectGraphDirty = True
 			Return
 		End If
-		For Local value:Object = EachIn projectDependencies.Values()
-			Local dependencies:TMap = TMap(value)
-			If dependencies And dependencies.Contains(SnapshotPathKey(changedPath)) Then projectGraphDirty = True; Return
+
+		Local previousFingerprint:String = String(projectInterfaceFingerprints.ValueForKey(ownerKey))
+		Local currentFingerprint:String = ProjectInterfaceFingerprint(sourceInterface)
+		projectDependencies.Insert(ownerKey, resolver.sourceDependencies)
+		projectInterfaceFingerprints.Insert(ownerKey, currentFingerprint)
+		liveInterfaces.Insert(ownerKey, TSnapshotText.CreateInterface(ownerPath, sourceInterface))
+		InvalidateProjectAnalysis(ownerPath)
+		If previousFingerprint <> currentFingerprint Then
+			Local affectedRoots:String[]
+			For Local value:Object = EachIn projectRoots.Values()
+				Local rootPath:String = String(value)
+				If SnapshotPathKey(rootPath) <> ownerKey And ProjectRootReaches(rootPath, ownerPath, New TMap) Then affectedRoots :+ [rootPath]
+			Next
+			For Local rootPath:String = EachIn affectedRoots
+				InvalidateProjectAnalysis(rootPath)
+			Next
+		End If
+	End Method
+
+	Method ProjectSourceImports:TMap(rootPath:String, sourceInterface:TInterfaceFile, resolver:TLspFileSnapshotResolver)
+		Local imports:TMap = New TMap
+		If Not sourceInterface Then Return imports
+		For Local item:TInterfaceImport = EachIn sourceInterface.imports
+			If Not item.isFileImport Or Not item.name.ToLower().EndsWith(".bmx") Then Continue
+			Local importingPath:String = rootPath
+			If item.originPath.length Then importingPath = item.originPath
+			Local dependencyPath:String = ResolveRelativePath(importingPath, item.name)
+			If resolver Then resolver.RecordSourceDependency(dependencyPath)
+			imports.Insert(SnapshotPathKey(dependencyPath), dependencyPath)
+		Next
+		Return imports
+	End Method
+
+	Function MapsHaveSameKeys:Int(left:TMap, right:TMap)
+		If Not left Or Not right Then Return left = right
+		Local leftCount:Int
+		For Local key:Object = EachIn left.Keys()
+			leftCount :+ 1
+			If Not right.Contains(key) Then Return False
+		Next
+		Local rightCount:Int
+		For Local key:Object = EachIn right.Keys()
+			rightCount :+ 1
+		Next
+		Return leftCount = rightCount
+	End Function
+
+	Method InvalidateProjectAnalysis(rootPath:String)
+		Local rootKey:String = SnapshotPathKey(rootPath)
+		Local previous:TLanguageAnalysis = TLanguageAnalysis(projectAnalyses.ValueForKey(rootKey))
+		projectAnalyses.Remove(rootKey)
+		If Not previous Then Return
+		Local staleUris:String[]
+		For Local key:Object = EachIn analyses.Keys()
+			Local analysis:TLanguageAnalysis = TLanguageAnalysis(analyses.ValueForKey(key))
+			If analysis And analysis.snapshot = previous.snapshot Then staleUris :+ [String(key)]
+		Next
+		For Local uri:String = EachIn staleUris
+			' Keep the dependency set long enough for ReanalyzeAffected to route the
+			' change to open importing documents. Their replacement views refresh it.
+			analyses.Remove(uri)
+			navigators.Remove(uri)
+		Next
+	End Method
+
+	Method ProjectInterfaceFingerprint:String(sourceInterface:TInterfaceFile)
+		If Not sourceInterface Then Return ""
+		Local result:String = "strict=" + sourceInterface.isSuperStrict + "~n"
+		For Local item:TInterfaceImport = EachIn sourceInterface.imports
+			result :+ "import=" + item.isFileImport + ":" + item.name.ToLower() + ":" + SnapshotPathKey(item.originPath) + "~n"
+		Next
+		For Local record:TInterfaceRecord = EachIn sourceInterface.declarations
+			AppendProjectRecordFingerprint(result, record, sourceInterface.path)
+		Next
+		Return result
+	End Method
+
+	Method AppendProjectRecordFingerprint(value:String Var, record:TInterfaceRecord, defaultPath:String)
+		If Not record Then Return
+		value :+ record.kind + ":" + record.name.ToLower() + ":" + record.flags + ":" + record.visibility + ":"
+		Local sourcePath:String = record.originPath
+		If Not sourcePath.length Then sourcePath = defaultPath
+		Local text:String = SourceTextForPath(sourcePath)
+		If text <> Null Then
+			Local source:TSourceText = TSourceText.Create(text, sourcePath)
+			If record.routineSignature Then
+				value :+ source.Slice(record.routineSignature.span)
+			Else If record.typeHeaderSyntax Then
+				value :+ source.Slice(record.typeHeaderSyntax.span)
+			Else If record.declarationSyntax Then
+				value :+ source.Slice(record.declarationSyntax.span)
+			Else
+				value :+ record.signatureText + record.rawText
+			End If
+		Else
+			value :+ record.signatureText + record.rawText
+		End If
+		value :+ "~n"
+		For Local member:TInterfaceRecord = EachIn record.members
+			AppendProjectRecordFingerprint(value, member, sourcePath)
 		Next
 	End Method
 
@@ -310,6 +436,7 @@ Type TLspWorkspaceContext
 		projectAnalyses.Clear()
 		projectDependencies.Clear()
 		projectOwners.Clear()
+		projectInterfaceFingerprints.Clear()
 	End Method
 
 	Method RefreshLiveInterface(rootPath:String, rootText:String, analysis:TLanguageAnalysis, resolver:TLspFileSnapshotResolver)
@@ -504,6 +631,7 @@ Type TLspWorkspaceContext
 		projectAnalyses.Clear()
 		projectDependencies.Clear()
 		projectOwners.Clear()
+		projectInterfaceFingerprints.Clear()
 		projectGraphDirty = True
 		documentationCache.Clear()
 	End Method

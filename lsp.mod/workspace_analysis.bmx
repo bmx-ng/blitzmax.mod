@@ -204,7 +204,7 @@ Type TLspFileSnapshotResolver Extends TSnapshotResolver
 				sourceImportDependencies.Insert(SnapshotPathKey(sourcePath), sourcePath)
 				If liveInterfaces Then
 					Local live:TSnapshotText = TSnapshotText(liveInterfaces.ValueForKey(SnapshotPathKey(sourcePath)))
-					If live Then Return live
+					If live Then Return TSnapshotText.CreateInterface(live.path, TInterfaceFileCloner.Clone(live.interfaceFile))
 				End If
 				Local document:TLspDocument = OpenDocument(sourcePath)
 				If document Then
