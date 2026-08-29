@@ -493,24 +493,32 @@ Type TLspWorkspaceContext
 
 	Method ProjectInterfaceFingerprint:String(sourceInterface:TInterfaceFile)
 		If Not sourceInterface Then Return ""
+		Local sourceCache:TMap = New TMap
+		If sourceInterface.sourceText <> Null Then sourceCache.Insert(SnapshotPathKey(sourceInterface.path), TSourceText.Create(sourceInterface.sourceText, sourceInterface.path))
 		Local result:String = "strict=" + sourceInterface.isSuperStrict + "~n"
 		For Local item:TInterfaceImport = EachIn sourceInterface.imports
 			result :+ "import=" + item.isFileImport + ":" + item.name.ToLower() + ":" + SnapshotPathKey(item.originPath) + "~n"
 		Next
 		For Local record:TInterfaceRecord = EachIn sourceInterface.declarations
-			AppendProjectRecordFingerprint(result, record, sourceInterface.path)
+			AppendProjectRecordFingerprint(result, record, sourceInterface.path, sourceCache)
 		Next
 		Return result
 	End Method
 
-	Method AppendProjectRecordFingerprint(value:String Var, record:TInterfaceRecord, defaultPath:String)
+	Method AppendProjectRecordFingerprint(value:String Var, record:TInterfaceRecord, defaultPath:String, sourceCache:TMap)
 		If Not record Then Return
 		value :+ record.kind + ":" + record.name.ToLower() + ":" + record.flags + ":" + record.visibility + ":"
 		Local sourcePath:String = record.originPath
 		If Not sourcePath.length Then sourcePath = defaultPath
-		Local text:String = SourceTextForPath(sourcePath)
-		If text <> Null Then
-			Local source:TSourceText = TSourceText.Create(text, sourcePath)
+		Local source:TSourceText = TSourceText(sourceCache.ValueForKey(SnapshotPathKey(sourcePath)))
+		If Not source Then
+			Local text:String = SourceTextForPath(sourcePath)
+			If text <> Null Then
+				source = TSourceText.Create(text, sourcePath)
+				sourceCache.Insert(SnapshotPathKey(sourcePath), source)
+			End If
+		End If
+		If source Then
 			If record.routineSignature Then
 				value :+ source.Slice(record.routineSignature.span)
 			Else If record.typeHeaderSyntax Then
@@ -525,7 +533,7 @@ Type TLspWorkspaceContext
 		End If
 		value :+ "~n"
 		For Local member:TInterfaceRecord = EachIn record.members
-			AppendProjectRecordFingerprint(value, member, sourcePath)
+			AppendProjectRecordFingerprint(value, member, sourcePath, sourceCache)
 		Next
 	End Method
 
