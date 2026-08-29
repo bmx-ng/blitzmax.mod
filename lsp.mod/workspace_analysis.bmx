@@ -148,6 +148,17 @@ Type TLspDependencyCache
 		generation :+ 1
 	End Method
 
+	Method Invalidate(path:String)
+		Local key:String = SnapshotPathKey(path)
+		Local existing:TLspDependencyCacheEntry = TLspDependencyCacheEntry(entries.ValueForKey(key))
+		If existing Then
+			entries.Remove(key)
+			entryCount :- 1
+			If existing.parsedInterface Then parsedInterfaceCount :- 1
+		End If
+		generation :+ 1
+	End Method
+
 	Method Count:Int()
 		Return entryCount
 	End Method
@@ -218,6 +229,7 @@ Type TLspFileSnapshotResolver Extends TSnapshotResolver
 		Else
 			path = ModuleInterfacePath(configuration.sdkPath, target, configuration.InterfaceMung())
 		End If
+		RecordSourceDependency(path)
 		Local resolved:TSnapshotText = dependencies.LoadInterface(path)
 		If resolved And isSourceImport And FileTime(sourcePath) > FileTime(path) Then resolved = Null
 		If resolved Or Not isSourceImport Or FileType(sourcePath) <> FILETYPE_FILE Then Return resolved
@@ -243,9 +255,12 @@ Type TLspFileSnapshotResolver Extends TSnapshotResolver
 	Method ResolveCoreInterface:TSnapshotText(targetPlatform:String)
 		Local directory:String = NormalizeWorkspacePath(configuration.sdkPath) + "/mod/brl.mod/blitz.mod"
 		Local specialized:String = directory + "/blitz_classes." + targetPlatform + ".i"
+		RecordSourceDependency(specialized)
 		Local result:TSnapshotText = dependencies.LoadInterface(specialized)
 		If result Then Return result
-		Return dependencies.LoadInterface(directory + "/blitz_classes.i")
+		Local fallback:String = directory + "/blitz_classes.i"
+		RecordSourceDependency(fallback)
+		Return dependencies.LoadInterface(fallback)
 	End Method
 End Type
 
