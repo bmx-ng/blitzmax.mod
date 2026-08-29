@@ -332,7 +332,7 @@ Type TInheritanceValidator
 		Local current:TNamedSemanticType = RuntimeNamedType(searchType)
 		If Not current Or Not current.symbol Or current.symbol.kind <> SYMBOL_TYPE Or Not current.symbol.memberScope Then Return False
 		For Local candidate:TSymbol = EachIn current.symbol.memberScope.LookupLocal(requirement.name)
-			If candidate.kind = SYMBOL_ROUTINE And Not candidate.isAbstract And OverrideSignaturesMatch(candidate, requirement, requirementOwner) Then Return True
+			If candidate.kind = SYMBOL_ROUTINE And Not candidate.isAbstract And ConstructedOverrideSignaturesMatch(candidate, current, requirement, requirementOwner) Then Return True
 		Next
 		Local info:TTypeInheritanceInfo = model.InheritanceInfo(current.symbol)
 		If Not info Then Return False
@@ -349,7 +349,7 @@ Type TInheritanceValidator
 		Local current:TNamedSemanticType = RuntimeNamedType(searchType)
 		If Not current Or Not current.symbol Or Not current.symbol.memberScope Then Return False
 		For Local candidate:TSymbol = EachIn current.symbol.memberScope.LookupLocal(requirement.name)
-			If candidate.kind = SYMBOL_ROUTINE And Not candidate.isAbstract And OverrideSignaturesMatch(candidate, requirement, requirementOwner) Then Return True
+			If candidate.kind = SYMBOL_ROUTINE And Not candidate.isAbstract And ConstructedOverrideSignaturesMatch(candidate, current, requirement, requirementOwner) Then Return True
 		Next
 		Local info:TTypeInheritanceInfo = model.InheritanceInfo(current.symbol)
 		If Not info Then Return False
@@ -359,6 +359,30 @@ Type TInheritanceValidator
 			If HasConcreteImplementation(nextType, requirement, requirementOwner, depth + 1) Then Return True
 		Next
 		Return False
+	End Method
+
+	' Abstract obligations may be satisfied by a method inherited through a
+	' constructed generic base. Substitute both the concrete implementation owner
+	' and the requirement owner before comparing their signatures.
+	Method ConstructedOverrideSignaturesMatch:Int(routine:TSymbol, routineOwner:TNamedSemanticType, requirement:TSymbol, requirementOwner:TNamedSemanticType)
+		If routine.callingConvention <> requirement.callingConvention Then Return False
+		If routine.genericArity <> requirement.genericArity Or routine.parameterTypes.length <> requirement.parameterTypes.length Then Return False
+		Local routineOwnerParameters:TSymbol[] = DeclaredTypeParameters(routineOwner.symbol)
+		Local requirementOwnerParameters:TSymbol[] = DeclaredTypeParameters(requirementOwner.symbol)
+		Local requirementRoutineParameters:TSymbol[] = DeclaredTypeParameters(requirement)
+		Local routineTypeArguments:TSemanticType[] = TypeParameterTypes(DeclaredTypeParameters(routine))
+		For Local index:Int = 0 Until routine.parameterTypes.length
+			Local actual:TSemanticType = Substitute(routine.parameterTypes[index], routineOwnerParameters, routineOwner.typeArguments)
+			Local expected:TSemanticType = Substitute(requirement.parameterTypes[index], requirementOwnerParameters, requirementOwner.typeArguments)
+			expected = Substitute(expected, requirementRoutineParameters, routineTypeArguments)
+			If Not SameType(actual, expected) Then Return False
+			If ParameterModeAt(routine, index) <> ParameterModeAt(requirement, index) Then Return False
+		Next
+		Local actualReturn:TSemanticType = Substitute(routine.declaredType, routineOwnerParameters, routineOwner.typeArguments)
+		Local expectedReturn:TSemanticType = Substitute(requirement.declaredType, requirementOwnerParameters, requirementOwner.typeArguments)
+		expectedReturn = Substitute(expectedReturn, requirementRoutineParameters, routineTypeArguments)
+		If SameType(actualReturn, expectedReturn) Then Return True
+		Return IsSubtype(actualReturn, expectedReturn, 0)
 	End Method
 
 	Method RuntimeNamedType:TNamedSemanticType(value:TSemanticType)
