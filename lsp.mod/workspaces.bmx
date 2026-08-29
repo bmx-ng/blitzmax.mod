@@ -12,6 +12,12 @@ Import "documentation.bmx"
 Import "workspace_analysis.bmx"
 Import "installed_modules.bmx"
 
+Type TLspProjectAnalysisProgress Abstract
+	Method Begin(rootPath:String, workspaceName:String) Abstract
+	Method Report(message:String) Abstract
+	Method Finish(message:String) Abstract
+End Type
+
 Type TLspCompilationOwners
 	Field roots:String[] = New String[0]
 
@@ -67,6 +73,7 @@ Type TLspWorkspaceContext
 	Field projectGraphDirty:Int = True
 	Field documentationCache:TLspDocumentationCache = New TLspDocumentationCache
 	Field installedCatalogues:TLspInstalledModuleCatalogueStore
+	Field projectProgress:TLspProjectAnalysisProgress
 
 	Function Create:TLspWorkspaceContext(uri:String, name:String, configuration:TLspWorkspaceConfiguration = Null, dependencyCache:TLspDependencyCache = Null, documents:TLspDocumentStore = Null, installedCatalogues:TLspInstalledModuleCatalogueStore = Null)
 		Local context:TLspWorkspaceContext = New TLspWorkspaceContext
@@ -145,15 +152,24 @@ Type TLspWorkspaceContext
 
 	Method EnsureProjectGraph(cancellationToken:TLanguageCancellationToken = Null)
 		If Not projectGraphDirty Then Return
-		ClearProjectGraph()
-		projectGraphDirty = False
 		Local rootPath:String = configuration.rootSourcePath
-		If Not rootPath.length Or Not rootPath.ToLower().EndsWith(".bmx") Or FileType(rootPath) <> FILETYPE_FILE Then Return
-		If Not DiscoverProjectRoot(rootPath, New TMap, cancellationToken) Then
-			projectGraphDirty = True
+		If Not rootPath.length Or Not rootPath.ToLower().EndsWith(".bmx") Or FileType(rootPath) <> FILETYPE_FILE Then
+			ClearProjectGraph()
+			projectGraphDirty = False
 			Return
 		End If
+		If projectProgress Then projectProgress.Begin(rootPath, name)
+		ClearProjectGraph()
+		projectGraphDirty = False
+		If projectProgress Then projectProgress.Report("Discovering source dependencies")
+		If Not DiscoverProjectRoot(rootPath, New TMap, cancellationToken) Then
+			projectGraphDirty = True
+			If projectProgress Then projectProgress.Finish("Project analysis cancelled")
+			Return
+		End If
+		If projectProgress Then projectProgress.Report("Analysing " + StripDir(rootPath))
 		EnsureProjectAnalysis(rootPath, cancellationToken)
+		If projectProgress Then projectProgress.Finish("Project analysis ready")
 	End Method
 
 	Method DiscoverProjectRoot:Int(rootPath:String, states:TMap, cancellationToken:TLanguageCancellationToken = Null)
@@ -766,6 +782,7 @@ Type TLspWorkspaceStore
 	Field installedCatalogues:TLspInstalledModuleCatalogueStore = New TLspInstalledModuleCatalogueStore
 	Field adHoc:TLspWorkspaceContext
 	Field documents:TLspDocumentStore
+	Field projectProgress:TLspProjectAnalysisProgress
 
 	Method New()
 		adHoc = TLspWorkspaceContext.Create("", "Ad hoc", defaultConfiguration.Copy(), dependencyCache, documents, installedCatalogues)
@@ -779,6 +796,14 @@ Type TLspWorkspaceStore
 		Next
 	End Method
 
+	Method SetProjectProgress(progress:TLspProjectAnalysisProgress)
+		projectProgress = progress
+		adHoc.projectProgress = progress
+		For Local context:TLspWorkspaceContext = EachIn contexts.Values()
+			context.projectProgress = progress
+		Next
+	End Method
+
 	Method Add:TLspWorkspaceContext(uri:String, name:String)
 		Local context:TLspWorkspaceContext = Get(uri)
 		If context Then
@@ -786,6 +811,7 @@ Type TLspWorkspaceStore
 			Return context
 		End If
 		context = TLspWorkspaceContext.Create(uri, name, defaultConfiguration.Copy(), dependencyCache, documents, installedCatalogues)
+		context.projectProgress = projectProgress
 		contexts.Insert(uri, context)
 		contextCount :+ 1
 		Return context

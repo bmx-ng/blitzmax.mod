@@ -31,6 +31,84 @@ Const LSP_STATE_INITIALIZED:Int = 1
 Const LSP_STATE_SHUTDOWN:Int = 2
 Const LSP_REQUEST_CANCELLED:Int = -32800
 
+Type TLspWorkDoneProjectProgress Extends TLspProjectAnalysisProgress
+	Field transport:TLspTransport
+	Field enabled:Int
+	Field sequence:Int
+	Field activeToken:String
+	Field pendingResponses:TMap = New TMap
+	Field emitted:String[] = New String[0]
+
+	Function Create:TLspWorkDoneProjectProgress(transport:TLspTransport, enabled:Int = True)
+		Local result:TLspWorkDoneProjectProgress = New TLspWorkDoneProjectProgress
+		result.transport = transport
+		result.enabled = enabled
+		Return result
+	End Function
+
+	Method Begin(rootPath:String, workspaceName:String) Override
+		If Not enabled Or activeToken.length Then Return
+		sequence :+ 1
+		activeToken = "blitzmax-project-analysis-" + sequence
+		Local requestId:String = "blitzmax-project-progress-create-" + sequence
+		pendingResponses.Insert(requestId, requestId)
+		Local createParams:TJSONObject = JsonObject()
+		createParams.Set("token", activeToken)
+		Local request:TJSONObject = JsonObject()
+		request.Set("jsonrpc", "2.0")
+		request.Set("id", requestId)
+		request.Set("method", "window/workDoneProgress/create")
+		request.Set("params", createParams)
+		Emit(request)
+		Local title:String = "Analysing BlitzMax project"
+		If workspaceName.length And workspaceName <> "Ad hoc" Then title :+ " — " + workspaceName
+		Local value:TJSONObject = JsonObject()
+		value.Set("kind", "begin")
+		value.Set("title", title)
+		value.Set("message", StripDir(rootPath))
+		value.Set("cancellable", New TJSONBool.Create(False))
+		Progress(value)
+	End Method
+
+	Method Report(message:String) Override
+		If Not activeToken.length Then Return
+		Local value:TJSONObject = JsonObject()
+		value.Set("kind", "report")
+		value.Set("message", message)
+		Progress(value)
+	End Method
+
+	Method Finish(message:String) Override
+		If Not activeToken.length Then Return
+		Local value:TJSONObject = JsonObject()
+		value.Set("kind", "end")
+		If message.length Then value.Set("message", message)
+		Progress(value)
+		activeToken = ""
+	End Method
+
+	Method AcceptResponse:Int(response:TJSONObject)
+		If Not response Or response.GetString("method").length Then Return False
+		Local id:String = response.GetString("id")
+		If Not id.length Or Not pendingResponses.Contains(id) Then Return False
+		pendingResponses.Remove(id)
+		Return True
+	End Method
+
+	Method Progress(value:TJSONObject)
+		Local params:TJSONObject = JsonObject()
+		params.Set("token", activeToken)
+		params.Set("value", value)
+		Emit(JsonNotification("$/progress", params))
+	End Method
+
+	Method Emit(value:TJSONObject)
+		Local payload:String = value.SaveString(JSON_COMPACT)
+		emitted :+ [payload]
+		If transport Then transport.WriteMessage(payload)
+	End Method
+End Type
+
 Rem
 bbdoc: Implements a reusable BlitzMax Language Server Protocol endpoint.
 about: The server owns open-document and workspace state and dispatches JSON-RPC
@@ -46,6 +124,8 @@ Type TBlitzMaxLspServer
 	Field activeQueue:TLspMessageQueue
 	Field completionSnippetSupport:Int
 	Field workspaceSnippetEditSupport:Int
+	Field workDoneProgressSupport:Int
+	Field projectProgress:TLspWorkDoneProjectProgress
 
 	Method New()
 		workspaces.SetDocuments(documents)
@@ -57,6 +137,8 @@ Type TBlitzMaxLspServer
 	End Rem
 	Method Run(transport:TLspTransport)
 		activeQueue = New TLspMessageQueue
+		projectProgress = TLspWorkDoneProjectProgress.Create(transport, workDoneProgressSupport)
+		workspaces.SetProjectProgress(projectProgress)
 		Local reader:TLspTransportReader = TLspTransportReader.Create(transport, activeQueue)
 		Local readerThread:TThread = TThread.Create(TLspTransportReader.ReadLoop, reader)
 		While Not exitRequested
@@ -76,6 +158,8 @@ Type TBlitzMaxLspServer
 		Wend
 		activeQueue.Close()
 		activeQueue = Null
+		workspaces.SetProjectProgress(Null)
+		projectProgress = Null
 	End Method
 
 	Rem
@@ -88,6 +172,7 @@ Type TBlitzMaxLspServer
 		Local json:TJSON = TJSON.Load(payload, 0, error)
 		Local request:TJSONObject = TJSONObject(json)
 		If Not request Then Return [JsonErrorResponse(Null, JSONRPC_PARSE_ERROR, "Parse error").SaveString(JSON_COMPACT)]
+		If projectProgress And projectProgress.AcceptResponse(request) Then Return []
 		Return HandleRequest(request)
 	End Method
 
@@ -474,6 +559,7 @@ Type TBlitzMaxLspServer
 	Method CaptureClientCapabilities(params:TJSONObject)
 		completionSnippetSupport = False
 		workspaceSnippetEditSupport = False
+		workDoneProgressSupport = False
 		If Not params Then Return
 		Local capabilities:TJSONObject = TJSONObject(params.Get("capabilities"))
 		If Not capabilities Then Return
@@ -490,6 +576,9 @@ Type TBlitzMaxLspServer
 			Local workspaceEdit:TJSONObject = TJSONObject(workspace.Get("workspaceEdit"))
 			If workspaceEdit Then workspaceSnippetEditSupport = workspaceEdit.GetBool("snippetEditSupport")
 		End If
+		Local window:TJSONObject = TJSONObject(capabilities.Get("window"))
+		If window Then workDoneProgressSupport = window.GetBool("workDoneProgress")
+		If projectProgress Then projectProgress.enabled = workDoneProgressSupport
 	End Method
 
 	Method ApplyWorkspaceOverrides(options:TJSONObject)
