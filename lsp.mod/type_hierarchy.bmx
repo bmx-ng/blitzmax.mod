@@ -52,6 +52,17 @@ Type TBlitzMaxLspTypeHierarchy
 			Local analysis:TLanguageAnalysis = workspace.LatestAnalysis(analysisUri)
 			If analysis And analysis.model Then AppendSubtypes(result, analysis.model.globalScope, analysis, analysisUri, targetKey, documents, seen)
 		Next
+		For Local value:Object = EachIn workspace.projectAnalyses.Values()
+			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
+			If analysis And analysis.model And analysis.snapshot And analysis.snapshot.rootDocument Then
+				Local analysisUri:String = FileUriForPath(analysis.snapshot.rootDocument.path)
+				AppendSubtypes(result, analysis.model.globalScope, analysis, analysisUri, targetKey, documents, seen)
+			End If
+		Next
+		For Local rootPath:String = EachIn workspace.ProjectCandidateRoots(resolved.symbol.name, resolved.symbol.originPath)
+			Local analysis:TLanguageAnalysis = workspace.ProjectFeatureAnalysis(rootPath)
+			If analysis And analysis.model Then AppendSubtypes(result, analysis.model.globalScope, analysis, FileUriForPath(rootPath), targetKey, documents, seen)
+		Next
 		Return result
 	End Function
 
@@ -173,6 +184,17 @@ Type TBlitzMaxLspTypeHierarchy
 			symbol = FindSymbol(analysis, data)
 			If symbol Then Return TLspTypeHierarchyResolution.Create(symbol, analysis, analysisUri)
 		Next
+		For Local value:Object = EachIn workspace.projectAnalyses.Values()
+			Local analysis:TLanguageAnalysis = TLanguageAnalysis(value)
+			symbol = FindSymbol(analysis, data)
+			If symbol And analysis.snapshot And analysis.snapshot.rootDocument Then Return TLspTypeHierarchyResolution.Create(symbol, analysis, FileUriForPath(analysis.snapshot.rootDocument.path))
+		Next
+		Local projectRoot:String = workspace.ProjectRootForPath(data.GetString("originPath"))
+		If projectRoot.length Then
+			Local analysis:TLanguageAnalysis = workspace.ProjectFeatureAnalysis(projectRoot)
+			symbol = FindSymbol(analysis, data)
+			If symbol Then Return TLspTypeHierarchyResolution.Create(symbol, analysis, FileUriForPath(projectRoot))
+		End If
 		Return Null
 	End Function
 

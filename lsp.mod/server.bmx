@@ -622,6 +622,7 @@ Type TBlitzMaxLspServer
 		If Not document Then Return [TBlitzMaxLspDiagnostics.Clear(uri).SaveString(JSON_COMPACT)]
 		Local path:String = document.path
 		Local workspace:TLspWorkspaceContext = DocumentWorkspace(document)
+		workspace.MarkProjectGraphDirty(path)
 		Local dependencyChanged:Int = document.liveOverlay
 		workspace.InvalidateLiveInterfaceForPath(path)
 		documents.Close(uri)
@@ -632,6 +633,7 @@ Type TBlitzMaxLspServer
 	End Method
 
 	Method ReanalyzeAffected:String[](path:String, primary:TLspDocument, dependencyChanged:Int = True)
+		If primary Then DocumentWorkspace(primary).MarkProjectGraphDirty(primary.path)
 		Local affected:TLspDocument[]
 		If primary Then affected :+ [primary]
 		For Local candidate:TLspDocument = EachIn documents.documents.Values()
