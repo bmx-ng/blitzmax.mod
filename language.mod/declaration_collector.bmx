@@ -395,6 +395,7 @@ Type TDeclarationCollector
 		Local operatorName:String
 		If declaration.signature Then operatorName = declaration.signature.operatorName
 		Local symbol:TSymbol = Declare(SYMBOL_ROUTINE, declaration.nameToken, declaration, parent, visibility, operatorName)
+		If Not symbol Then Return
 		If declaration.signature Then
 			Local afterAssignment:Int
 			For Local token:TSyntaxToken = EachIn declaration.signature.modifierTokens

@@ -245,6 +245,10 @@ End Type
 Type TGenericTemplateArtifact
 	Field formatVersion:Int = GENERIC_TEMPLATE_FORMAT_VERSION
 	Field identity:TGenericTemplateIdentity
+	' Declaration provenance is used while publishing the compact Interface.
+	' It is diagnostic/editor metadata rather than canonical specialization
+	' content, so it is deliberately excluded from the artifact codec/revision.
+	Field source:TTemplateSourceLocation
 	' The revision is artifact content identity, not language type identity.
 	' identity.contentRevision remains readable for version-1 callers during
 	' migration, but new producers populate this field explicitly.

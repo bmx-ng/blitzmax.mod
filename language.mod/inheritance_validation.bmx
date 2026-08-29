@@ -239,7 +239,9 @@ Type TInheritanceValidator
 	Method ComputeAbstractTypes(scope:TScope)
 		For Local symbol:TSymbol = EachIn scope.declaredSymbols
 			If symbol.kind <> SYMBOL_TYPE And symbol.kind <> SYMBOL_INTERFACE Then Continue
-			If symbol.kind = SYMBOL_INTERFACE Or symbol.isAbstract Or HasAbstractObligation(symbol.declaredType, symbol.declaredType, 0) Then
+			Local obligations:TAbstractRoutineObligation[] = MissingAbstractObligations(symbol.declaredType, symbol.declaredType, New TMap, New TMap, 0)
+			If obligations.length Then model.abstractObligationMap.Insert(symbol, obligations)
+			If symbol.kind = SYMBOL_INTERFACE Or symbol.isAbstract Or obligations.length Then
 				model.abstractTypeMap.Insert(symbol, symbol)
 			End If
 		Next
@@ -248,28 +250,82 @@ Type TInheritanceValidator
 		Next
 	End Method
 
-	Method HasAbstractObligation:Int(targetType:TSemanticType, currentType:TSemanticType, depth:Int)
-		If depth > 64 Then Return False
+	Method MissingAbstractObligations:TAbstractRoutineObligation[](targetType:TSemanticType, currentType:TSemanticType, visited:TMap, seen:TMap, depth:Int)
+		Local result:TAbstractRoutineObligation[] = New TAbstractRoutineObligation[0]
+		If depth > 64 Then Return result
 		Local current:TNamedSemanticType = RuntimeNamedType(currentType)
-		If Not current Or Not current.symbol Or Not current.symbol.memberScope Then Return False
+		If Not current Or Not current.symbol Or Not current.symbol.memberScope Then Return result
+		Local visitKey:String = SnapshotTypeIdentity(current)
+		If visited.Contains(visitKey) Then Return result
+		visited.Insert(visitKey, visitKey)
 		For Local requirement:TSymbol = EachIn current.symbol.memberScope.declaredSymbols
 			If requirement.kind = SYMBOL_ROUTINE And requirement.isAbstract Then
+				Local missing:Int
 				If requirement.interfaceMethodKind = INTERFACE_METHOD_REABSTRACT Then
-					If Not HasConcreteTypeImplementation(targetType, requirement, current, 0) Then Return True
-				Else If Not HasConcreteImplementation(targetType, requirement, current, 0) Then
-					Return True
+					missing = Not HasConcreteTypeImplementation(targetType, requirement, current, 0)
+				Else
+					missing = Not HasConcreteImplementation(targetType, requirement, current, 0)
+				End If
+				If missing Then
+					Local obligation:TAbstractRoutineObligation = AbstractObligation(requirement, current)
+					Local identity:String = AbstractObligationIdentity(obligation)
+					Local existing:TAbstractRoutineObligation = TAbstractRoutineObligation(seen.ValueForKey(identity))
+					If existing Then
+						' One covariant implementation can satisfy both inherited
+						' declarations. Retain the narrower result for generation.
+						If IsSubtype(obligation.returnType, existing.returnType, 0) Then
+							existing.routine = obligation.routine
+							existing.ownerType = obligation.ownerType
+							existing.returnType = obligation.returnType
+							existing.parameterTypes = obligation.parameterTypes
+						End If
+					Else
+						seen.Insert(identity, obligation)
+						result :+ [obligation]
+					End If
 				End If
 			End If
 		Next
 		Local info:TTypeInheritanceInfo = model.InheritanceInfo(current.symbol)
-		If Not info Then Return False
+		If Not info Then Return result
 		Local ownerParameters:TSymbol[] = DeclaredTypeParameters(current.symbol)
 		For Local edge:TInheritanceEdge = EachIn CombinedEdges(info)
 			Local nextType:TSemanticType = Substitute(edge.semanticType, ownerParameters, current.typeArguments)
-			If HasAbstractObligation(targetType, nextType, depth + 1) Then Return True
+			result :+ MissingAbstractObligations(targetType, nextType, visited, seen, depth + 1)
 		Next
-		Return False
+		Return result
 	End Method
+
+	Method AbstractObligation:TAbstractRoutineObligation(requirement:TSymbol, ownerType:TNamedSemanticType)
+		Local result:TAbstractRoutineObligation = New TAbstractRoutineObligation
+		result.routine = requirement
+		result.ownerType = ownerType
+		Local parameters:TSymbol[] = DeclaredTypeParameters(ownerType.symbol)
+		result.returnType = Substitute(requirement.declaredType, parameters, ownerType.typeArguments)
+		result.parameterTypes = New TSemanticType[requirement.parameterTypes.length]
+		For Local index:Int = 0 Until requirement.parameterTypes.length
+			result.parameterTypes[index] = Substitute(requirement.parameterTypes[index], parameters, ownerType.typeArguments)
+		Next
+		Return result
+	End Method
+
+	Function AbstractObligationIdentity:String(obligation:TAbstractRoutineObligation)
+		If Not obligation Or Not obligation.routine Then Return ""
+		Local routine:TSymbol = obligation.routine
+		Local result:String = routine.name.ToLower() + "#" + routine.genericArity + "("
+		For Local index:Int = 0 Until obligation.parameterTypes.length
+			If index Then result :+ ","
+			If obligation.parameterTypes[index] Then result :+ obligation.parameterTypes[index].DisplayName().ToLower()
+			If ParameterModeAt(routine, index) = PARAMETER_PASS_VAR Then result :+ " var"
+		Next
+		Return result + ")"
+	End Function
+
+	Function SnapshotTypeIdentity:String(value:TNamedSemanticType)
+		If Not value Or Not value.symbol Then Return ""
+		Local symbol:TSymbol = value.symbol
+		Return symbol.originPath.Replace("\", "/").ToLower() + ":" + symbol.originLine + ":" + symbol.originColumn + ":" + value.DisplayName().ToLower()
+	End Function
 
 	Method HasConcreteTypeImplementation:Int(searchType:TSemanticType, requirement:TSymbol, requirementOwner:TNamedSemanticType, depth:Int)
 		If depth > 64 Then Return False

@@ -1740,7 +1740,9 @@ Type TBlitzMaxSyntaxParser
 			If interfaceDepth > 0 And TextEquals(Current().text, "return") Then
 				AddDiagnostic("BMX2332", "Interface method declarations cannot contain a body.", Current().span)
 			End If
-			node.body = EmptyBlockAt(node.headerTokens[node.headerTokens.length - 1].span.EndOffset())
+			Local headerEndOffset:Int = node.declarationToken.span.EndOffset()
+			If node.headerTokens.length Then headerEndOffset = node.headerTokens[node.headerTokens.length - 1].span.EndOffset()
+			node.body = EmptyBlockAt(headerEndOffset)
 			node.span = TSourceSpan.Create(start, node.body.span.start - start)
 			Return node
 		End If

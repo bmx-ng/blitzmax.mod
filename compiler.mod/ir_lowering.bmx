@@ -2535,7 +2535,7 @@ Type TCompilerIrLowerer
 					End If
 					If Not target And requirement And requirement.interfaceMethodKind = INTERFACE_METHOD_DEFAULT Then target = TCompilerIrFunction(functionsBySymbol.ValueForKey(requirement))
 					If Not target And irInterface.methods[index].defaultFunctionId.length Then target = FunctionById(irInterface.methods[index].defaultFunctionId)
-					If Not target And symbol.isAbstract Then
+					If Not target And irClass.isAbstract Then
 						Local abstractSlot:TCompilerIrClassFunctionSlot = ClassRequirementSlot(irClass, requirement)
 						If abstractSlot Then target = FunctionById(abstractSlot.functionId)
 					End If
@@ -2859,7 +2859,7 @@ Type TCompilerIrLowerer
 				If member.kind = SYMBOL_ROUTINE Then BuildRoutineShell(member, owner, baseSymbol, Null, baseType)
 			Next
 		End If
-		If symbol.isAbstract Then CompleteAbstractInterfaceSlots(symbol, owner)
+		If owner.isAbstract Then CompleteAbstractInterfaceSlots(symbol, owner)
 		completedClassRoutines.Insert(symbol, symbol)
 	End Method
 

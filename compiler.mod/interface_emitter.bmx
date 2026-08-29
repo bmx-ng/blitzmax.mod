@@ -477,7 +477,7 @@ Type TCompilerInterfaceEmitter
 					If parameter.passingMode = PARAMETER_PASS_VAR Then result :+ " Var"
 					If parameter.optional Then result :+ "=" + GenericDefaultSignature(parameter, artifact)
 				Next
-				result :+ ")" + GenericConstraints(artifact) + "~n"
+				result :+ ")" + GenericConstraints(artifact) + TemplateSourceSuffix(routine.source) + "~n"
 				result :+ "'@generic-template " + artifact.formatVersion + "," + Quoted(artifact.identity.StableName()) + "," + Quoted(artifact.EffectiveContentRevision()) + "," + Quoted(output.artifactReference) + "," + Quoted(artifact.languageLinkageRevision) + "~n"
 				Continue
 			End If
@@ -506,7 +506,7 @@ Type TCompilerInterfaceEmitter
 					inheritanceName :+ interfaceName
 				Next
 			End If
-			result :+ ">" + GenericConstraints(artifact) + "^" + inheritanceName + "{~n"
+			result :+ ">" + GenericConstraints(artifact) + "^" + inheritanceName + "{" + TemplateSourceSuffix(artifact.source) + "~n"
 			For Local member:TGenericTemplateMember = EachIn artifact.members
 				' Protected declarations are part of the externally consumable
 				' inheritance contract even though ordinary consumers cannot call
@@ -522,7 +522,7 @@ Type TCompilerInterfaceEmitter
 					Continue
 				End If
 				If member.kind = TEMPLATE_MEMBER_FIELD Then
-					result :+ "." + member.name + memberType + "&" + VisibilityTicks(member.visibility) + "~n"
+					result :+ "." + member.name + memberType + "&" + VisibilityTicks(member.visibility) + TemplateSourceSuffix(member.source) + "~n"
 				Else If member.kind = TEMPLATE_MEMBER_METHOD Then
 					If member.isTypeFunction Then
 						result :+ "+"
@@ -542,7 +542,7 @@ Type TCompilerInterfaceEmitter
 						If parameter.passingMode = PARAMETER_PASS_VAR Then result :+ " Var"
 						If parameter.optional Then result :+ "=" + GenericDefaultSignature(parameter, artifact)
 					Next
-					result :+ ")" + RoutineVisibilityFlags(member.visibility) + "~n"
+					result :+ ")" + RoutineVisibilityFlags(member.visibility) + TemplateSourceSuffix(member.source) + "~n"
 				End If
 			Next
 			result :+ EmitGenericMethods(artifact.identity.qualifiedName)
@@ -618,7 +618,7 @@ Type TCompilerInterfaceEmitter
 				If parameter.passingMode = PARAMETER_PASS_VAR Then result :+ " Var"
 				If parameter.optional Then result :+ "=" + GenericDefaultSignature(parameter, artifact)
 			Next
-			result :+ ")" + GenericConstraints(artifact) + "~n"
+			result :+ ")" + GenericConstraints(artifact) + TemplateSourceSuffix(routine.source) + "~n"
 			result :+ "'@generic-template " + artifact.formatVersion + "," + Quoted(artifact.identity.StableName()) + "," + Quoted(artifact.EffectiveContentRevision()) + "," + Quoted(output.artifactReference) + "," + Quoted(artifact.languageLinkageRevision) + "~n"
 		Next
 		Return result
@@ -1770,6 +1770,11 @@ Type TCompilerInterfaceEmitter
 		Local position:TSourcePosition = text.Position(source.span.start)
 		Return " '@source " + Quoted(source.path.Replace(Chr(92), "/")) + "," + (position.line + 1) + "," + position.column
 	End Method
+
+	Function TemplateSourceSuffix:String(source:TTemplateSourceLocation)
+		If Not source Or Not source.path.length Then Return ""
+		Return " '@source " + Quoted(source.path.Replace(Chr(92), "/")) + "," + source.line + "," + source.column
+	End Function
 
 	Method SourceText:TSourceText(path:String)
 		If analysis And analysis.snapshot Then
