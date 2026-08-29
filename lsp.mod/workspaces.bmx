@@ -60,6 +60,10 @@ Type TLspWorkspaceContext
 	Field projectDependencies:TMap = New TMap
 	Field projectOwners:TMap = New TMap
 	Field projectInterfaceFingerprints:TMap = New TMap
+	Field projectSourceSearchTerms:TMap = New TMap
+	Field projectRootSearchTerms:TMap = New TMap
+	Field projectExactTermRoots:TMap = New TMap
+	Field projectReachability:TMap = New TMap
 	Field projectGraphDirty:Int = True
 	Field documentationCache:TLspDocumentationCache = New TLspDocumentationCache
 	Field installedCatalogues:TLspInstalledModuleCatalogueStore
@@ -169,8 +173,12 @@ Type TLspWorkspaceContext
 			unitSources.Insert(SnapshotPathKey(includePath), includePath)
 			projectOwners.Insert(SnapshotPathKey(includePath), rootPath)
 		Next
+		For Local value:Object = EachIn unitSources.Values()
+			IndexProjectSource(String(value))
+		Next
 		projectRoots.Insert(rootKey, rootPath)
 		projectUnitSources.Insert(rootKey, unitSources)
+		IndexProjectRootSearch(rootPath)
 		projectDependencies.Insert(rootKey, resolver.sourceDependencies)
 		projectInterfaceFingerprints.Insert(rootKey, ProjectInterfaceFingerprint(sourceInterface))
 		liveInterfaces.Insert(rootKey, TSnapshotText.CreateInterface(rootPath, sourceInterface))
@@ -221,17 +229,29 @@ Type TLspWorkspaceContext
 		Local normalized:String = identifier.Trim().ToLower()
 		If Not normalized.length Then Return []
 		Local targetRoot:String = ProjectRootForPath(targetOriginPath)
+		Local candidateRoots:TMap = projectRoots
+		If targetRoot.length Then
+			candidateRoots = TMap(projectExactTermRoots.ValueForKey(normalized))
+			If Not candidateRoots Then Return []
+		End If
 		Local result:String[]
-		For Local value:Object = EachIn projectRoots.Values()
+		For Local value:Object = EachIn candidateRoots.Values()
 			Local rootPath:String = String(value)
-			If targetRoot.length And Not ProjectRootReaches(rootPath, targetRoot, New TMap) Then Continue
-			Local sources:TMap = TMap(projectUnitSources.ValueForKey(SnapshotPathKey(rootPath)))
-			If ProjectSourcesContain(sources, normalized) Then result :+ [rootPath]
+			If targetRoot.length And Not ProjectRootReaches(rootPath, targetRoot) Then Continue
+			If targetRoot.length Or ProjectRootContains(rootPath, normalized) Then result :+ [rootPath]
 		Next
 		Return result
 	End Method
 
-	Method ProjectRootReaches:Int(rootPath:String, targetRoot:String, visited:TMap)
+	Method ProjectRootReaches:Int(rootPath:String, targetRoot:String)
+		Local cacheKey:String = SnapshotPathKey(rootPath) + "~n" + SnapshotPathKey(targetRoot)
+		If projectReachability.Contains(cacheKey) Then Return String(projectReachability.ValueForKey(cacheKey)) = "1"
+		Local result:Int = ProjectRootReachesCore(rootPath, targetRoot, New TMap)
+		If result Then projectReachability.Insert(cacheKey, "1") Else projectReachability.Insert(cacheKey, "0")
+		Return result
+	End Method
+
+	Method ProjectRootReachesCore:Int(rootPath:String, targetRoot:String, visited:TMap)
 		Local rootKey:String = SnapshotPathKey(rootPath)
 		Local targetKey:String = SnapshotPathKey(targetRoot)
 		If rootKey = targetKey Then Return True
@@ -240,18 +260,78 @@ Type TLspWorkspaceContext
 		Local imports:TMap = TMap(projectImports.ValueForKey(rootKey))
 		If Not imports Then Return False
 		For Local value:Object = EachIn imports.Values()
-			If ProjectRootReaches(String(value), targetRoot, visited) Then Return True
+			If ProjectRootReachesCore(String(value), targetRoot, visited) Then Return True
 		Next
 		Return False
 	End Method
 
-	Method ProjectSourcesContain:Int(sources:TMap, normalizedIdentifier:String)
-		If Not sources Then Return False
-		For Local value:Object = EachIn sources.Values()
-			Local text:String = SourceTextForPath(String(value))
-			If text <> Null And text.ToLower().Find(normalizedIdentifier) >= 0 Then Return True
+	Method ProjectRootContains:Int(rootPath:String, normalizedIdentifier:String)
+		Local terms:TMap = TMap(projectRootSearchTerms.ValueForKey(SnapshotPathKey(rootPath)))
+		If Not terms Then Return False
+		For Local term:Object = EachIn terms.Keys()
+			If String(term).Find(normalizedIdentifier) >= 0 Then Return True
 		Next
 		Return False
+	End Method
+
+	Method IndexProjectSource(sourcePath:String)
+		Local text:String = SourceTextForPath(sourcePath)
+		If text = Null Then
+			projectSourceSearchTerms.Remove(SnapshotPathKey(sourcePath))
+			Return
+		End If
+		Local terms:TMap = New TMap
+		Local start:Int = -1
+		For Local index:Int = 0 To text.length
+			Local character:Int
+			If index < text.length Then character = text[index]
+			Local isIdentifier:Int = character >= Asc("A") And character <= Asc("Z") Or character >= Asc("a") And character <= Asc("z") Or character >= Asc("0") And character <= Asc("9") Or character = Asc("_") Or character > 127
+			If isIdentifier Then
+				If start < 0 Then start = index
+			Else If start >= 0 Then
+				terms.Insert(text[start..index].ToLower(), text[start..index])
+				start = -1
+			End If
+		Next
+		projectSourceSearchTerms.Insert(SnapshotPathKey(sourcePath), terms)
+	End Method
+
+	Method IndexProjectRootSearch(rootPath:String)
+		Local rootKey:String = SnapshotPathKey(rootPath)
+		Local previous:TMap = TMap(projectRootSearchTerms.ValueForKey(rootKey))
+		If previous Then
+			For Local term:Object = EachIn previous.Keys()
+				Local roots:TMap = TMap(projectExactTermRoots.ValueForKey(term))
+				If Not roots Then Continue
+				roots.Remove(rootKey)
+				Local hasRoot:Int
+				For Local unused:Object = EachIn roots.Keys()
+					hasRoot = True
+					Exit
+				Next
+				If Not hasRoot Then projectExactTermRoots.Remove(term)
+			Next
+		End If
+		Local terms:TMap = New TMap
+		Local sources:TMap = TMap(projectUnitSources.ValueForKey(rootKey))
+		If sources Then
+			For Local sourceValue:Object = EachIn sources.Values()
+				Local sourceTerms:TMap = TMap(projectSourceSearchTerms.ValueForKey(SnapshotPathKey(String(sourceValue))))
+				If Not sourceTerms Then Continue
+				For Local term:Object = EachIn sourceTerms.Keys()
+					terms.Insert(term, term)
+				Next
+			Next
+		End If
+		projectRootSearchTerms.Insert(rootKey, terms)
+		For Local term:Object = EachIn terms.Keys()
+			Local roots:TMap = TMap(projectExactTermRoots.ValueForKey(term))
+			If Not roots Then
+				roots = New TMap
+				projectExactTermRoots.Insert(term, roots)
+			End If
+			roots.Insert(rootKey, rootPath)
+		Next
 	End Method
 
 	Method ProjectAnalysisOptions:TLanguageAnalysisOptions(cancellationToken:TLanguageCancellationToken)
@@ -327,17 +407,42 @@ Type TLspWorkspaceContext
 		projectDependencies.Insert(ownerKey, resolver.sourceDependencies)
 		projectInterfaceFingerprints.Insert(ownerKey, currentFingerprint)
 		liveInterfaces.Insert(ownerKey, TSnapshotText.CreateInterface(ownerPath, sourceInterface))
+		IndexProjectSource(changedPath)
+		IndexProjectRootSearch(ownerPath)
 		InvalidateProjectAnalysis(ownerPath)
 		If previousFingerprint <> currentFingerprint Then
 			Local affectedRoots:String[]
 			For Local value:Object = EachIn projectRoots.Values()
 				Local rootPath:String = String(value)
-				If SnapshotPathKey(rootPath) <> ownerKey And ProjectRootReaches(rootPath, ownerPath, New TMap) Then affectedRoots :+ [rootPath]
+				If SnapshotPathKey(rootPath) <> ownerKey And ProjectRootReaches(rootPath, ownerPath) Then affectedRoots :+ [rootPath]
 			Next
 			For Local rootPath:String = EachIn affectedRoots
 				InvalidateProjectAnalysis(rootPath)
 			Next
 		End If
+	End Method
+
+	Method RefreshWatchedPath(changedPath:String)
+		If Not changedPath.length Then Return
+		If changedPath.ToLower().EndsWith(".bmx") Then RefreshProjectPath(changedPath); Return
+		If projectGraphDirty Then Return
+		Local changedKey:String = SnapshotPathKey(changedPath)
+		Local directlyAffected:String[]
+		For Local key:Object = EachIn projectDependencies.Keys()
+			Local dependencies:TMap = TMap(projectDependencies.ValueForKey(key))
+			If dependencies And dependencies.Contains(changedKey) Then directlyAffected :+ [String(projectRoots.ValueForKey(key))]
+		Next
+		If Not directlyAffected.length Then Return
+		Local affected:TMap = New TMap
+		For Local directRoot:String = EachIn directlyAffected
+			For Local value:Object = EachIn projectRoots.Values()
+				Local rootPath:String = String(value)
+				If ProjectRootReaches(rootPath, directRoot) Then affected.Insert(SnapshotPathKey(rootPath), rootPath)
+			Next
+		Next
+		For Local value:Object = EachIn affected.Values()
+			InvalidateProjectAnalysis(String(value))
+		Next
 	End Method
 
 	Method ProjectSourceImports:TMap(rootPath:String, sourceInterface:TInterfaceFile, resolver:TLspFileSnapshotResolver)
@@ -437,6 +542,10 @@ Type TLspWorkspaceContext
 		projectDependencies.Clear()
 		projectOwners.Clear()
 		projectInterfaceFingerprints.Clear()
+		projectSourceSearchTerms.Clear()
+		projectRootSearchTerms.Clear()
+		projectExactTermRoots.Clear()
+		projectReachability.Clear()
 	End Method
 
 	Method RefreshLiveInterface(rootPath:String, rootText:String, analysis:TLanguageAnalysis, resolver:TLspFileSnapshotResolver)
@@ -632,6 +741,10 @@ Type TLspWorkspaceContext
 		projectDependencies.Clear()
 		projectOwners.Clear()
 		projectInterfaceFingerprints.Clear()
+		projectSourceSearchTerms.Clear()
+		projectRootSearchTerms.Clear()
+		projectExactTermRoots.Clear()
+		projectReachability.Clear()
 		projectGraphDirty = True
 		documentationCache.Clear()
 	End Method
@@ -730,5 +843,12 @@ Type TLspWorkspaceStore
 
 	Method ClearCatalogues()
 		installedCatalogues.Clear()
+	End Method
+
+	Method RefreshWatchedPath(path:String)
+		adHoc.RefreshWatchedPath(path)
+		For Local context:TLspWorkspaceContext = EachIn contexts.Values()
+			context.RefreshWatchedPath(path)
+		Next
 	End Method
 End Type

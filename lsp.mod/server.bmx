@@ -524,16 +524,24 @@ Type TBlitzMaxLspServer
 		Local changes:TJSONArray = TJSONArray(params.Get("changes"))
 		If Not changes Or changes.Size() = 0 Then Return []
 		Local interfaceChanged:Int
+		Local changedPaths:String[]
+		Local seen:TMap = New TMap
 		For Local index:Int = 0 Until changes.Size()
 			Local change:TJSONObject = TJSONObject(changes.Get(index))
-			If change And FileUriToPath(change.GetString("uri")).ToLower().EndsWith(".i") Then interfaceChanged = True
+			If Not change Then Continue
+			Local path:String = FileUriToPath(change.GetString("uri"))
+			Local key:String = SnapshotPathKey(path)
+			If Not path.length Or seen.Contains(key) Then Continue
+			seen.Insert(key, path)
+			changedPaths :+ [path]
+			workspaces.dependencyCache.Invalidate(path)
+			If path.ToLower().EndsWith(".i") Then interfaceChanged = True
 		Next
-		workspaces.dependencyCache.Clear()
-		If interfaceChanged Then
-			workspaces.ClearCatalogues()
-		End If
-		workspaces.ClearAnalyses()
-		Return ReanalyzeDocuments()
+		If interfaceChanged Then workspaces.ClearCatalogues()
+		For Local path:String = EachIn changedPaths
+			workspaces.RefreshWatchedPath(path)
+		Next
+		Return ReanalyzeWatchedPaths(changedPaths)
 	End Method
 
 	Method DidChangeWorkspaceFolders:String[](params:TJSONObject)
@@ -653,6 +661,24 @@ Type TBlitzMaxLspServer
 			If Not dependsOnChange And dependencyRoot.length Then dependsOnChange = workspace.DependsOnPath(candidate.uri, dependencyRoot)
 			If sameCompilationUnit Or dependsOnChange Then affected :+ [candidate]
 		Next
+		Return PublishAffectedDocuments(affected)
+	End Method
+
+	Method ReanalyzeWatchedPaths:String[](paths:String[])
+		Local affected:TLspDocument[]
+		For Local candidate:TLspDocument = EachIn documents.documents.Values()
+			Local workspace:TLspWorkspaceContext = DocumentWorkspace(candidate)
+			For Local path:String = EachIn paths
+				If workspace.IsDocumentInCompilationUnit(candidate.path, path) Or workspace.DependsOnPath(candidate.uri, path) Then
+					affected :+ [candidate]
+					Exit
+				End If
+			Next
+		Next
+		Return PublishAffectedDocuments(affected)
+	End Method
+
+	Method PublishAffectedDocuments:String[](affected:TLspDocument[])
 		Local responses:String[]
 		Local published:TMap = New TMap
 		Local analyzedRoots:TMap = New TMap
