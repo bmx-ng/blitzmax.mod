@@ -110,7 +110,7 @@ Type TMemberCompletion
 			receiver = TExpressionSyntax(node)
 			If Not receiver Then node = navigator.Parent(node)
 		Wend
-		If Not receiver Then receiver = IntrinsicReceiver(navigator.TokenAt(receiverOffset))
+		If Not receiver Then receiver = TokenReceiver(navigator.TokenAt(receiverOffset))
 		If Not receiver Then Return Null
 		' An incomplete trailing member access can make the expression parser
 		' preserve the entire expression as a recovery node. Reparse only the
@@ -118,10 +118,10 @@ Type TMemberCompletion
 		' receiver inside parenthesis-free call arguments such as Print value.
 		Local raw:TRawExpressionSyntax = TRawExpressionSyntax(receiver)
 		If raw Then
-			' A literal token immediately before the completion dot is the
-			' unambiguous receiver, even when the surrounding unfinished call can
-			' itself be parsed as a recovery expression.
-			Local recovered:TExpressionSyntax = IntrinsicReceiver(navigator.TokenAt(receiverOffset))
+			' A literal or simple-name token immediately before the completion dot
+			' is the unambiguous receiver, even when the surrounding unfinished call
+			' can itself be parsed as a recovery expression.
+			Local recovered:TExpressionSyntax = TokenReceiver(navigator.TokenAt(receiverOffset))
 			If Not recovered Then recovered = ReceiverPrefix(raw, dotOffset)
 			If recovered Then receiver = recovered
 		End If
@@ -201,6 +201,20 @@ Type TMemberCompletion
 				Return literal
 		End Select
 		Return Null
+	End Function
+
+	' A parenthesized unfinished call can collapse its entire argument list into
+	' a raw recovery expression. Preserve a simple name immediately before the
+	' completion dot so normal lexical/type lookup can recover its declared type.
+	Function TokenReceiver:TExpressionSyntax(token:TSyntaxToken)
+		Local intrinsic:TExpressionSyntax = IntrinsicReceiver(token)
+		If intrinsic Then Return intrinsic
+		If Not token Or token.kind <> TOKEN_IDENTIFIER Then Return Null
+		Local name:TNameExpressionSyntax = New TNameExpressionSyntax
+		name.kind = SYNTAX_NAME_EXPRESSION
+		name.nameToken = token
+		name.span = token.span
+		Return name
 	End Function
 
 	' ReceiverPrefix creates recovery syntax that is intentionally not inserted
