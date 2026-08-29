@@ -542,7 +542,12 @@ Type TCompilerInterfaceEmitter
 						If parameter.passingMode = PARAMETER_PASS_VAR Then result :+ " Var"
 						If parameter.optional Then result :+ "=" + GenericDefaultSignature(parameter, artifact)
 					Next
-					result :+ ")" + RoutineVisibilityFlags(member.visibility) + TemplateSourceSuffix(member.source) + "~n"
+					Local memberFlags:String = RoutineVisibilityFlags(member.visibility)
+					If artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_INTERFACE Then
+						If member.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_DEFAULT Then memberFlags :+ "D"
+						If member.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_REABSTRACT Then memberFlags :+ "R"
+					End If
+					result :+ ")" + memberFlags + TemplateSourceSuffix(member.source) + "~n"
 				End If
 			Next
 			result :+ EmitGenericMethods(artifact.identity.qualifiedName)
