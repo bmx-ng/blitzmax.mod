@@ -2237,6 +2237,192 @@ Type TCompilerGenericSpecializationLowerer
 End Type
 
 Type TCompilerGenericCUnitEmitter
+	Function PicoTarget:Int(ir:TCompilerGenericSpecializationIr)
+		Return ir And ir.specialization And ir.specialization.configuration And ir.specialization.configuration.targetPlatform.ToLower() = "pico"
+	End Function
+
+	Function PicoScalarType:Int(value:TTemplateTypeReference)
+		If Not value Then Return True
+		If value.kind = TEMPLATE_TYPE_POINTER Then Return value.elementType <> Null
+		If value.kind <> TEMPLATE_TYPE_BUILTIN Then Return False
+		Select value.symbolName.ToLower()
+			Case "void", "byte", "short", "int", "uint", "long", "ulong", "longint", "ulongint", "size_t", "float", "double"
+				Return True
+		End Select
+		Return False
+	End Function
+
+	Function PicoScalarNode:Int(node:TGenericTemplateNode)
+		If Not node Then Return True
+		' SizeOf/AlignOf return a scalar even when their compile-time type operand
+		' is a Struct, managed reference, or pointer. The operand is never emitted
+		' as a runtime value, so validate its ABI directly instead of applying the
+		' scalar-expression restriction recursively.
+		If node.kind = TEMPLATE_NODE_OPERATOR And node.identity = "type-measure" Then
+			Return node.semanticType And PicoScalarType(node.semanticType) And node.children.length = 1 And PicoTypeValueType(node.children[0].semanticType)
+		End If
+		If node.semanticType And Not PicoScalarType(node.semanticType) Then Return False
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If Not PicoScalarNode(child) Then Return False
+		Next
+		Return True
+	End Function
+
+	Function PicoStructValueType:Int(value:TTemplateTypeReference)
+		If PicoScalarType(value) Then Return True
+		Return value And value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "string"
+	End Function
+
+	Function PicoStructNode:Int(node:TGenericTemplateNode)
+		If Not node Then Return True
+		' Self is represented with the closed Struct type, while member nodes carry
+		' the transported field value type. The receiver itself is stack storage,
+		' not a managed value admitted to the specialization body.
+		If node.kind <> TEMPLATE_NODE_SELF And node.semanticType And Not PicoStructValueType(node.semanticType) Then Return False
+		' This first rooted tier still excludes operations whose Pico lowering is
+		' not implemented here. String operators may allocate because specialization
+		' methods now own precise frames for Self, parameters, and managed locals.
+		Select node.kind
+			Case TEMPLATE_NODE_CALL, TEMPLATE_NODE_NEW, TEMPLATE_NODE_THROW, TEMPLATE_NODE_CONSTRUCTOR_DELEGATION, TEMPLATE_NODE_ARRAY_LENGTH, TEMPLATE_NODE_ARRAY_ELEMENT, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ASSERT, TEMPLATE_NODE_ARRAY_LITERAL, TEMPLATE_NODE_TRY, TEMPLATE_NODE_USING, TEMPLATE_NODE_DATA, TEMPLATE_NODE_FUNCTION_LITERAL, TEMPLATE_NODE_RELEASE, TEMPLATE_NODE_YIELD
+				Return False
+			Case TEMPLATE_NODE_LITERAL
+				If node.semanticType And node.semanticType.kind = TEMPLATE_TYPE_BUILTIN And node.semanticType.symbolName.ToLower() = "string" Then Return False
+			Case TEMPLATE_NODE_OPERATOR
+				If StringTemplateType(node.semanticType) Then
+					For Local operand:TGenericTemplateNode = EachIn node.children
+						If Not StringTemplateType(operand.semanticType) Then Return False
+					Next
+				End If
+		End Select
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If Not PicoStructNode(child) Then Return False
+		Next
+		Return True
+	End Function
+
+	Function PicoStructBaselineSupported:Int(ir:TCompilerGenericSpecializationIr)
+		If Not ir Or Not ir.isStruct Or ir.staticFields.length Then Return False
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If Not field Or field.semanticType.kind = TEMPLATE_TYPE_STATIC_ARRAY Or Not PicoStructValueType(field.semanticType) Then Return False
+			If field.initializer And Not PicoStructNode(field.initializer) Then Return False
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
+				If Not parameter Or parameter.passingMode <> PARAMETER_PASS_VALUE Or Not PicoStructValueType(parameter.semanticType) Then Return False
+			Next
+			If Not PicoStructNode(constructor.body) Then Return False
+		Next
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If Not PicoStructValueType(method.returnType) Then Return False
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				If Not parameter Or parameter.passingMode <> PARAMETER_PASS_VALUE Or Not PicoStructValueType(parameter.semanticType) Then Return False
+			Next
+			If Not PicoStructNode(method.body) Then Return False
+		Next
+		Return True
+	End Function
+
+	Function PicoTypeNode:Int(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr = Null)
+		If Not node Then Return True
+		If node.kind <> TEMPLATE_NODE_SELF And node.semanticType And Not PicoTypeValueType(node.semanticType, ir) Then Return False
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If Not PicoTypeNode(child, ir) Then Return False
+		Next
+		Return True
+	End Function
+
+	Function PicoTypeValueType:Int(value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr = Null)
+		If PicoScalarType(value) Then Return True
+		If Not value Then Return False
+		If value.kind = TEMPLATE_TYPE_ARRAY Or value.kind = TEMPLATE_TYPE_CLOSURE Then Return True
+		If value.kind = TEMPLATE_TYPE_BUILTIN Then Return value.symbolName.ToLower() = "string" Or value.symbolName.ToLower() = "object"
+		If value.kind <> TEMPLATE_TYPE_NAMED Then Return False
+		If value.runtimeKind = TEMPLATE_RUNTIME_CLASS Or value.runtimeKind = TEMPLATE_RUNTIME_INTERFACE Then Return True
+		If value.runtimeKind = TEMPLATE_RUNTIME_STRUCT Then
+			If value.runtimeAbiName.length Then Return True
+			Local referenced:TGenericSpecializationNode = TCompilerGenericSpecializationLowerer.ReferencedSpecialization(value, ir)
+			Return referenced And referenced.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_STRUCT
+		End If
+		If value.runtimeKind = TEMPLATE_RUNTIME_ENUM Then Return TCompilerGenericSpecializationLowerer.EnumValueTypeSupported(value.runtimeValueType)
+		Return False
+	End Function
+
+	Function PicoTypeBaselineSupported:Int(ir:TCompilerGenericSpecializationIr)
+		Return Not PicoTypeBaselineUnsupportedReason(ir).length
+	End Function
+
+	Function PicoTypeBaselineUnsupportedReason:String(ir:TCompilerGenericSpecializationIr)
+		If Not ir Then Return "missing specialization IR"
+		If ir.isRoutine Or ir.isInterface Or ir.isStruct Then Return "specialization kind is not a Type"
+		If ir.staticFields.length Then Return "static fields are not supported"
+		If ir.implementedRuntimeInterfaces.length Then Return "ordinary imported Interface implementation is not supported"
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If Not field Then Return "missing field IR"
+			If Not PicoTypeValueType(field.semanticType, ir) Then Return "field '" + field.name + "' has unsupported type '" + field.semanticType.CanonicalName() + "'"
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
+				If Not parameter Then Return "constructor has missing parameter IR"
+				If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "constructor parameter '" + parameter.name + "' has unsupported passing mode"
+				If Not PicoTypeValueType(parameter.semanticType, ir) Then Return "constructor parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+			Next
+		Next
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If Not PicoTypeValueType(method.returnType, ir) Then Return "method '" + method.name + "' has unsupported return type '" + method.returnType.CanonicalName() + "'"
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				If Not parameter Then Return "method '" + method.name + "' has missing parameter IR"
+				If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "method '" + method.name + "' parameter '" + parameter.name + "' has unsupported passing mode"
+				If Not PicoTypeValueType(parameter.semanticType, ir) Then Return "method '" + method.name + "' parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+			Next
+		Next
+		Return ""
+	End Function
+
+	Function PicoBaselineUnsupportedReason:String(ir:TCompilerGenericSpecializationIr)
+		If ir And ir.isStruct Then
+			If PicoStructBaselineSupported(ir) Then Return ""
+			Return "Struct ABI shape or body operation is unsupported"
+		End If
+		If ir And ir.isInterface Then
+			For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+				If Not PicoTypeValueType(method.returnType, ir) Then Return "Interface method '" + method.name + "' has unsupported return type '" + method.returnType.CanonicalName() + "'"
+				For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+					If Not parameter Then Return "Interface method '" + method.name + "' has missing parameter IR"
+					If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "Interface method '" + method.name + "' parameter '" + parameter.name + "' has unsupported passing mode"
+					If Not PicoTypeValueType(parameter.semanticType, ir) Then Return "Interface method '" + method.name + "' parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+				Next
+				If method.body And Not PicoTypeNode(method.body, ir) Then Return "Interface method '" + method.name + "' has an unsupported body operation"
+			Next
+			Return ""
+		End If
+		If ir And Not ir.isRoutine And Not ir.isInterface Then Return PicoTypeBaselineUnsupportedReason(ir)
+		If Not ir Or Not ir.isRoutine Or Not ir.routine Then Return "missing routine specialization IR"
+		If ir.routine.receiverType Then Return "generic method receiver ABI is unsupported"
+		If Not PicoScalarType(ir.routine.returnType) Then Return "routine has unsupported return type '" + ir.routine.returnType.CanonicalName() + "'"
+		For Local parameter:TGenericTemplateValueParameter = EachIn ir.routine.parameters
+			If Not parameter Then Return "routine has missing parameter IR"
+			If parameter.passingMode <> PARAMETER_PASS_VALUE Then Return "routine parameter '" + parameter.name + "' has unsupported passing mode"
+			If Not PicoScalarType(parameter.semanticType) Then Return "routine parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+		Next
+		If Not PicoScalarNode(ir.routine.body) Then Return "routine body uses an unsupported ABI shape or operation"
+		Return ""
+	End Function
+
+	Function PicoBaselineSupported:Int(ir:TCompilerGenericSpecializationIr)
+		Return Not PicoBaselineUnsupportedReason(ir).length
+	End Function
+
+	Function UnitPreamble:String(ir:TCompilerGenericSpecializationIr, includeStddef:Int = False)
+		If PicoTarget(ir) Then
+			Local result:String
+			If includeStddef Then result :+ "#include <stddef.h>~n"
+			Return result + "#include <stdint.h>~n#include <blitzmax/pico_runtime.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n"
+		End If
+		Local result:String
+		If includeStddef Then result :+ "#include <stddef.h>~n"
+		Return result + "#include <brl.mod/blitz.mod/blitz.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
+	End Function
+
 	Function IsRoutineSpecialization:Int(node:TGenericSpecializationNode)
 		Return node And node.artifact And node.artifact.identity And node.artifact.identity.declarationKind = GENERIC_DECLARATION_ROUTINE
 	End Function
@@ -2369,6 +2555,7 @@ Type TCompilerGenericCUnitEmitter
 		If ir.isRoutine Then Return EmitRoutineDeclarations(ir, diagnostics)
 		If ir.isInterface Then Return EmitInterfaceDeclarations(ir, diagnostics)
 		If ir.isStruct Then Return EmitStructDeclarations(ir, diagnostics, includeReferencedStructs)
+		If PicoTarget(ir) Then Return EmitPicoTypeDeclarations(ir, diagnostics)
 		If Not emittedClassLayouts Then emittedClassLayouts = New TMap
 		Local result:TStringBuilder = New TStringBuilder(4096)
 		result.Append("struct " + abiName + "_obj;~n")
@@ -2488,6 +2675,92 @@ Type TCompilerGenericCUnitEmitter
 		Return result.ToString()
 	End Function
 
+	Function EmitPicoTypeDeclarations:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
+		Local result:String
+		Local emittedStructs:TMap = New TMap
+		Local visitingStructs:TMap = New TMap
+		For Local referenced:TGenericSpecializationNode = EachIn ir.referencedSpecializations
+			If IsRoutineSpecialization(referenced) Or referenced.artifact.typeDeclarationKind <> GENERIC_TYPE_DECLARATION_STRUCT Then Continue
+			Local referencedIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(referenced, diagnostics)
+			If referencedIr Then result :+ EmitStructDeclarationTree(referencedIr, emittedStructs, visitingStructs, diagnostics)
+		Next
+		Return result + EmitPicoTypeDeclarationTree(ir, diagnostics, New TMap, New TMap)
+	End Function
+
+	Function EmitPicoTypeDeclarationTree:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, emitted:TMap, visiting:TMap)
+		If Not ir Or Not ir.specialization Then Return ""
+		Local key:String = ir.specialization.key.CanonicalName()
+		If emitted.Contains(key) Then Return ""
+		If visiting.Contains(key) Then Return "struct " + ir.specialization.readableAbiName + "_obj;~n"
+		visiting.Insert(key, ir.specialization)
+		Local result:String
+		For Local referenced:TGenericSpecializationNode = EachIn ir.referencedSpecializations
+			If IsRoutineSpecialization(referenced) Or referenced.artifact.typeDeclarationKind <> GENERIC_TYPE_DECLARATION_CLASS Then Continue
+			Local referencedIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(referenced, diagnostics)
+			If referencedIr Then result :+ EmitPicoTypeDeclarationTree(referencedIr, diagnostics, emitted, visiting)
+		Next
+		visiting.Remove(key)
+		emitted.Insert(key, ir.specialization)
+		Return result + EmitPicoTypeDeclarationOwn(ir, diagnostics)
+	End Function
+
+	Function EmitPicoTypeDeclarationOwn:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
+		Local abiName:String = ir.specialization.readableAbiName
+		Local guard:String = DeclarationGuard("pico_class", abiName)
+		Local result:String
+		For Local referencedInterface:TGenericSpecializationNode = EachIn ir.referencedSpecializations
+			If referencedInterface.IsAbiReferenceOnly() Or referencedInterface.artifact.typeDeclarationKind <> GENERIC_TYPE_DECLARATION_INTERFACE Then Continue
+			result :+ EmitPicoReferencedInterfaceDeclarations(referencedInterface, ir, diagnostics)
+		Next
+		For Local interfaceNode:TGenericSpecializationNode = EachIn ir.implementedInterfaces
+			result :+ EmitPicoReferencedInterfaceDeclarations(interfaceNode, ir, diagnostics)
+		Next
+		result :+ "#ifndef " + guard + "~n#define " + guard + "~n"
+		result :+ "struct " + abiName + "_obj {~n    BMXPicoObject object;~n"
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			Local declaration:String = CStorageDeclaration(field.semanticType, field.abiName, ir)
+			If Not declaration.length Then
+				diagnostics :+ ["BMXC3022 field '" + field.name + "' has no Pico C ABI type"]
+				Continue
+			End If
+			result :+ "    " + declaration + ";~n"
+		Next
+		result :+ "};~n"
+		result :+ "extern const BMXPicoTypeDescriptor " + abiName + "_type;~n"
+		result :+ "void " + abiName + "_register(void);~n"
+		result :+ "struct " + abiName + "_obj *" + abiName + "_New(void);~n"
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			result :+ "struct " + abiName + "_obj *" + constructor.abiName + "(" + PicoTypeConstructorParameters(constructor, ir, True) + ");~n"
+			result :+ "void " + constructor.abiName + "_init(struct " + abiName + "_obj *self" + TypeConstructorParameters(constructor, ir, True) + ");~n"
+		Next
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			Local parameters:String
+			Local methodOwnerName:String = abiName
+			If method.declaringSpecialization Then methodOwnerName = method.declaringSpecialization.readableAbiName
+			If Not method.isTypeFunction Then parameters = "struct " + methodOwnerName + "_obj *self"
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				If parameters.length Then parameters :+ ", "
+				parameters :+ CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
+			Next
+			If Not parameters.length Then parameters = "void"
+			result :+ CFunctionDeclaration(method.returnType, method.abiName, parameters, ir) + ";~n"
+		Next
+		If PicoGenericTypeHasFinalizer(ir) Then result :+ "void " + PicoGenericFinalizerName(ir.specialization) + "(void *object);~n"
+		Return result + "#endif~n"
+	End Function
+
+	Function PicoTypeConstructorParameters:String(constructor:TCompilerGenericMethodIr, ir:TCompilerGenericSpecializationIr, includeNames:Int)
+		If Not constructor Or Not constructor.parameters.length Then Return "void"
+		Local result:String
+		For Local index:Int = 0 Until constructor.parameters.length
+			If index Then result :+ ", "
+			Local name:String
+			If includeNames Then name = TCompilerAbiNamer.Sanitize(constructor.parameters[index].name)
+			result :+ CValueDeclaration(constructor.parameters[index].semanticType, name, ir, constructor.parameters[index].passingMode)
+		Next
+		Return result
+	End Function
+
 	Function EmitRoutineDeclarations:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
 		If Not ir Or Not ir.routine Then
 			diagnostics :+ ["BMXC3020 typed generic routine IR is required for declaration emission"]
@@ -2580,8 +2853,11 @@ Type TCompilerGenericCUnitEmitter
 		result :+ "void " + abiName + "_register(void);~n"
 		If HasThreadedStaticFields(ir) Then result :+ "void " + ThreadInitializationName(ir) + "(void);~n"
 		result :+ "void bbStructElementInit_" + abiName + "(void *bmx_value);~n"
-		result :+ "BBArray *bbArrayNew1DStruct_" + abiName + "(int length);~n"
-		result :+ "BBArray *bbArraySliceStruct_" + abiName + "(BBArray *inarr, int beg, int end);~n"
+		If PicoTarget(ir) Then result :+ "extern const BMXPicoValueDescriptor " + PicoGenericStructDescriptorAbiName(abiName) + ";~n"
+		If Not PicoTarget(ir) Then
+			result :+ "BBArray *bbArrayNew1DStruct_" + abiName + "(int length);~n"
+			result :+ "BBArray *bbArraySliceStruct_" + abiName + "(BBArray *inarr, int beg, int end);~n"
+		End If
 		For Local irMethod:TCompilerGenericMethodIr = EachIn ir.methods
 			Local cReturnType:String = CType(irMethod.returnType, ir)
 			If Not cReturnType.length Then
@@ -2630,6 +2906,7 @@ Type TCompilerGenericCUnitEmitter
 	End Function
 
 	Function EmitReferencedInterfaceDeclarations:String(node:TGenericSpecializationNode, ownerIr:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
+		If PicoTarget(ownerIr) Then Return EmitPicoReferencedInterfaceDeclarations(node, ownerIr, diagnostics)
 		Local result:String
 		Local interfaceIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(node, diagnostics)
 		If interfaceIr Then
@@ -2692,6 +2969,7 @@ Type TCompilerGenericCUnitEmitter
 	End Function
 
 	Function EmitInterfaceDeclarations:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
+		If PicoTarget(ir) Then Return EmitPicoInterfaceDeclarations(ir, diagnostics)
 		Local abiName:String = ir.specialization.readableAbiName
 		Local declarationGuard:String = TCompilerGenericCUnitEmitter.DeclarationGuard("interface", abiName + "_methods")
 		Local result:String
@@ -2749,6 +3027,83 @@ Type TCompilerGenericCUnitEmitter
 			result :+ ");~n}~n"
 		Next
 		Return result
+	End Function
+
+	Function EmitPicoReferencedInterfaceDeclarations:String(node:TGenericSpecializationNode, ownerIr:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
+		Local interfaceIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(node, diagnostics)
+		If Not interfaceIr Then Return ""
+		Return EmitPicoInterfaceDeclarations(interfaceIr, diagnostics)
+	End Function
+
+	Function PicoOrdinaryClassForwardDeclarations:String(value:TTemplateTypeReference, emitted:TMap)
+		If Not value Then Return ""
+		Local result:String
+		If value.elementType Then result :+ PicoOrdinaryClassForwardDeclarations(value.elementType, emitted)
+		For Local argument:TTemplateTypeReference = EachIn value.arguments
+			result :+ PicoOrdinaryClassForwardDeclarations(argument, emitted)
+		Next
+		If value.kind <> TEMPLATE_TYPE_NAMED Or value.runtimeKind <> TEMPLATE_RUNTIME_CLASS Or Not value.runtimeAbiName.length Then Return result
+		Local key:String = value.runtimeAbiName.ToLower()
+		If emitted.Contains(key) Then Return result
+		emitted.Insert(key, value)
+		Return result + "struct " + value.runtimeAbiName + "_obj;~n"
+	End Function
+
+	Function EmitPicoInterfaceDeclarations:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
+		Local abiName:String = ir.specialization.readableAbiName
+		Local guard:String = DeclarationGuard("pico_interface", abiName + "_methods")
+		Local result:String
+		Local emittedOrdinaryClasses:TMap = New TMap
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			result :+ PicoOrdinaryClassForwardDeclarations(method.returnType, emittedOrdinaryClasses)
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				result :+ PicoOrdinaryClassForwardDeclarations(parameter.semanticType, emittedOrdinaryClasses)
+			Next
+		Next
+		For Local referencedClass:TGenericSpecializationNode = EachIn ir.referencedSpecializations
+			If referencedClass.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_CLASS Then result :+ "struct " + referencedClass.readableAbiName + "_obj;~n"
+		Next
+		Local emittedStructs:TMap = New TMap
+		Local visitingStructs:TMap = New TMap
+		For Local referencedStruct:TGenericSpecializationNode = EachIn ir.referencedSpecializations
+			If referencedStruct.IsAbiReferenceOnly() Or referencedStruct.artifact.typeDeclarationKind <> GENERIC_TYPE_DECLARATION_STRUCT Then Continue
+			Local referencedStructIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(referencedStruct, diagnostics)
+			If referencedStructIr Then result :+ EmitStructDeclarationTree(referencedStructIr, emittedStructs, visitingStructs, diagnostics)
+		Next
+		result :+ "#ifndef " + guard + "~n#define " + guard + "~n"
+		result :+ "struct " + abiName + "_methods {~n"
+		If Not ir.methods.length Then result :+ "    void *reserved;~n"
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			Local parameters:String = "BMXPicoObject *"
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				parameters :+ ", " + CValueDeclaration(parameter.semanticType, "", ir, parameter.passingMode)
+			Next
+			result :+ "    " + CFunctionPointerDeclaration(method.returnType, method.slotName, parameters, ir) + ";~n"
+		Next
+		result :+ "};~n"
+		result :+ "extern const BMXPicoInterfaceDescriptor " + abiName + "_ifc;~n"
+		result :+ "void " + abiName + "_register(void);~n"
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If method.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_DEFAULT Then
+				Local defaultParameters:String = "BMXPicoObject *self"
+				For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+					defaultParameters :+ ", " + CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
+				Next
+				result :+ CFunctionDeclaration(method.returnType, method.abiName, defaultParameters, ir, "extern ") + ";~n"
+			End If
+			Local helperParameters:String = "BMXPicoObject *receiver"
+			For Local index:Int = 0 Until method.parameters.length
+				helperParameters :+ ", " + CValueDeclaration(method.parameters[index].semanticType, "bmx_arg" + index, ir, method.parameters[index].passingMode)
+			Next
+			result :+ CFunctionDeclaration(method.returnType, InterfaceCallHelperName(ir.specialization, method), helperParameters, ir, "static inline ") + " {~n    "
+			If Not VoidType(method.returnType) Then result :+ "return "
+			result :+ "((struct " + abiName + "_methods *)bmx_pico_interface_methods((void *)receiver, &" + abiName + "_ifc, " + ir.methods.length + "))->" + method.slotName + "(receiver"
+			For Local index:Int = 0 Until method.parameters.length
+				result :+ ", bmx_arg" + index
+			Next
+			result :+ ");~n}~n"
+		Next
+		Return result + "#endif~n"
 	End Function
 
 	Function EmitReferencedCallDeclarations:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, emitted:TMap, diagnostics:String[] Var)
@@ -2828,7 +3183,7 @@ Type TCompilerGenericCUnitEmitter
 			If node.identity = "ordinary-interface-call" And node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
 				Local descriptorName:String = node.referencedSymbol.overloadKey + "_ifc"
 				If Not emitted.Contains(descriptorName) Then
-					result :+ "extern const struct BBInterface " + descriptorName + ";~n"
+					If PicoTarget(ir) Then result :+ "static const BMXPicoInterfaceDescriptor " + descriptorName + " = { " + CQuoted(node.valueText) + ", " + CQuoted(node.referencedSymbol.overloadKey) + " };~n" Else result :+ "extern const struct BBInterface " + descriptorName + ";~n"
 					emitted.Insert(descriptorName, node)
 				End If
 				Local helperName:String = OrdinaryInterfaceHelperName(node)
@@ -2837,8 +3192,15 @@ Type TCompilerGenericCUnitEmitter
 					If Not returnType.length Then
 						diagnostics :+ ["BMXC3057 ordinary Interface operation '" + node.valueText + "' has no supported closed return ABI"]
 					Else
-						Local declarationParameters:String = "BBOBJECT receiver"
-						Local signatureParameters:String = "BBOBJECT"
+						Local declarationParameters:String
+						Local signatureParameters:String
+						If PicoTarget(ir) Then
+							declarationParameters = "BMXPicoObject *receiver"
+							signatureParameters = "BMXPicoObject *"
+						Else
+							declarationParameters = "BBOBJECT receiver"
+							signatureParameters = "BBOBJECT"
+						End If
 						Local supportedArguments:Int = True
 						For Local index:Int = 1 Until node.children.length
 							Local passingMode:Int = PARAMETER_PASS_VALUE
@@ -2855,7 +3217,11 @@ Type TCompilerGenericCUnitEmitter
 						If supportedArguments Then
 							Local declaration:String = CFunctionDeclaration(node.semanticType, helperName, declarationParameters, ir, "static inline ") + " {~n    "
 							If Not VoidType(node.semanticType) Then declaration :+ "return "
-							declaration :+ "((" + CFunctionPointerDeclaration(node.semanticType, "", signatureParameters, ir) + ")((void **)bbObjectInterface(receiver, (BBINTERFACE)&" + descriptorName + "))[" + node.runtimeDispatchIndex + "])(receiver"
+							If PicoTarget(ir) Then
+								declaration :+ "((" + CFunctionPointerDeclaration(node.semanticType, "", signatureParameters, ir) + ")bmx_pico_interface_methods((void *)receiver, &" + descriptorName + ", " + (node.runtimeDispatchIndex + 1) + ")[" + node.runtimeDispatchIndex + "])(receiver"
+							Else
+								declaration :+ "((" + CFunctionPointerDeclaration(node.semanticType, "", signatureParameters, ir) + ")((void **)bbObjectInterface(receiver, (BBINTERFACE)&" + descriptorName + "))[" + node.runtimeDispatchIndex + "])(receiver"
+							End If
 							For Local index:Int = 1 Until node.children.length
 								declaration :+ ", bmx_arg" + index
 							Next
@@ -3695,9 +4061,10 @@ Type TCompilerGenericCUnitEmitter
 		If ir.isRoutine Then Return EmitRoutineImplementationUnit(ir, diagnostics, declarationText)
 		If ir.isInterface Then Return EmitInterfaceImplementationUnit(ir, diagnostics, declarationText)
 		If ir.isStruct Then Return EmitStructImplementationUnit(ir, diagnostics, declarationText)
+		If PicoTarget(ir) Then Return EmitPicoTypeImplementationUnit(ir, diagnostics, declarationText)
 		Local abiName:String = ir.specialization.readableAbiName
 		Local result:TStringBuilder = New TStringBuilder(8192)
-		result.Append("#include <stddef.h>~n#include <brl.mod/blitz.mod/blitz.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration())
+		result.Append(UnitPreamble(ir, True))
 		Local runtimeDeclarationText:String = EmitOrdinaryRuntimeTypeDeclarationsForMembers(ir, diagnostics)
 		If runtimeDeclarationText.length Then result.Append(runtimeDeclarationText + "~n")
 		If Not declarationText.length Then declarationText = EmitDeclarations(ir, diagnostics)
@@ -3857,6 +4224,309 @@ Type TCompilerGenericCUnitEmitter
 		Return result.ToString()
 	End Function
 
+	Function EmitPicoTypeImplementationUnit:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, declarationText:String = "")
+		Local abiName:String = ir.specialization.readableAbiName
+		Local result:TStringBuilder = New TStringBuilder(8192)
+		result.Append(UnitPreamble(ir, True))
+		Local runtimeDeclarationText:String = EmitOrdinaryRuntimeTypeDeclarationsForMembers(ir, diagnostics)
+		If runtimeDeclarationText.length Then result.Append(runtimeDeclarationText + "~n")
+		If Not declarationText.length Then declarationText = EmitPicoTypeDeclarations(ir, diagnostics)
+		result.Append(declarationText + "~n")
+		Local ordinaryDeclarations:TMap = New TMap
+		Local ordinaryDeclarationText:String
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(constructor.body, ir, ordinaryDeclarations, diagnostics)
+		Next
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(method.body, ir, ordinaryDeclarations, diagnostics)
+		Next
+		If ordinaryDeclarationText.length Then result.Append(ordinaryDeclarationText + "~n")
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If method.declaringSpecialization And method.declaringSpecialization <> ir.specialization Then Continue
+			result.Append(EmitLocalRoutineSupport(method, method.body, ir, diagnostics))
+			Local parameters:String
+			If Not method.isTypeFunction Then parameters = "struct " + abiName + "_obj *self"
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				If parameters.length Then parameters :+ ", "
+				parameters :+ CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
+			Next
+			If Not parameters.length Then parameters = "void"
+			result.Append(EmitGenericGdbLineDirective(method.source, ir, "") + CFunctionDeclaration(method.returnType, method.abiName, parameters, ir) + " {~n")
+			If Not method.isTypeFunction Then result.Append("    (void)self;~n")
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				result.Append("    (void)" + TCompilerAbiNamer.Sanitize(parameter.name) + ";~n")
+			Next
+			result.Append(EmitBody(method.body, ir, method, diagnostics))
+			result.Append("}~n~n")
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			result.Append(EmitLocalRoutineSupport(constructor, constructor.body, ir, diagnostics))
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			result.Append(EmitTypeConstructorInitializer(ir, constructor, diagnostics))
+		Next
+		If PicoGenericTypeHasFinalizer(ir) Then
+			result.Append("void " + PicoGenericFinalizerName(ir.specialization) + "(void *object) {~n")
+			Local ownDestructor:TCompilerGenericMethodIr = PicoGenericOwnDestructor(ir)
+			If ownDestructor Then result.Append("    " + ownDestructor.abiName + "((struct " + abiName + "_obj *)object);~n")
+			If ir.baseSpecialization Then
+				Local baseIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(ir.baseSpecialization, diagnostics)
+				If PicoGenericTypeHasFinalizer(baseIr) Then result.Append("    " + PicoGenericFinalizerName(ir.baseSpecialization) + "(object);~n")
+			End If
+			result.Append("}~n~n")
+		End If
+		result.Append(EmitPicoGenericObjectHooks(ir))
+		Local methodCount:Int
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If Not method.isDestructor Then methodCount :+ 1
+		Next
+		Local methodTable:String = "0"
+		If methodCount Then
+			methodTable = abiName + "_methods"
+			result.Append("static const BMXPicoMethod " + methodTable + "[" + methodCount + "] = {~n")
+			For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+				If method.isDestructor Then Continue
+				result.Append("    (BMXPicoMethod)" + method.abiName + ",~n")
+			Next
+			result.Append("};~n")
+		End If
+		Local referenceCount:Int
+		Local arrayCount:Int
+		Local stringCount:Int
+		Local valueFieldCount:Int
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If field.semanticType.kind = TEMPLATE_TYPE_ARRAY Then
+				arrayCount :+ 1
+			Else If StringTemplateType(field.semanticType) Then
+				stringCount :+ 1
+			Else If PicoGenericStructValueType(field.semanticType, ir) Then
+				valueFieldCount :+ 1
+			Else If ManagedReferenceType(field.semanticType, ir) Then
+				referenceCount :+ 1
+			End If
+		Next
+		Local referenceOffsets:String = "0"
+		If referenceCount Then
+			referenceOffsets = abiName + "_references"
+			result.Append("static const uint32_t " + referenceOffsets + "[" + referenceCount + "] = {~n")
+			For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+				If field.semanticType.kind = TEMPLATE_TYPE_ARRAY Or StringTemplateType(field.semanticType) Or Not ManagedReferenceType(field.semanticType, ir) Then Continue
+				result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + field.abiName + "),~n")
+			Next
+			result.Append("};~n")
+		End If
+		Local arrayOffsets:String = "0"
+		If arrayCount Then
+			arrayOffsets = abiName + "_arrays"
+			result.Append("static const uint32_t " + arrayOffsets + "[" + arrayCount + "] = {~n")
+			For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+				If field.semanticType.kind = TEMPLATE_TYPE_ARRAY Then result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + field.abiName + "),~n")
+			Next
+			result.Append("};~n")
+		End If
+		Local stringOffsets:String = "0"
+		If stringCount Then
+			stringOffsets = abiName + "_strings"
+			result.Append("static const uint32_t " + stringOffsets + "[" + stringCount + "] = {~n")
+			For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+				If StringTemplateType(field.semanticType) Then result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + field.abiName + "),~n")
+			Next
+			result.Append("};~n")
+		End If
+		Local valueFields:String = "0"
+		If valueFieldCount Then
+			valueFields = abiName + "_value_fields"
+			result.Append("static const BMXPicoValueField " + valueFields + "[" + valueFieldCount + "] = {~n")
+			For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+				If Not PicoGenericStructValueType(field.semanticType, ir) Then Continue
+				result.Append("    { (uint32_t)offsetof(struct " + abiName + "_obj, " + field.abiName + "), 0, 1, BMX_PICO_VALUE_STRUCT, " + PicoGenericValueDescriptor(field.semanticType, ir) + " },~n")
+			Next
+			result.Append("};~n")
+		End If
+		Local interfaceEntries:String = "0"
+		Local interfaceCount:Int = ir.implementedInterfaces.length
+		If interfaceCount Then
+			interfaceEntries = abiName + "_interfaces"
+			For Local interfaceIndex:Int = 0 Until interfaceCount
+				Local interfaceNode:TGenericSpecializationNode = ir.implementedInterfaces[interfaceIndex]
+				Local requirements:TCompilerGenericMethodIr[] = TCompilerGenericSpecializationLowerer.EffectiveInterfaceMethods(interfaceNode, ir, diagnostics)
+				Local interfaceMethods:String = interfaceEntries + "_" + interfaceIndex
+				If requirements.length Then
+					result.Append("static const BMXPicoMethod " + interfaceMethods + "[" + requirements.length + "] = {~n")
+					For Local requirement:TCompilerGenericMethodIr = EachIn requirements
+						Local implementation:TCompilerGenericMethodIr
+						For Local candidate:TCompilerGenericMethodIr = EachIn ir.methods
+							If TCompilerGenericSpecializationLowerer.ImplementationMatchesRequirement(candidate, requirement, ir) Then implementation = candidate; Exit
+						Next
+						If implementation Then
+							result.Append("    (BMXPicoMethod)" + implementation.abiName + ",~n")
+						Else If requirement.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_DEFAULT Then
+							result.Append("    (BMXPicoMethod)" + requirement.abiName + ",~n")
+						Else
+							diagnostics :+ ["BMXC3017 generic Pico Type '" + ir.specialization.artifact.identity.qualifiedName + "' has no implementation for Interface method '" + requirement.name + "'"]
+							result.Append("    0,~n")
+						End If
+					Next
+					result.Append("};~n")
+				Else
+					interfaceMethods = "0"
+				End If
+			Next
+			result.Append("static const BMXPicoInterfaceEntry " + interfaceEntries + "[" + interfaceCount + "] = {~n")
+			For Local interfaceIndex:Int = 0 Until interfaceCount
+				Local interfaceNode:TGenericSpecializationNode = ir.implementedInterfaces[interfaceIndex]
+				Local requirements:TCompilerGenericMethodIr[] = TCompilerGenericSpecializationLowerer.EffectiveInterfaceMethods(interfaceNode, ir, diagnostics)
+				Local interfaceMethods:String = interfaceEntries + "_" + interfaceIndex
+				If Not requirements.length Then interfaceMethods = "0"
+				result.Append("    { &" + interfaceNode.readableAbiName + "_ifc, " + interfaceMethods + ", " + requirements.length + " },~n")
+			Next
+			result.Append("};~n")
+		End If
+		result.Append("const BMXPicoTypeDescriptor " + abiName + "_type = {~n")
+		result.Append("    .name = " + CQuoted(SpecializationDisplayName(ir.specialization)) + ", .abi_name = " + CQuoted(abiName) + ", .instance_size = (uint32_t)sizeof(struct " + abiName + "_obj),~n")
+		Local superDescriptor:String = "0"
+		If ir.baseSpecialization Then superDescriptor = "&" + ir.baseSpecialization.readableAbiName + "_type"
+		result.Append("    .super = " + superDescriptor + ", .methods = " + methodTable + ", .method_count = " + methodCount + ",~n")
+		result.Append("    .interfaces = " + interfaceEntries + ", .interface_count = " + interfaceCount + ", .reference_offsets = " + referenceOffsets + ", .reference_count = " + referenceCount + ",~n")
+		result.Append("    .array_offsets = " + arrayOffsets + ", .array_count = " + arrayCount + ", .string_offsets = " + stringOffsets + ", .string_count = " + stringCount + ",~n")
+		Local finalizerFlags:String = "0"
+		Local finalizer:String = "0"
+		If PicoGenericTypeHasFinalizer(ir) Then
+			finalizerFlags = "BMX_PICO_TYPE_FLAG_HAS_FINALIZER"
+			finalizer = PicoGenericFinalizerName(ir.specialization)
+		End If
+		Local compareHook:String = "0"
+		Local hashCodeHook:String = "0"
+		Local equalsHook:String = "0"
+		If PicoGenericObjectHook(ir, "compare") Then compareHook = PicoGenericObjectHookName(ir.specialization, "compare")
+		If PicoGenericObjectHook(ir, "hashcode") Then hashCodeHook = PicoGenericObjectHookName(ir.specialization, "hash_code")
+		If PicoGenericObjectHook(ir, "equals") Then equalsHook = PicoGenericObjectHookName(ir.specialization, "equals")
+		result.Append("    .value_fields = " + valueFields + ", .value_field_count = " + valueFieldCount + ", .flags = " + finalizerFlags + ", .trace = 0, .finalizer = " + finalizer + ",~n")
+		result.Append("    .compare = " + compareHook + ", .hash_code = " + hashCodeHook + ", .equals = " + equalsHook + "~n};~n~n")
+		result.Append("static void " + abiName + "_initialize(struct " + abiName + "_obj *self) {~n")
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			result.Append("    self->" + field.abiName + " = " + FieldInitializerValue(field, ir, diagnostics) + ";~n")
+		Next
+		result.Append("}~n~n")
+		result.Append("struct " + abiName + "_obj *" + abiName + "_New(void) {~n")
+		result.Append(EmitPicoTypeAllocationBody(ir, Null))
+		result.Append("}~n~n")
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			result.Append("struct " + abiName + "_obj *" + constructor.abiName + "(" + PicoTypeConstructorParameters(constructor, ir, True) + ") {~n")
+			result.Append(EmitPicoTypeAllocationBody(ir, constructor))
+			result.Append("}~n~n")
+		Next
+		result.Append("void " + abiName + "_register(void) {}~n")
+		Return result.ToString()
+	End Function
+
+	Function PicoGenericFinalizerName:String(node:TGenericSpecializationNode)
+		If Not node Then Return ""
+		Return node.readableAbiName + "_finalize"
+	End Function
+
+	Function PicoGenericOwnDestructor:TCompilerGenericMethodIr(ir:TCompilerGenericSpecializationIr)
+		If Not ir Then Return Null
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If method.isDestructor And method.declaringSpecialization = ir.specialization Then Return method
+		Next
+		Return Null
+	End Function
+
+	Function PicoGenericTypeHasFinalizer:Int(ir:TCompilerGenericSpecializationIr)
+		If Not ir Then Return False
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If method.isDestructor Then Return True
+		Next
+		Return False
+	End Function
+
+	Function PicoGenericObjectHookName:String(node:TGenericSpecializationNode, hookName:String)
+		If Not node Then Return ""
+		Return node.readableAbiName + "_" + hookName
+	End Function
+
+	Function PicoGenericBuiltinType:Int(value:TTemplateTypeReference, name:String)
+		Return value And value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = name
+	End Function
+
+	Function PicoGenericObjectHook:TCompilerGenericMethodIr(ir:TCompilerGenericSpecializationIr, hookName:String)
+		If Not ir Then Return Null
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If method.isDestructor Or method.isStatic Or method.isTypeFunction Or method.name.ToLower() <> hookName Then Continue
+			Select hookName
+				Case "compare", "equals"
+					If method.parameters.length = 1 And PicoGenericBuiltinType(method.returnType, "int") And PicoGenericBuiltinType(method.parameters[0].semanticType, "object") Then Return method
+				Case "hashcode"
+					If method.parameters.length = 0 And PicoGenericBuiltinType(method.returnType, "uint") Then Return method
+			End Select
+		Next
+		Return Null
+	End Function
+
+	Function EmitPicoGenericObjectHooks:String(ir:TCompilerGenericSpecializationIr)
+		If Not ir Then Return ""
+		Local result:String
+		Local compareMethod:TCompilerGenericMethodIr = PicoGenericObjectHook(ir, "compare")
+		If compareMethod Then
+			Local owner:TGenericSpecializationNode = compareMethod.declaringSpecialization
+			If Not owner Then owner = ir.specialization
+			result :+ "static int32_t " + PicoGenericObjectHookName(ir.specialization, "compare") + "(void *object, void *other) {~n"
+			result :+ "    return " + compareMethod.abiName + "((struct " + owner.readableAbiName + "_obj *)object, (" + CType(compareMethod.parameters[0].semanticType, ir) + ")other);~n}~n~n"
+		End If
+		Local hashCodeMethod:TCompilerGenericMethodIr = PicoGenericObjectHook(ir, "hashcode")
+		If hashCodeMethod Then
+			Local owner:TGenericSpecializationNode = hashCodeMethod.declaringSpecialization
+			If Not owner Then owner = ir.specialization
+			result :+ "static uint32_t " + PicoGenericObjectHookName(ir.specialization, "hash_code") + "(void *object) {~n"
+			result :+ "    return " + hashCodeMethod.abiName + "((struct " + owner.readableAbiName + "_obj *)object);~n}~n~n"
+		End If
+		Local equalsMethod:TCompilerGenericMethodIr = PicoGenericObjectHook(ir, "equals")
+		If equalsMethod Then
+			Local owner:TGenericSpecializationNode = equalsMethod.declaringSpecialization
+			If Not owner Then owner = ir.specialization
+			result :+ "static int32_t " + PicoGenericObjectHookName(ir.specialization, "equals") + "(void *object, void *other) {~n"
+			result :+ "    return " + equalsMethod.abiName + "((struct " + owner.readableAbiName + "_obj *)object, (" + CType(equalsMethod.parameters[0].semanticType, ir) + ")other);~n}~n~n"
+		End If
+		Return result
+	End Function
+
+	Function EmitPicoTypeAllocationBody:String(ir:TCompilerGenericSpecializationIr, constructor:TCompilerGenericMethodIr)
+		Local abiName:String = ir.specialization.readableAbiName
+		Local result:String = "    struct " + abiName + "_obj *self = (struct " + abiName + "_obj *)&bmx_pico_null_object;~n"
+		Local rootSlots:String[] = ["{ (void *)&self, BMX_PICO_ROOT_OBJECT, 0 }"]
+		If constructor Then
+			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
+				If Not ManagedReferenceType(parameter.semanticType, ir) And Not PicoGenericStructValueType(parameter.semanticType, ir) Then Continue
+				Local parameterName:String = TCompilerAbiNamer.Sanitize(parameter.name)
+				Local address:String = "&" + parameterName
+				If parameter.passingMode = PARAMETER_PASS_VAR Then address = parameterName
+				Local slot:String = PicoGenericRootSlot(parameter.semanticType, address, ir)
+				If slot.length Then rootSlots :+ [slot]
+			Next
+		End If
+		result :+ "    BMXPicoRootFrame bmx_pico_new_root_frame;~n"
+		result :+ "    BMXPicoRootSlot bmx_pico_new_root_slots[" + rootSlots.length + "] = { "
+		For Local index:Int = 0 Until rootSlots.length
+			If index Then result :+ ", "
+			result :+ rootSlots[index]
+		Next
+		result :+ " };~n"
+		result :+ "    bmx_pico_root_frame_enter(&bmx_pico_new_root_frame, bmx_pico_new_root_slots, " + rootSlots.length + ");~n"
+		result :+ "    self = (struct " + abiName + "_obj *)bmx_pico_object_allocate(&" + abiName + "_type);~n"
+		result :+ "    if ((void *)self == (void *)&bmx_pico_null_object) { bmx_pico_root_frame_leave(&bmx_pico_new_root_frame); return self; }~n"
+		result :+ "    " + abiName + "_initialize(self);~n"
+		If constructor Then
+			result :+ "    " + constructor.abiName + "_init(self"
+			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
+				result :+ ", " + TCompilerAbiNamer.Sanitize(parameter.name)
+			Next
+			result :+ ");~n"
+		End If
+		result :+ "    bmx_pico_root_frame_leave(&bmx_pico_new_root_frame);~n    return self;~n"
+		Return result
+	End Function
+
 	Function SpecializationDisplayName:String(node:TGenericSpecializationNode)
 		If Not node Or Not node.artifact Or Not node.artifact.identity Then Return ""
 		Local result:String = node.artifact.identity.qualifiedName + "<"
@@ -3937,9 +4607,9 @@ Type TCompilerGenericCUnitEmitter
 
 	Function EmitRoutineImplementationUnit:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, declarationText:String = "")
 		Local result:TStringBuilder = New TStringBuilder(4096)
-		result.Append("#include <brl.mod/blitz.mod/blitz.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration())
+		result.Append(UnitPreamble(ir))
 		Local emittedRuntimeTypes:TMap = New TMap
-		Local runtimeDeclarationText:String = EmitOrdinaryRuntimeTypeDeclarations(ir.routine.body, emittedRuntimeTypes, diagnostics)
+		Local runtimeDeclarationText:String = EmitOrdinaryRuntimeTypeDeclarations(ir.routine.body, emittedRuntimeTypes, diagnostics, ir)
 		' Direct generic method calls can target a method declared by an
 		' ordinary base Type even when the body receiver is the derived Type.
 		' Forward-declare every referenced routine receiver before any
@@ -3950,7 +4620,7 @@ Type TCompilerGenericCUnitEmitter
 			If referencedRoutineIr And referencedRoutineIr.routine Then
 				Local referencedOwner:TGenericSpecializationNode = TCompilerGenericSpecializationLowerer.ReferencedSpecialization(referencedRoutineIr.routine.receiverType, referencedRoutineIr)
 				If referencedOwner Then runtimeDeclarationText :+ "struct " + referencedOwner.readableAbiName + "_obj;~n"
-				runtimeDeclarationText :+ EmitOrdinaryRuntimeTypeDeclaration(referencedRoutineIr.routine.receiverType, emittedRuntimeTypes, diagnostics)
+				runtimeDeclarationText :+ EmitOrdinaryRuntimeTypeDeclaration(referencedRoutineIr.routine.receiverType, emittedRuntimeTypes, diagnostics, referencedRoutineIr)
 			End If
 		Next
 		If runtimeDeclarationText.length Then result.Append(runtimeDeclarationText + "~n")
@@ -4797,18 +5467,26 @@ Type TCompilerGenericCUnitEmitter
 		Return result + "};~n"
 	End Function
 
-	Function EmitOrdinaryRuntimeTypeDeclarations:String(node:TGenericTemplateNode, emitted:TMap, diagnostics:String[] Var)
+	Function EmitOrdinaryRuntimeTypeDeclarations:String(node:TGenericTemplateNode, emitted:TMap, diagnostics:String[] Var, ir:TCompilerGenericSpecializationIr = Null)
 		If Not node Then Return ""
-		Local result:String = EmitOrdinaryRuntimeTypeDeclaration(node.semanticType, emitted, diagnostics)
-		If node.kind = TEMPLATE_NODE_NEW Then result :+ EmitOrdinaryObjectNewDeclaration(node, emitted, diagnostics)
+		Local result:String = EmitOrdinaryRuntimeTypeDeclaration(node.semanticType, emitted, diagnostics, ir)
+		If node.kind = TEMPLATE_NODE_NEW Then result :+ EmitOrdinaryObjectNewDeclaration(node, emitted, diagnostics, ir)
 		For Local child:TGenericTemplateNode = EachIn node.children
-			result :+ EmitOrdinaryRuntimeTypeDeclarations(child, emitted, diagnostics)
+			result :+ EmitOrdinaryRuntimeTypeDeclarations(child, emitted, diagnostics, ir)
 		Next
 		Return result
 	End Function
 
-	Function EmitOrdinaryObjectNewDeclaration:String(node:TGenericTemplateNode, emitted:TMap, diagnostics:String[] Var)
-		If Not node Or Not node.semanticType Or node.semanticType.runtimeKind <> TEMPLATE_RUNTIME_CLASS Or Not node.semanticType.runtimeAbiName.length Or Not node.referencedSymbol Then Return ""
+	Function EmitOrdinaryObjectNewDeclaration:String(node:TGenericTemplateNode, emitted:TMap, diagnostics:String[] Var, ir:TCompilerGenericSpecializationIr = Null)
+		If Not node Or Not node.semanticType Or node.semanticType.runtimeKind <> TEMPLATE_RUNTIME_CLASS Or Not node.semanticType.runtimeAbiName.length Then Return ""
+		If Not node.children.length And node.identity <> "ordinary-constructor-signature" Then
+			Local zeroArgumentAbiName:String = "_" + node.semanticType.runtimeAbiName + "_New_ObjectNew"
+			Local zeroArgumentKey:String = "object-new:" + zeroArgumentAbiName.ToLower()
+			If emitted.Contains(zeroArgumentKey) Then Return ""
+			emitted.Insert(zeroArgumentKey, node)
+			Return "struct " + node.semanticType.runtimeAbiName + "_obj *" + zeroArgumentAbiName + "(void);~n"
+		End If
+		If Not node.referencedSymbol Then Return ""
 		If Not node.referencedSymbol Or Not node.referencedSymbol.overloadKey.length Or TCompilerAbiNamer.Sanitize(node.referencedSymbol.overloadKey) <> node.referencedSymbol.overloadKey Then
 			diagnostics :+ ["BMXC3062 parameterized ordinary Type construction has no stable published allocation ABI"]
 			Return ""
@@ -4818,15 +5496,17 @@ Type TCompilerGenericCUnitEmitter
 		Local signature:TGenericTemplateNode
 		If node.identity = "ordinary-constructor-signature" And node.children.length Then signature = node.children[0]
 		If Not signature Then Return ""
-		Local result:String = "struct " + node.semanticType.runtimeAbiName + "_obj *" + node.referencedSymbol.overloadKey + "(BBClass *clas"
+		Local result:String = "struct " + node.semanticType.runtimeAbiName + "_obj *" + node.referencedSymbol.overloadKey + "("
+		If Not PicoTarget(ir) Then result :+ "BBClass *clas"
 		For Local index:Int = 0 Until signature.children.length
 			Local parameter:TGenericTemplateNode = signature.children[index]
-			Local parameterType:String = CValueDeclaration(parameter.semanticType, "", Null, Int(parameter.valueText))
+			Local parameterType:String = CValueDeclaration(parameter.semanticType, "", ir, Int(parameter.valueText))
 			If Not parameterType.length Then
 				diagnostics :+ ["BMXC3062 parameterized ordinary Type constructor argument " + index + " has no supported value ABI"]
 				Return ""
 			End If
-			result :+ ", " + parameterType
+			If index Or Not PicoTarget(ir) Then result :+ ", "
+			result :+ parameterType
 		Next
 		emitted.Insert(key, node)
 		Return result + ");~n"
@@ -4840,13 +5520,13 @@ Type TCompilerGenericCUnitEmitter
 		Next
 		For Local staticField:TCompilerGenericFieldIr = EachIn ir.staticFields
 			result :+ EmitOrdinaryRuntimeSignatureTypeDeclarations(staticField.semanticType, ir, emitted, diagnostics)
-			result :+ EmitOrdinaryRuntimeTypeDeclarations(staticField.initializer, emitted, diagnostics)
+			result :+ EmitOrdinaryRuntimeTypeDeclarations(staticField.initializer, emitted, diagnostics, ir)
 		Next
 		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
 			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
 				result :+ EmitOrdinaryRuntimeSignatureTypeDeclarations(parameter.semanticType, ir, emitted, diagnostics)
 			Next
-			result :+ EmitOrdinaryRuntimeTypeDeclarations(constructor.body, emitted, diagnostics)
+			result :+ EmitOrdinaryRuntimeTypeDeclarations(constructor.body, emitted, diagnostics, ir)
 		Next
 		For Local irMethod:TCompilerGenericMethodIr = EachIn ir.methods
 			result :+ EmitOrdinaryRuntimeSignatureTypeDeclarations(irMethod.returnType, ir, emitted, diagnostics)
@@ -4854,7 +5534,7 @@ Type TCompilerGenericCUnitEmitter
 			For Local parameter:TGenericTemplateValueParameter = EachIn irMethod.parameters
 				result :+ EmitOrdinaryRuntimeSignatureTypeDeclarations(parameter.semanticType, ir, emitted, diagnostics)
 			Next
-			result :+ EmitOrdinaryRuntimeTypeDeclarations(irMethod.body, emitted, diagnostics)
+			result :+ EmitOrdinaryRuntimeTypeDeclarations(irMethod.body, emitted, diagnostics, ir)
 		Next
 		Return result
 	End Function
@@ -4870,15 +5550,15 @@ Type TCompilerGenericCUnitEmitter
 		' specialization declarations. Only their ordinary nested arguments need
 		' independent file-scope declarations here.
 		If TCompilerGenericSpecializationLowerer.ReferencedSpecialization(value, ir) Then Return result
-		Return result + EmitOrdinaryRuntimeTypeDeclaration(value, emitted, diagnostics)
+		Return result + EmitOrdinaryRuntimeTypeDeclaration(value, emitted, diagnostics, ir)
 	End Function
 
-	Function EmitOrdinaryRuntimeTypeDeclaration:String(value:TTemplateTypeReference, emitted:TMap, diagnostics:String[] Var)
+	Function EmitOrdinaryRuntimeTypeDeclaration:String(value:TTemplateTypeReference, emitted:TMap, diagnostics:String[] Var, ir:TCompilerGenericSpecializationIr = Null)
 		If Not value Then Return ""
 		Local result:String
-		If value.elementType Then result :+ EmitOrdinaryRuntimeTypeDeclaration(value.elementType, emitted, diagnostics)
+		If value.elementType Then result :+ EmitOrdinaryRuntimeTypeDeclaration(value.elementType, emitted, diagnostics, ir)
 		For Local argument:TTemplateTypeReference = EachIn value.arguments
-			result :+ EmitOrdinaryRuntimeTypeDeclaration(argument, emitted, diagnostics)
+			result :+ EmitOrdinaryRuntimeTypeDeclaration(argument, emitted, diagnostics, ir)
 		Next
 		If value.runtimeKind = TEMPLATE_RUNTIME_NONE Then Return result
 		Local abiName:String = value.runtimeAbiName
@@ -4896,8 +5576,10 @@ Type TCompilerGenericCUnitEmitter
 		Select value.runtimeKind
 			Case TEMPLATE_RUNTIME_CLASS
 				result :+ "struct " + abiName + "_obj;~n"
-				result :+ "struct BBClass_" + abiName + ";~n"
-				result :+ "extern struct BBClass_" + abiName + " " + abiName + ";~n"
+				If Not PicoTarget(ir) Then
+					result :+ "struct BBClass_" + abiName + ";~n"
+					result :+ "extern struct BBClass_" + abiName + " " + abiName + ";~n"
+				End If
 			Case TEMPLATE_RUNTIME_INTERFACE
 				result :+ "extern const struct BBInterface " + abiName + "_ifc;~n"
 			Case TEMPLATE_RUNTIME_STRUCT
@@ -4905,7 +5587,7 @@ Type TCompilerGenericCUnitEmitter
 			Case TEMPLATE_RUNTIME_ENUM
 				' Enum values use their retained integral storage ABI, while Enum
 				' Arrays also retain the defining Enum's runtime descriptor.
-				result :+ "extern BBEnum *" + abiName + "_BBEnum_impl;~n"
+				If Not PicoTarget(ir) Then result :+ "extern BBEnum *" + abiName + "_BBEnum_impl;~n"
 			Default
 				diagnostics :+ ["BMXC3060 ordinary runtime identity for '" + value.CanonicalName() + "' has unknown kind " + value.runtimeKind]
 		End Select
@@ -4913,6 +5595,7 @@ Type TCompilerGenericCUnitEmitter
 	End Function
 
 	Function EmitStructImplementationUnit:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, declarationText:String = "")
+		If PicoTarget(ir) Then Return EmitPicoStructImplementationUnit(ir, diagnostics, declarationText)
 		Local abiName:String = ir.specialization.readableAbiName
 		Local result:String = "#include <stddef.h>~n#include <brl.mod/blitz.mod/blitz.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
 		Local runtimeDeclarationText:String = EmitOrdinaryRuntimeTypeDeclarationsForMembers(ir, diagnostics)
@@ -4978,6 +5661,138 @@ Type TCompilerGenericCUnitEmitter
 		result :+ EmitGenericCoverageCatalog(ir)
 		result :+ EmitGenericCoverageRegistration(ir)
 		result :+ EmitStructReflectionSupport(ir, diagnostics)
+		Return result
+	End Function
+
+	Function EmitPicoStructImplementationUnit:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, declarationText:String = "")
+		Local abiName:String = ir.specialization.readableAbiName
+		Local result:String = UnitPreamble(ir, True)
+		If Not declarationText.length Then declarationText = EmitStructDeclarations(ir, diagnostics)
+		result :+ declarationText + "~n"
+		result :+ EmitPicoGenericStructDescriptor(ir)
+		result :+ EmitStructConstructorHelper(ir, Null, diagnostics, abiName + "_New_ObjectNew")
+		If ir.constructors.length Then
+			For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+				result :+ EmitStructConstructorHelper(ir, constructor, diagnostics)
+			Next
+		Else
+			result :+ "struct " + abiName + " " + abiName + "_New(void) { return " + abiName + "_New_ObjectNew(); }~n~n"
+		End If
+		result :+ "void bbStructElementInit_" + abiName + "(void *bmx_value) {~n"
+		result :+ "    *((struct " + abiName + " *)bmx_value) = " + abiName + "_New_ObjectNew();~n"
+		result :+ "}~n~n"
+		For Local irMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			Local parameters:String
+			If Not irMethod.isStatic Then parameters = "struct " + abiName + " *self"
+			For Local parameter:TGenericTemplateValueParameter = EachIn irMethod.parameters
+				If parameters.length Then parameters :+ ", "
+				parameters :+ CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
+			Next
+			If Not parameters.length Then parameters = "void"
+			result :+ CFunctionDeclaration(irMethod.returnType, irMethod.abiName, parameters, ir) + " {~n"
+			If Not irMethod.isStatic Then result :+ "    (void)self;~n"
+			For Local parameter:TGenericTemplateValueParameter = EachIn irMethod.parameters
+				result :+ "    (void)" + TCompilerAbiNamer.Sanitize(parameter.name) + ";~n"
+			Next
+			result :+ EmitBody(irMethod.body, ir, irMethod, diagnostics)
+			result :+ "}~n~n"
+		Next
+		' Registration remains part of the published specialization ABI. Pico has
+		' no desktop reflection registry, so this tier intentionally has no work.
+		result :+ "void " + abiName + "_register(void) {}~n"
+		Return result
+	End Function
+
+	Function PicoGenericStructDescriptorName:String(ir:TCompilerGenericSpecializationIr)
+		Return PicoGenericStructDescriptorAbiName(ir.specialization.readableAbiName)
+	End Function
+
+	Function PicoGenericStructDescriptorAbiName:String(abiName:String)
+		Return TCompilerAbiNamer.Sanitize(abiName) + "_pico_value_descriptor"
+	End Function
+
+	Function PicoGenericStructValueType:Int(value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr)
+		If Not value Or value.kind <> TEMPLATE_TYPE_NAMED Or value.runtimeKind <> TEMPLATE_RUNTIME_STRUCT Then Return False
+		Return StructAbiName(value, ir).length > 0
+	End Function
+
+	Function PicoGenericValueDescriptor:String(value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr)
+		If Not PicoGenericStructValueType(value, ir) Then Return "0"
+		Return "&" + PicoGenericStructDescriptorAbiName(StructAbiName(value, ir))
+	End Function
+
+	Function PicoGenericArrayInitializer:String(value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr)
+		If Not PicoGenericStructValueType(value, ir) Then Return "0"
+		Return "bbStructElementInit_" + StructAbiName(value, ir)
+	End Function
+
+	Function PicoGenericStructContainsManagedFields:Int(ir:TCompilerGenericSpecializationIr)
+		If Not ir Then Return False
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If ManagedReferenceType(field.semanticType, ir) Or PicoGenericStructValueType(field.semanticType, ir) Then Return True
+		Next
+		Return False
+	End Function
+
+	Function PicoGenericNodeContainsManaged:Int(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr)
+		If Not node Then Return False
+		If ManagedReferenceType(node.semanticType, ir) Or PicoGenericStructValueType(node.semanticType, ir) Then Return True
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If PicoGenericNodeContainsManaged(child, ir) Then Return True
+		Next
+		Return False
+	End Function
+
+	Function PicoGenericIrNeedsRootFrames:Int(ir:TCompilerGenericSpecializationIr)
+		If Not PicoTarget(ir) Then Return False
+		If PicoGenericStructContainsManagedFields(ir) Then Return True
+		If ir.routine Then
+			If ManagedReferenceType(ir.routine.returnType, ir) Or PicoGenericStructValueType(ir.routine.returnType, ir) Or PicoGenericNodeContainsManaged(ir.routine.body, ir) Then Return True
+			For Local parameter:TGenericTemplateValueParameter = EachIn ir.routine.parameters
+				If ManagedReferenceType(parameter.semanticType, ir) Or PicoGenericStructValueType(parameter.semanticType, ir) Then Return True
+			Next
+		End If
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If ManagedReferenceType(method.returnType, ir) Or PicoGenericStructValueType(method.returnType, ir) Or PicoGenericNodeContainsManaged(method.body, ir) Then Return True
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				If ManagedReferenceType(parameter.semanticType, ir) Or PicoGenericStructValueType(parameter.semanticType, ir) Then Return True
+			Next
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			If PicoGenericNodeContainsManaged(constructor.body, ir) Then Return True
+			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
+				If ManagedReferenceType(parameter.semanticType, ir) Or PicoGenericStructValueType(parameter.semanticType, ir) Then Return True
+			Next
+		Next
+		Return False
+	End Function
+
+	Function EmitPicoGenericStructDescriptor:String(ir:TCompilerGenericSpecializationIr)
+		Local descriptorName:String = PicoGenericStructDescriptorName(ir)
+		Local fieldCount:Int
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If ManagedReferenceType(field.semanticType, ir) Or PicoGenericStructValueType(field.semanticType, ir) Then fieldCount :+ 1
+		Next
+		Local result:String
+		If fieldCount Then result = "static const BMXPicoValueField " + descriptorName + "_fields[" + fieldCount + "] = {~n"
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If Not ManagedReferenceType(field.semanticType, ir) And Not PicoGenericStructValueType(field.semanticType, ir) Then Continue
+			Local kind:String = "BMX_PICO_VALUE_OBJECT"
+			Local nestedDescriptor:String = "0"
+			If field.semanticType.kind = TEMPLATE_TYPE_ARRAY Then kind = "BMX_PICO_VALUE_ARRAY"
+			If StringTemplateType(field.semanticType) Then kind = "BMX_PICO_VALUE_STRING"
+			If PicoGenericStructValueType(field.semanticType, ir) Then
+				kind = "BMX_PICO_VALUE_STRUCT"
+				nestedDescriptor = PicoGenericValueDescriptor(field.semanticType, ir)
+			End If
+			result :+ "    { (uint32_t)offsetof(struct " + ir.specialization.readableAbiName + ", " + field.abiName + "), 0, 1, " + kind + ", " + nestedDescriptor + " },~n"
+		Next
+		Local fieldPointer:String = "0"
+		If fieldCount Then
+			result :+ "};~n"
+			fieldPointer = descriptorName + "_fields"
+		End If
+		result :+ "const BMXPicoValueDescriptor " + descriptorName + " = { " + CQuoted(SpecializationDisplayName(ir.specialization)) + ", (uint32_t)sizeof(struct " + ir.specialization.readableAbiName + "), " + fieldPointer + ", " + fieldCount + " };~n~n"
 		Return result
 	End Function
 
@@ -5451,6 +6266,7 @@ Type TCompilerGenericCUnitEmitter
 	End Function
 
 	Function EmitStructConstructorHelper:String(ir:TCompilerGenericSpecializationIr, constructor:TCompilerGenericMethodIr, diagnostics:String[] Var, helperNameOverride:String = "")
+		If PicoTarget(ir) Then Return EmitPicoStructConstructorHelper(ir, constructor, diagnostics, helperNameOverride)
 		Local abiName:String = ir.specialization.readableAbiName
 		Local helperName:String = abiName + "_New"
 		If constructor Then helperName = constructor.abiName
@@ -5492,6 +6308,34 @@ Type TCompilerGenericCUnitEmitter
 			Next
 			result :+ EmitConstructorBody(constructor.body, ir, constructor, diagnostics)
 		End If
+		result :+ "    return bmx_value;~n"
+		result :+ "}~n~n"
+		Return result
+	End Function
+
+	Function EmitPicoStructConstructorHelper:String(ir:TCompilerGenericSpecializationIr, constructor:TCompilerGenericMethodIr, diagnostics:String[] Var, helperNameOverride:String = "")
+		Local abiName:String = ir.specialization.readableAbiName
+		Local helperName:String = abiName + "_New"
+		If constructor Then helperName = constructor.abiName
+		If helperNameOverride.length Then helperName = helperNameOverride
+		Local result:String = "struct " + abiName + " " + helperName + "(" + StructConstructorParameters(constructor, ir, True) + ") {~n"
+		result :+ "    struct " + abiName + " bmx_value = {0};~n"
+		' Install valid sentinels before publishing the in-progress value to the
+		' collector. Field initializers may allocate after the frame is active.
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If ManagedReferenceType(field.semanticType, ir) Then result :+ "    bmx_value." + field.abiName + " = " + DefaultValue(field.semanticType, ir) + ";~n"
+		Next
+		result :+ EmitPicoGenericRootFrameSetup(ir, constructor, New TGenericTemplateNode[0], New TMap, "    ", "&bmx_value")
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			result :+ "    bmx_value." + field.abiName + " = " + FieldInitializerValue(field, ir, diagnostics) + ";~n"
+		Next
+		If constructor Then
+			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
+				result :+ "    (void)" + StructConstructorParameterName(parameter.name) + ";~n"
+			Next
+			result :+ EmitConstructorBody(constructor.body, ir, constructor, diagnostics)
+		End If
+		result :+ EmitPicoGenericRootFrameLeave(ir, "    ")
 		result :+ "    return bmx_value;~n"
 		result :+ "}~n~n"
 		Return result
@@ -5757,6 +6601,7 @@ Type TCompilerGenericCUnitEmitter
 	End Function
 
 	Function EmitInterfaceImplementationUnit:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, declarationText:String = "")
+		If PicoTarget(ir) Then Return EmitPicoInterfaceImplementationUnit(ir, diagnostics, declarationText)
 		Local abiName:String = ir.specialization.readableAbiName
 		Local result:String = "#include <brl.mod/blitz.mod/blitz.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
 		' Closed Interface signatures can mention application-local ordinary Types.
@@ -5819,6 +6664,28 @@ Type TCompilerGenericCUnitEmitter
 		result :+ "        bbObjectRegisterInterface((BBInterface *)&" + abiName + "_ifc);~n"
 		result :+ "    }~n"
 		result :+ "}~n"
+		Return result
+	End Function
+
+	Function EmitPicoInterfaceImplementationUnit:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, declarationText:String = "")
+		Local abiName:String = ir.specialization.readableAbiName
+		Local result:String = UnitPreamble(ir)
+		If Not declarationText.length Then declarationText = EmitPicoInterfaceDeclarations(ir, diagnostics)
+		result :+ declarationText + "~n"
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If method.interfaceMethodKind <> TEMPLATE_INTERFACE_METHOD_DEFAULT Or method.declaringSpecialization <> ir.specialization Then Continue
+			Local parameters:String = "BMXPicoObject *self"
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				parameters :+ ", " + CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
+			Next
+			result :+ CFunctionDeclaration(method.returnType, method.abiName, parameters, ir) + " {~n    (void)self;~n"
+			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				result :+ "    (void)" + TCompilerAbiNamer.Sanitize(parameter.name) + ";~n"
+			Next
+			result :+ EmitBody(method.body, ir, method, diagnostics) + "}~n~n"
+		Next
+		result :+ "const BMXPicoInterfaceDescriptor " + abiName + "_ifc = { " + CQuoted(SpecializationDisplayName(ir.specialization)) + ", " + CQuoted(abiName) + " };~n"
+		result :+ "void " + abiName + "_register(void) {}~n"
 		Return result
 	End Function
 
@@ -6155,6 +7022,93 @@ Type TCompilerGenericCUnitEmitter
 		Return ""
 	End Function
 
+	Function PicoGenericRootSlot:String(value:TTemplateTypeReference, address:String, ir:TCompilerGenericSpecializationIr)
+		If StringTemplateType(value) Then Return "{ (void *)(" + address + "), BMX_PICO_ROOT_STRING, 0 }"
+		If value And value.kind = TEMPLATE_TYPE_ARRAY Then Return "{ (void *)(" + address + "), BMX_PICO_ROOT_ARRAY, 0 }"
+		If PicoGenericStructValueType(value, ir) Then Return "{ (void *)(" + address + "), BMX_PICO_ROOT_STRUCT, " + PicoGenericValueDescriptor(value, ir) + " }"
+		If ManagedReferenceType(value, ir) Then Return "{ (void *)(" + address + "), BMX_PICO_ROOT_OBJECT, 0 }"
+		Return ""
+	End Function
+
+	Function CollectPicoGenericRootLocals(node:TGenericTemplateNode, declarations:TGenericTemplateNode[] Var, seen:TMap, ir:TCompilerGenericSpecializationIr)
+		If Not node Or node.kind = TEMPLATE_NODE_FUNCTION_LITERAL Then Return
+		If node.kind = TEMPLATE_NODE_DECLARATION And (ManagedReferenceType(node.semanticType, ir) Or PicoGenericStructValueType(node.semanticType, ir)) Then
+			' Rooted locals are hoisted to one C function scope. Source branches may
+			' retain the same BlitzMax local name as separate declaration records;
+			' their generated storage is intentionally shared across those branches.
+			Local key:String = GenericLocalName(node, ir).ToLower()
+			If Not seen.Contains(key) Then
+				seen.Insert(key, node)
+				declarations :+ [node]
+			End If
+		End If
+		For Local child:TGenericTemplateNode = EachIn node.children
+			CollectPicoGenericRootLocals(child, declarations, seen, ir)
+		Next
+	End Function
+
+	Function EmitPicoGenericRootFrameSetup:String(ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, rootLocals:TGenericTemplateNode[], locals:TMap, indent:String, structValueAddress:String = "", arrayTemporaries:TMap = Null)
+		If Not PicoGenericIrNeedsRootFrames(ir) Then Return ""
+		Local slots:String[]
+		If ir.isStruct And structValueAddress.length And PicoGenericStructContainsManagedFields(ir) Then
+			slots :+ ["{ (void *)(" + structValueAddress + "), BMX_PICO_ROOT_STRUCT, &" + PicoGenericStructDescriptorName(ir) + " }"]
+		Else If ir.isStruct And ownerMethod And Not ownerMethod.isStatic And PicoGenericStructContainsManagedFields(ir) Then
+			slots :+ ["{ (void *)self, BMX_PICO_ROOT_STRUCT, &" + PicoGenericStructDescriptorName(ir) + " }"]
+		Else If Not ir.isStruct And ownerMethod And ownerMethod.receiverType And Not ownerMethod.isStatic And Not ownerMethod.isTypeFunction Then
+			slots :+ ["{ (void *)&self, BMX_PICO_ROOT_OBJECT, 0 }"]
+		End If
+		If ownerMethod Then
+			For Local parameter:TGenericTemplateValueParameter = EachIn ownerMethod.parameters
+				If Not ManagedReferenceType(parameter.semanticType, ir) And Not PicoGenericStructValueType(parameter.semanticType, ir) Then Continue
+				Local parameterName:String = TCompilerAbiNamer.Sanitize(parameter.name)
+				If structValueAddress.length Then parameterName = StructConstructorParameterName(parameter.name)
+				Local address:String = "&" + parameterName
+				If parameter.passingMode = PARAMETER_PASS_VAR Then address = parameterName
+				Local slot:String = PicoGenericRootSlot(parameter.semanticType, address, ir)
+				If slot.length Then slots :+ [slot]
+			Next
+		End If
+		For Local declaration:TGenericTemplateNode = EachIn rootLocals
+			Local name:String = GenericLocalName(declaration, ir)
+			locals.Insert(declaration.valueText.ToLower(), name)
+			Local slot:String = PicoGenericRootSlot(declaration.semanticType, "&" + name, ir)
+			If slot.length Then slots :+ [slot]
+		Next
+		If arrayTemporaries Then
+			For Local temporary:TGenericTemplateNode = EachIn arrayTemporaries.Values()
+				Select temporary.kind
+					Case TEMPLATE_NODE_ARRAY_LITERAL
+						slots :+ ["{ (void *)&" + ArrayLiteralTemporaryName(temporary) + ", BMX_PICO_ROOT_ARRAY, 0 }"]
+					Case TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ARRAY_ELEMENT
+						If temporary.identity.StartsWith("materialized-receiver") Then slots :+ ["{ (void *)&" + ArrayReceiverTemporaryName(temporary) + ", BMX_PICO_ROOT_ARRAY, 0 }"]
+					Case TEMPLATE_NODE_CALL
+						If temporary.identity.Contains("materialized-receiver:") And temporary.children.length Then
+							Local receiverSlot:String = PicoGenericRootSlot(temporary.children[0].semanticType, "&" + CallReceiverTemporaryName(temporary), ir)
+							If receiverSlot.length Then slots :+ [receiverSlot]
+						End If
+				End Select
+			Next
+		End If
+		Local result:String = indent + "BMXPicoRootFrame bmx_pico_generic_root_frame;~n"
+		If slots.length Then
+			result :+ indent + "BMXPicoRootSlot bmx_pico_generic_root_slots[" + slots.length + "] = { "
+			For Local index:Int = 0 Until slots.length
+				If index Then result :+ ", "
+				result :+ slots[index]
+			Next
+			result :+ " };~n"
+			result :+ indent + "bmx_pico_root_frame_enter(&bmx_pico_generic_root_frame, bmx_pico_generic_root_slots, " + slots.length + ");~n"
+		Else
+			result :+ indent + "bmx_pico_root_frame_enter(&bmx_pico_generic_root_frame, 0, 0);~n"
+		End If
+		Return result
+	End Function
+
+	Function EmitPicoGenericRootFrameLeave:String(ir:TCompilerGenericSpecializationIr, indent:String)
+		If PicoGenericIrNeedsRootFrames(ir) Then Return indent + "bmx_pico_root_frame_leave(&bmx_pico_generic_root_frame);~n"
+		Return ""
+	End Function
+
 	Function EmitBody:String(body:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var)
 		If Not body Or body.kind <> TEMPLATE_NODE_BLOCK Then
 			diagnostics :+ ["BMXC3023 specialization method body is not a bound template block"]
@@ -6165,6 +7119,14 @@ Type TCompilerGenericCUnitEmitter
 		Local arrayTemporaries:TMap = New TMap
 		Local debugLocals:TGenericTemplateNode[]
 		Local result:String = EmitGenericGdbLineDirective(ownerMethod.source, ir, "    ") + EmitArrayLiteralTemporaryDeclarations(body, arrayTemporaries, ir, "    ")
+		Local picoRootLocals:TGenericTemplateNode[]
+		If PicoTarget(ir) Then
+			CollectPicoGenericRootLocals(body, picoRootLocals, New TMap, ir)
+			For Local declaration:TGenericTemplateNode = EachIn picoRootLocals
+				result :+ "    " + CValueDeclaration(declaration.semanticType, GenericLocalName(declaration, ir), ir) + " = " + DefaultValue(declaration.semanticType, ir) + ";~n"
+			Next
+			result :+ EmitPicoGenericRootFrameSetup(ir, ownerMethod, picoRootLocals, locals, "    ", "", arrayTemporaries)
+		End If
 		result :+ EmitGenericCoverageFunctionEntry(ir, ownerMethod, "    ")
 		If ownerMethod.isClosureInvoke And ownerMethod.incomingClosureEnvironment Then
 			For Local routineCapture:TCompilerGenericClosureCaptureIr = EachIn ownerMethod.closureCaptures
@@ -6195,9 +7157,9 @@ Type TCompilerGenericCUnitEmitter
 		' managed value as undefined state. A final explicit Return/Throw needs
 		' no redundant epilogue.
 		If Not VoidType(ownerMethod.returnType) And BodyRequiresImplicitReturn(body) Then
-			result :+ EmitGenericDebugLeave(ir, "    ") + "    return " + DefaultValue(ownerMethod.returnType, ir) + ";~n"
+			result :+ EmitGenericDebugLeave(ir, "    ") + EmitPicoGenericRootFrameLeave(ir, "    ") + "    return " + DefaultValue(ownerMethod.returnType, ir) + ";~n"
 		Else If VoidType(ownerMethod.returnType) And BodyRequiresImplicitReturn(body) Then
-			result :+ EmitGenericDebugLeave(ir, "    ") + "    return;~n"
+			result :+ EmitGenericDebugLeave(ir, "    ") + EmitPicoGenericRootFrameLeave(ir, "    ") + "    return;~n"
 		Else If Not result.length Then
 			result = "    return;~n"
 		End If
@@ -6210,23 +7172,26 @@ Type TCompilerGenericCUnitEmitter
 		If node.kind = TEMPLATE_NODE_ARRAY_LITERAL Then
 			Local name:String = ArrayLiteralTemporaryName(node)
 			If Not emitted.Contains(name) Then
-				result :+ indent + "BBARRAY " + name + " = &bbEmptyArray;~n"
+				If PicoTarget(ir) Then result :+ indent + "BMXPicoArray *" + name + " = &bmx_pico_empty_array;~n" Else result :+ indent + "BBARRAY " + name + " = &bbEmptyArray;~n"
 				emitted.Insert(name, node)
 			End If
 		End If
 		If (node.kind = TEMPLATE_NODE_ARRAY_SLICE Or node.kind = TEMPLATE_NODE_ARRAY_ELEMENT) And node.identity.StartsWith("materialized-receiver") Then
 			Local receiverName:String = ArrayReceiverTemporaryName(node)
 			If Not emitted.Contains(receiverName) Then
-				result :+ indent + "BBARRAY " + receiverName + " = &bbEmptyArray;~n"
+				If PicoTarget(ir) Then result :+ indent + "BMXPicoArray *" + receiverName + " = &bmx_pico_empty_array;~n" Else result :+ indent + "BBARRAY " + receiverName + " = &bbEmptyArray;~n"
 				emitted.Insert(receiverName, node)
 			End If
 		End If
 		If node.kind = TEMPLATE_NODE_CALL And node.identity.Contains("materialized-receiver:") And node.children.length And node.children[0].semanticType Then
 			Local callReceiverName:String = CallReceiverTemporaryName(node)
 			If Not emitted.Contains(callReceiverName) Then
-				Local callReceiverType:String = CType(node.children[0].semanticType, ir)
+				Local callReceiverType:String
+				If PicoTarget(ir) Then callReceiverType = "void *" Else callReceiverType = CType(node.children[0].semanticType, ir)
 				If callReceiverType.length Then
-					result :+ indent + callReceiverType + " " + callReceiverName + " = " + DefaultValue(node.children[0].semanticType, ir) + ";~n"
+					Local callReceiverDefault:String = DefaultValue(node.children[0].semanticType, ir)
+					If PicoTarget(ir) Then callReceiverDefault = "(void *)&bmx_pico_null_object"
+					result :+ indent + callReceiverType + " " + callReceiverName + " = " + callReceiverDefault + ";~n"
 					emitted.Insert(callReceiverName, node)
 				End If
 			End If
@@ -6330,6 +7295,13 @@ Type TCompilerGenericCUnitEmitter
 						result :+ indent + ClosureCaptureExpression(ownerMethod, capture) + " = " + initializer + ";~n"
 						Continue
 					End If
+					If PicoTarget(ir) And (ManagedReferenceType(child.semanticType, ir) Or PicoGenericStructValueType(child.semanticType, ir)) And activeLocal = GenericLocalName(child, ir) Then
+						Local initializer:String = DefaultValue(child.semanticType, ir)
+						If child.children.length = 1 Then initializer = EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals)
+						result :+ indent + activeLocal + " = " + initializer + ";~n"
+						result :+ indent + "(void)" + activeLocal + ";~n"
+						Continue
+					End If
 					If locals.Contains(localKey) Then
 						diagnostics :+ ["BMXC3049 generic local '" + child.valueText + "' is declared more than once in one specialization scope"]
 						Continue
@@ -6393,7 +7365,11 @@ Type TCompilerGenericCUnitEmitter
 						End If
 						Local targetExpression:String = EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals)
 						Local valueExpression:String = EmitExpression(child.children[1], ir, ownerMethod, diagnostics, locals)
-						result :+ indent + targetExpression + " = bbArrayConcat(~q" + elementEncoding + "~q, " + targetExpression + ", " + valueExpression + ");~n"
+							If PicoTarget(ir) Then
+								result :+ indent + targetExpression + " = bmx_pico_array_concat(" + targetExpression + ", " + valueExpression + ");~n"
+							Else
+								result :+ indent + targetExpression + " = bbArrayConcat(~q" + elementEncoding + "~q, " + targetExpression + ", " + valueExpression + ");~n"
+							End If
 						Continue
 					End If
 					If child.valueText <> "=" And (Not ScalarNumericType(child.children[0].semanticType) Or Not ScalarNumericType(child.children[1].semanticType)) Then
@@ -6426,15 +7402,33 @@ Type TCompilerGenericCUnitEmitter
 					If cleanupEdges And hasReturnExpression Then
 						Local returnName:String = "bmx_cleanup_return_" + SourceIdentity(child)
 						result :+ indent + CValueDeclaration(ownerMethod.returnType, returnName, ir) + " = " + EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals) + ";~n"
+						Local picoReturnRooted:Int
+						If PicoTarget(ir) Then
+							Local returnSlot:String = PicoGenericRootSlot(ownerMethod.returnType, "&" + returnName, ir)
+							If returnSlot.length Then
+								picoReturnRooted = True
+								result :+ indent + "BMXPicoRootSlot " + returnName + "_root_slot = " + returnSlot + ";~n"
+								result :+ indent + "BMXPicoRootFrame " + returnName + "_root_frame;~n"
+								result :+ indent + "bmx_pico_root_frame_enter(&" + returnName + "_root_frame, &" + returnName + "_root_slot, 1);~n"
+							End If
+						End If
 						result :+ EmitTemplateCleanupEdges(cleanupEdges, ir, ownerMethod, diagnostics, locals, indent)
 						result :+ EmitGenericDebugLeave(ir, indent)
+						If picoReturnRooted Then result :+ indent + "bmx_pico_root_frame_leave(&" + returnName + "_root_frame);~n"
+						result :+ EmitPicoGenericRootFrameLeave(ir, indent)
 						result :+ indent + "return " + returnName + ";~n"
 					Else If cleanupEdges Then
 						result :+ EmitTemplateCleanupEdges(cleanupEdges, ir, ownerMethod, diagnostics, locals, indent)
 						result :+ EmitGenericDebugLeave(ir, indent)
+						result :+ EmitPicoGenericRootFrameLeave(ir, indent)
 						If VoidType(ownerMethod.returnType) Then result :+ indent + "return;~n" Else result :+ indent + "return " + DefaultValue(ownerMethod.returnType, ir) + ";~n"
 					Else If hasReturnExpression Then
-						If ir.specialization.debugInstrumentation Then
+						If PicoTarget(ir) Then
+							Local returnName:String = "bmx_pico_generic_return_" + SourceIdentity(child)
+							result :+ indent + CValueDeclaration(ownerMethod.returnType, returnName, ir) + " = " + EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals) + ";~n"
+							result :+ EmitPicoGenericRootFrameLeave(ir, indent)
+							result :+ indent + "return " + returnName + ";~n"
+						Else If ir.specialization.debugInstrumentation Then
 							Local returnName:String = "bmx_debug_return_" + SourceIdentity(child)
 							result :+ indent + CValueDeclaration(ownerMethod.returnType, returnName, ir) + " = " + EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals) + ";~n"
 							result :+ EmitGenericDebugLeave(ir, indent)
@@ -6443,16 +7437,27 @@ Type TCompilerGenericCUnitEmitter
 							result :+ indent + "return " + EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals) + ";~n"
 						End If
 					Else If VoidType(ownerMethod.returnType) Then
-						result :+ EmitGenericDebugLeave(ir, indent) + indent + "return;~n"
+						result :+ EmitGenericDebugLeave(ir, indent) + EmitPicoGenericRootFrameLeave(ir, indent) + indent + "return;~n"
 					Else
-						result :+ EmitGenericDebugLeave(ir, indent) + indent + "return " + DefaultValue(ownerMethod.returnType, ir) + ";~n"
+						result :+ EmitGenericDebugLeave(ir, indent) + EmitPicoGenericRootFrameLeave(ir, indent) + indent + "return " + DefaultValue(ownerMethod.returnType, ir) + ";~n"
 					End If
 				Case TEMPLATE_NODE_THROW
 					If child.children.length <> 1 Or Not ManagedReferenceType(child.children[0].semanticType, ir) Then
 						diagnostics :+ ["BMXC3066 generic Throw requires one closed managed object expression"]
 						Continue
 					End If
-					result :+ indent + "bbExThrow((BBObject *)" + EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals) + ");~n"
+					If PicoTarget(ir) Then
+						Local thrownExpression:String = EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals)
+						If StringTemplateType(child.children[0].semanticType) Then
+							result :+ indent + "bmx_pico_exception_throw(bmx_pico_exception_string(" + thrownExpression + "));~n"
+						Else If child.children[0].semanticType.kind = TEMPLATE_TYPE_ARRAY Then
+							result :+ indent + "bmx_pico_exception_throw(bmx_pico_exception_array(" + thrownExpression + "));~n"
+						Else
+							result :+ indent + "bmx_pico_exception_throw(bmx_pico_exception_object((BMXPicoObject *)" + thrownExpression + "));~n"
+						End If
+					Else
+						result :+ indent + "bbExThrow((BBObject *)" + EmitExpression(child.children[0], ir, ownerMethod, diagnostics, locals) + ");~n"
+					End If
 				Case TEMPLATE_NODE_YIELD
 					If Not ownerMethod.isIteratorRoutine Or child.children.length < 1 Or child.children.length > 2 Then
 						diagnostics :+ ["BMXC3085 generic Yield reached ordinary specialization emission"]
@@ -6771,17 +7776,21 @@ Type TCompilerGenericCUnitEmitter
 		Local result:String
 		For Local cleanupStep:TGenericTemplateNode = EachIn edges.children
 			Local retainedIteratorCleanup:Int = ownerMethod And ownerMethod.isIteratorRoutine And cleanupStep And cleanupStep.kind = TEMPLATE_NODE_BLOCK And ownerMethod.iteratorRetainedCleanupIdentities.Contains(cleanupStep.identity)
-			If Not retainedIteratorCleanup Then
-				result :+ indent + "bbExLeave();~n"
+			Local picoIteratorCleanup:Int = PicoTarget(ir) And cleanupStep And cleanupStep.kind = TEMPLATE_NODE_BLOCK And cleanupStep.valueText = "cleanup-iterator"
+			If Not retainedIteratorCleanup And Not picoIteratorCleanup Then
+				If PicoTarget(ir) Then result :+ indent + "bmx_pico_exception_leave();~n" Else result :+ indent + "bbExLeave();~n"
 				If ir.specialization.debugInstrumentation Then result :+ indent + "bbOnDebugPopExState();~n"
 			End If
 			If cleanupStep And cleanupStep.kind = TEMPLATE_NODE_BLOCK And cleanupStep.valueText = "cleanup-finally" And cleanupStep.children.length = 1 Then
 				result :+ EmitSequentialBlock(cleanupStep.children[0], ir, ownerMethod, diagnostics, CloneLocals(locals), indent)
+				If PicoTarget(ir) Then result :+ indent + "bmx_pico_root_frame_leave(&bmx_try_" + TemplateTryCleanupIdentity(cleanupStep) + "_exception_root_frame);~n"
 			Else If cleanupStep And cleanupStep.kind = TEMPLATE_NODE_BLOCK And cleanupStep.valueText = "cleanup-try" Then
 				' The exception frame has no language-level body, but it must be
 				' left before a Return/Exit/Continue crosses the protected region.
+				If PicoTarget(ir) Then result :+ indent + "bmx_pico_root_frame_leave(&bmx_try_" + TemplateTryCleanupIdentity(cleanupStep) + "_exception_root_frame);~n"
 			Else If cleanupStep And cleanupStep.kind = TEMPLATE_NODE_BLOCK And cleanupStep.valueText = "cleanup-using" Then
 				result :+ EmitTemplateUsingCleanup(cleanupStep.children, ir, ownerMethod, diagnostics, locals, indent, retainedIteratorCleanup)
+				If PicoTarget(ir) And Not retainedIteratorCleanup Then result :+ indent + "bmx_pico_root_frame_leave(&bmx_" + TCompilerAbiNamer.Sanitize(cleanupStep.identity) + "_exception_root_frame);~n"
 			Else If cleanupStep And cleanupStep.kind = TEMPLATE_NODE_BLOCK And cleanupStep.valueText = "cleanup-iterator" And cleanupStep.identity.length Then
 				Local closeableName:String = "bmx_" + TCompilerAbiNamer.Sanitize(cleanupStep.identity) + "_closeable"
 				If retainedIteratorCleanup Then closeableName = ownerMethod.iteratorStateExpression + "->loop_" + TCompilerAbiNamer.Sanitize(cleanupStep.identity) + "_closeable"
@@ -6791,6 +7800,11 @@ Type TCompilerGenericCUnitEmitter
 			End If
 		Next
 		Return result
+	End Function
+
+	Function TemplateTryCleanupIdentity:String(cleanupStep:TGenericTemplateNode)
+		If Not cleanupStep Then Return "0"
+		Return SourceIdentity(cleanupStep).Trim()
 	End Function
 
 	Function EmitGenericIteratorCloseCleanupEdges:String(edges:TGenericTemplateNode, index:Int, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap, indent:String)
@@ -6860,6 +7874,22 @@ Type TCompilerGenericCUnitEmitter
 	End Function
 
 	Function EmitGenericIteratorCleanup:String(closeableName:String, ir:TCompilerGenericSpecializationIr, indent:String, clearResource:Int = False)
+		If PicoTarget(ir) Then
+			Local frameName:String = closeableName + "_cleanup_frame"
+			Local result:String = indent + "if ((void *)" + closeableName + " != (void *)&bmx_pico_null_object) {~n"
+			result :+ indent + "    BMXPicoExceptionFrame " + frameName + ";~n"
+			result :+ indent + "    bmx_pico_exception_enter(&" + frameName + ");~n"
+			result :+ indent + "    switch (setjmp(" + frameName + ".buffer)) {~n"
+			result :+ indent + "    case 0: {~n"
+			result :+ indent + "        ((void (*)(BMXPicoObject *))bmx_pico_interface_methods((void *)" + closeableName + ", &" + closeableName + "_descriptor, 1)[0])((BMXPicoObject *)" + closeableName + ");~n"
+			result :+ indent + "        bmx_pico_exception_leave();~n"
+			result :+ indent + "    } break;~n"
+			result :+ indent + "    case 1: { (void)bmx_pico_exception_catch(); } break;~n"
+			result :+ indent + "    }~n"
+			result :+ indent + "}~n"
+			If clearResource Then result :+ indent + closeableName + " = (BMXPicoObject *)&bmx_pico_null_object;~n"
+			Return result
+		End If
 		Local result:String = indent + "if ((BBOBJECT)" + closeableName + " != (BBOBJECT)&bbNullObject) {~n"
 		result :+ indent + "    bbExTry {~n"
 		result :+ indent + "    case 0: {~n"
@@ -6910,9 +7940,20 @@ Type TCompilerGenericCUnitEmitter
 		Local exceptionName:String = tryName + "_exception"
 		Local failedName:String = tryName + "_failed"
 		Local result:String = indent + "{~n"
-		result :+ indent + "    BBOBJECT " + exceptionName + " = (BBOBJECT)&bbNullObject;~n"
-		result :+ indent + "    BBINT " + failedName + " = 0;~n"
-		result :+ indent + "    bbExTry {~n"
+		If PicoTarget(ir) Then
+			result :+ indent + "    BMXPicoException " + exceptionName + " = {0};~n"
+			result :+ indent + "    BMXPicoRootSlot " + exceptionName + "_root_slot = { (void *)&" + exceptionName + ", BMX_PICO_ROOT_EXCEPTION, 0 };~n"
+			result :+ indent + "    BMXPicoRootFrame " + tryName + "_exception_root_frame;~n"
+			result :+ indent + "    bmx_pico_root_frame_enter(&" + tryName + "_exception_root_frame, &" + exceptionName + "_root_slot, 1);~n"
+			result :+ indent + "    BMXPicoExceptionFrame " + tryName + "_frame;~n"
+			result :+ indent + "    int32_t " + failedName + " = 0;~n"
+			result :+ indent + "    bmx_pico_exception_enter(&" + tryName + "_frame);~n"
+			result :+ indent + "    switch (setjmp(" + tryName + "_frame.buffer)) {~n"
+		Else
+			result :+ indent + "    BBOBJECT " + exceptionName + " = (BBOBJECT)&bbNullObject;~n"
+			result :+ indent + "    BBINT " + failedName + " = 0;~n"
+			result :+ indent + "    bbExTry {~n"
+		End If
 		result :+ indent + "    case 0: {~n"
 		If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPushExState();~n"
 		If catches.length Then
@@ -6920,17 +7961,22 @@ Type TCompilerGenericCUnitEmitter
 		Else
 			result :+ EmitSequentialBlock(node.children[0], ir, ownerMethod, diagnostics, CloneLocals(locals), indent + "        ")
 		End If
-		result :+ indent + "        bbExLeave();~n"
+		If PicoTarget(ir) Then result :+ indent + "        bmx_pico_exception_leave();~n" Else result :+ indent + "        bbExLeave();~n"
 		If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPopExState();~n"
 		result :+ indent + "    } break;~n"
 		result :+ indent + "    case 1: {~n"
 		If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPopExState();~n"
-		result :+ indent + "        " + exceptionName + " = bbExCatch();~n"
+		If PicoTarget(ir) Then result :+ indent + "        " + exceptionName + " = bmx_pico_exception_catch();~n" Else result :+ indent + "        " + exceptionName + " = bbExCatch();~n"
 		result :+ indent + "        " + failedName + " = 1;~n"
 		result :+ indent + "    } break;~n"
 		result :+ indent + "    }~n"
 		result :+ EmitSequentialBlock(finallyBody, ir, ownerMethod, diagnostics, CloneLocals(locals), indent + "    ")
-		result :+ indent + "    if (" + failedName + ") bbExThrow((BBObject *)" + exceptionName + ");~n"
+		If PicoTarget(ir) Then
+			result :+ indent + "    if (" + failedName + ") { bmx_pico_root_frame_leave(&" + tryName + "_exception_root_frame); bmx_pico_exception_throw(" + exceptionName + "); }~n"
+			result :+ indent + "    bmx_pico_root_frame_leave(&" + tryName + "_exception_root_frame);~n"
+		Else
+			result :+ indent + "    if (" + failedName + ") bbExThrow((BBObject *)" + exceptionName + ");~n"
+		End If
 		Return result + indent + "}~n"
 	End Function
 
@@ -6940,19 +7986,38 @@ Type TCompilerGenericCUnitEmitter
 			Return ""
 		End If
 		If ownerMethod And ownerMethod.isIteratorRoutine And tryNode And GenericTryRetained(tryNode) Then Return EmitGenericIteratorTryCatch(body, catches, ir, ownerMethod, diagnostics, locals, indent, identity, tryNode)
-		Local exceptionName:String = "bmx_try_" + TCompilerAbiNamer.Sanitize(identity) + "_exception"
+		Local tryName:String = "bmx_try_" + identity.Trim()
+		Local exceptionName:String = tryName + "_exception"
+		Local caughtName:String = tryName + "_caught"
 		Local result:String = indent + "{~n"
-		result :+ indent + "    BBOBJECT " + exceptionName + ";~n"
-		result :+ indent + "    bbExTry {~n"
+		If PicoTarget(ir) Then
+			result :+ indent + "    BMXPicoException " + exceptionName + " = {0};~n"
+			result :+ indent + "    int32_t " + caughtName + " = 0;~n"
+			result :+ indent + "    BMXPicoRootSlot " + exceptionName + "_root_slot = { (void *)&" + exceptionName + ", BMX_PICO_ROOT_EXCEPTION, 0 };~n"
+			result :+ indent + "    BMXPicoRootFrame " + tryName + "_exception_root_frame;~n"
+			result :+ indent + "    bmx_pico_root_frame_enter(&" + tryName + "_exception_root_frame, &" + exceptionName + "_root_slot, 1);~n"
+			result :+ indent + "    BMXPicoExceptionFrame " + tryName + "_frame;~n"
+			result :+ indent + "    bmx_pico_exception_enter(&" + tryName + "_frame);~n"
+			result :+ indent + "    switch (setjmp(" + tryName + "_frame.buffer)) {~n"
+		Else
+			result :+ indent + "    BBOBJECT " + exceptionName + ";~n"
+			result :+ indent + "    bbExTry {~n"
+		End If
 		result :+ indent + "    case 0: {~n"
 		If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPushExState();~n"
 		result :+ EmitSequentialBlock(body, ir, ownerMethod, diagnostics, CloneLocals(locals), indent + "        ")
-		result :+ indent + "        bbExLeave();~n"
+		If PicoTarget(ir) Then result :+ indent + "        bmx_pico_exception_leave();~n" Else result :+ indent + "        bbExLeave();~n"
 		If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPopExState();~n"
 		result :+ indent + "    } break;~n"
 		result :+ indent + "    case 1: {~n"
 		If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPopExState();~n"
-		result :+ indent + "        " + exceptionName + " = bbExCatch();~n"
+		If PicoTarget(ir) Then
+			result :+ indent + "        " + exceptionName + " = bmx_pico_exception_catch();~n"
+			result :+ indent + "        " + caughtName + " = 1;~n"
+			result :+ indent + "        bmx_pico_root_frame_leave(&" + tryName + "_exception_root_frame);~n"
+		Else
+			result :+ indent + "        " + exceptionName + " = bbExCatch();~n"
+		End If
 		For Local index:Int = 0 Until catches.length
 			Local catchNode:TGenericTemplateNode = catches[index]
 			If Not catchNode Or catchNode.children.length <> 2 Or catchNode.children[0].kind <> TEMPLATE_NODE_DECLARATION Then
@@ -6964,8 +8029,8 @@ Type TCompilerGenericCUnitEmitter
 			result :+ "if (" + TemplateCatchCondition(declaration.semanticType, exceptionName, ir, diagnostics) + ") {~n"
 			Local catchLocals:TMap = CloneLocals(locals)
 			Local catchName:String = GenericLocalName(declaration, ir)
-			If ir.specialization.debugInstrumentation Then
-				result :+ indent + "            " + catchName + " = (" + CType(declaration.semanticType, ir) + ")" + exceptionName + ";~n"
+			If PicoTarget(ir) Or ir.specialization.debugInstrumentation Then
+				If PicoTarget(ir) Then result :+ indent + "            " + catchName + " = (" + CType(declaration.semanticType, ir) + ")" + exceptionName + ".value;~n" Else result :+ indent + "            " + catchName + " = (" + CType(declaration.semanticType, ir) + ")" + exceptionName + ";~n"
 			Else
 				result :+ indent + "            " + CValueDeclaration(declaration.semanticType, catchName, ir) + " = (" + CType(declaration.semanticType, ir) + ")" + exceptionName + ";~n"
 			End If
@@ -6976,10 +8041,15 @@ Type TCompilerGenericCUnitEmitter
 			result :+ indent + "        }"
 		Next
 		result :+ " else {~n"
-		result :+ indent + "            bbExThrow((BBObject *)" + exceptionName + ");~n"
+		If PicoTarget(ir) Then
+			result :+ indent + "            bmx_pico_exception_throw(" + exceptionName + ");~n"
+		Else
+			result :+ indent + "            bbExThrow((BBObject *)" + exceptionName + ");~n"
+		End If
 		result :+ indent + "        }~n"
 		result :+ indent + "    } break;~n"
 		result :+ indent + "    }~n"
+		If PicoTarget(ir) Then result :+ indent + "    if (!" + caughtName + ") bmx_pico_root_frame_leave(&" + tryName + "_exception_root_frame);~n"
 		Return result + indent + "}~n"
 	End Function
 
@@ -7072,13 +8142,29 @@ Type TCompilerGenericCUnitEmitter
 
 	Function TemplateCatchCondition:String(value:TTemplateTypeReference, exceptionName:String, ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
 		If Not value Then Return "0"
+		If PicoTarget(ir) Then
+			If value.kind = TEMPLATE_TYPE_BUILTIN Then
+				Select value.symbolName.ToLower()
+					Case "object" Return exceptionName + ".kind == BMX_PICO_EXCEPTION_OBJECT"
+					Case "string" Return exceptionName + ".kind == BMX_PICO_EXCEPTION_STRING"
+				End Select
+			End If
+			If value.kind = TEMPLATE_TYPE_ARRAY Then Return exceptionName + ".kind == BMX_PICO_EXCEPTION_ARRAY"
+			Local picoReferenced:TGenericSpecializationNode = TCompilerGenericSpecializationLowerer.ReferencedSpecialization(value, ir)
+			If picoReferenced Then
+				If picoReferenced.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_INTERFACE Then Return exceptionName + ".kind == BMX_PICO_EXCEPTION_OBJECT && bmx_pico_interface_cast(" + exceptionName + ".value, &" + picoReferenced.readableAbiName + "_ifc) != &bmx_pico_null_object"
+				If picoReferenced.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_CLASS Then Return exceptionName + ".kind == BMX_PICO_EXCEPTION_OBJECT && bmx_pico_object_cast(" + exceptionName + ".value, &" + picoReferenced.readableAbiName + "_type) != &bmx_pico_null_object"
+			End If
+			diagnostics :+ ["BMXC3072 Pico generic Catch type '" + value.CanonicalName() + "' has no published compact runtime descriptor"]
+			Return "0"
+		End If
 		If value.kind = TEMPLATE_TYPE_BUILTIN Then
 			Select value.symbolName.ToLower()
 				Case "object" Return "1"
 				Case "string" Return "bbObjectStringcast((BBOBJECT)" + exceptionName + ") != (BBOBJECT)&bbEmptyString"
 			End Select
 		End If
-		If value.kind = TEMPLATE_TYPE_ARRAY Then Return "bbObjectArraycast((BBOBJECT)" + exceptionName + ") != &bbEmptyArray"
+		If value.kind = TEMPLATE_TYPE_ARRAY Then Return "bbObjectArraycast((BBOBJECT)" + exceptionName + ") != (BBOBJECT)&bbEmptyArray"
 		Local referenced:TGenericSpecializationNode = TCompilerGenericSpecializationLowerer.ReferencedSpecialization(value, ir)
 		If referenced Then
 			If referenced.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_INTERFACE Then Return "bbInterfaceDowncast((BBObject *)" + exceptionName + ", (BBInterface *)&" + referenced.readableAbiName + "_ifc) != &bbNullObject"
@@ -7107,16 +8193,23 @@ Type TCompilerGenericCUnitEmitter
 			reference.semanticType = declaration.semanticType
 			reference.source = declaration.source
 			result :+ indent + "if (" + EmitConditionExpression(reference, ir, ownerMethod, diagnostics, locals) + ") {~n"
-			result :+ indent + "    bbExTry {~n"
+			If PicoTarget(ir) Then
+				Local frameName:String = "bmx_pico_using_close_" + TCompilerAbiNamer.Sanitize(SourceIdentity(resource)) + "_frame"
+				result :+ indent + "    BMXPicoExceptionFrame " + frameName + ";~n"
+				result :+ indent + "    bmx_pico_exception_enter(&" + frameName + ");~n"
+				result :+ indent + "    switch (setjmp(" + frameName + ".buffer)) {~n"
+			Else
+				result :+ indent + "    bbExTry {~n"
+			End If
 			result :+ indent + "    case 0: {~n"
 			If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPushExState();~n"
 			result :+ indent + "        (void)" + EmitExpression(resource.children[1], ir, ownerMethod, diagnostics, locals) + ";~n"
-			result :+ indent + "        bbExLeave();~n"
+			If PicoTarget(ir) Then result :+ indent + "        bmx_pico_exception_leave();~n" Else result :+ indent + "        bbExLeave();~n"
 			If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPopExState();~n"
 			result :+ indent + "    } break;~n"
 			result :+ indent + "    case 1: {"
 			If ir.specialization.debugInstrumentation Then result :+ " bbOnDebugPopExState();"
-			result :+ " (void)bbExCatch(); } break;~n"
+			If PicoTarget(ir) Then result :+ " (void)bmx_pico_exception_catch(); } break;~n" Else result :+ " (void)bbExCatch(); } break;~n"
 			result :+ indent + "    }~n"
 			result :+ indent + "}~n"
 			If clearResources Then
@@ -7140,6 +8233,10 @@ Type TCompilerGenericCUnitEmitter
 		Local exceptionName:String = usingName + "_exception"
 		Local failedName:String = usingName + "_failed"
 		Local persistentUsing:Int = ownerMethod.isIteratorRoutine And GenericNodeContainsYield(body)
+		If PicoTarget(ir) And persistentUsing Then
+			diagnostics :+ ["BMXC3073 Pico generic Using does not yet retain a resource across Yield"]
+			Return ""
+		End If
 		Local result:String = indent + "{~n"
 		For Local resource:TGenericTemplateNode = EachIn resources
 			If Not resource Or resource.kind <> TEMPLATE_NODE_BLOCK Or resource.valueText <> "using-resource" Or resource.children.length <> 2 Then
@@ -7154,14 +8251,25 @@ Type TCompilerGenericCUnitEmitter
 			Local resourceType:String = CType(declaration.semanticType, ir)
 			Local resourceName:String = GenericLocalName(declaration, ir)
 			If ownerMethod.isIteratorRoutine Then resourceName = ownerMethod.iteratorStateExpression + "->" + GenericIteratorLocalFieldName(declaration)
-			If Not ownerMethod.isIteratorRoutine And Not ir.specialization.debugInstrumentation Then result :+ indent + "    " + resourceType + " volatile " + resourceName + " = " + DefaultValue(declaration.semanticType, ir) + ";~n"
+			If Not PicoTarget(ir) And Not ownerMethod.isIteratorRoutine And Not ir.specialization.debugInstrumentation Then result :+ indent + "    " + resourceType + " volatile " + resourceName + " = " + DefaultValue(declaration.semanticType, ir) + ";~n"
 			result :+ indent + "    (void)" + resourceName + ";~n"
 			usingLocals.Insert(declaration.valueText.ToLower(), resourceName)
 		Next
 		If Not persistentUsing Then
-			result :+ indent + "    BBOBJECT " + exceptionName + " = (BBOBJECT)&bbNullObject;~n"
-			result :+ indent + "    BBINT " + failedName + " = 0;~n"
-			result :+ indent + "    bbExTry {~n"
+			If PicoTarget(ir) Then
+				result :+ indent + "    BMXPicoException " + exceptionName + " = {0};~n"
+				result :+ indent + "    BMXPicoRootSlot " + exceptionName + "_root_slot = { (void *)&" + exceptionName + ", BMX_PICO_ROOT_EXCEPTION, 0 };~n"
+				result :+ indent + "    BMXPicoRootFrame " + usingName + "_exception_root_frame;~n"
+				result :+ indent + "    bmx_pico_root_frame_enter(&" + usingName + "_exception_root_frame, &" + exceptionName + "_root_slot, 1);~n"
+				result :+ indent + "    BMXPicoExceptionFrame " + usingName + "_frame;~n"
+				result :+ indent + "    int32_t " + failedName + " = 0;~n"
+				result :+ indent + "    bmx_pico_exception_enter(&" + usingName + "_frame);~n"
+				result :+ indent + "    switch (setjmp(" + usingName + "_frame.buffer)) {~n"
+			Else
+				result :+ indent + "    BBOBJECT " + exceptionName + " = (BBOBJECT)&bbNullObject;~n"
+				result :+ indent + "    BBINT " + failedName + " = 0;~n"
+				result :+ indent + "    bbExTry {~n"
+			End If
 			result :+ indent + "    case 0: {~n"
 			If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPushExState();~n"
 		End If
@@ -7178,17 +8286,22 @@ Type TCompilerGenericCUnitEmitter
 		If persistentUsing Then
 			result :+ EmitTemplateUsingCleanup(resources, ir, ownerMethod, diagnostics, usingLocals, indent + "    ", True)
 		Else
-			result :+ indent + "        bbExLeave();~n"
+			If PicoTarget(ir) Then result :+ indent + "        bmx_pico_exception_leave();~n" Else result :+ indent + "        bbExLeave();~n"
 			If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPopExState();~n"
 			result :+ indent + "    } break;~n"
 			result :+ indent + "    case 1: {~n"
 			If ir.specialization.debugInstrumentation Then result :+ indent + "        bbOnDebugPopExState();~n"
-			result :+ indent + "        " + exceptionName + " = bbExCatch();~n"
+			If PicoTarget(ir) Then result :+ indent + "        " + exceptionName + " = bmx_pico_exception_catch();~n" Else result :+ indent + "        " + exceptionName + " = bbExCatch();~n"
 			result :+ indent + "        " + failedName + " = 1;~n"
 			result :+ indent + "    } break;~n"
 			result :+ indent + "    }~n"
 			result :+ EmitTemplateUsingCleanup(resources, ir, ownerMethod, diagnostics, usingLocals, indent + "    ")
-			result :+ indent + "    if (" + failedName + ") bbExThrow((BBObject *)" + exceptionName + ");~n"
+			If PicoTarget(ir) Then
+				result :+ indent + "    if (" + failedName + ") { bmx_pico_root_frame_leave(&" + usingName + "_exception_root_frame); bmx_pico_exception_throw(" + exceptionName + "); }~n"
+				result :+ indent + "    bmx_pico_root_frame_leave(&" + usingName + "_exception_root_frame);~n"
+			Else
+				result :+ indent + "    if (" + failedName + ") bbExThrow((BBObject *)" + exceptionName + ");~n"
+			End If
 		End If
 		Return result + indent + "}~n"
 	End Function
@@ -7225,7 +8338,10 @@ Type TCompilerGenericCUnitEmitter
 
 	Function EmitSelectComparison:String(selectorName:String, selectorType:TTemplateTypeReference, value:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
 		Local valueExpression:String = EmitExpression(value, ir, ownerMethod, diagnostics, locals)
-		If StringTemplateType(selectorType) Then Return "bbStringEquals(" + selectorName + ", " + valueExpression + ") == 1"
+		If StringTemplateType(selectorType) Then
+			If PicoTarget(ir) Then Return "bmx_pico_string_equals(" + selectorName + ", " + valueExpression + ") != 0"
+			Return "bbStringEquals(" + selectorName + ", " + valueExpression + ") == 1"
+		End If
 		If ScalarNumericType(selectorType) Or (selectorType And selectorType.kind = TEMPLATE_TYPE_NAMED And selectorType.runtimeKind = TEMPLATE_RUNTIME_ENUM) Then Return selectorName + " == " + valueExpression
 		If ManagedReferenceType(selectorType, ir) Then Return "(BBOBJECT)" + selectorName + " == (BBOBJECT)" + valueExpression
 		diagnostics :+ ["BMXC3071 generic Select selector '" + selectorType.CanonicalName() + "' has no supported closed equality ABI"]
@@ -7472,11 +8588,16 @@ Type TCompilerGenericCUnitEmitter
 				result :+ indent + "    " + collectionName + " = " + DebugManagedValue(EmitExpression(collectionNode, ir, ownerMethod, diagnostics, locals), collectionNode.semanticType, ir) + ";~n"
 				result :+ indent + "    " + indexName + " = 0;~n"
 			Else
-				result :+ indent + "    BBARRAY " + collectionName + " = " + DebugManagedValue(EmitExpression(collectionNode, ir, ownerMethod, diagnostics, locals), collectionNode.semanticType, ir) + ";~n"
-				result :+ indent + "    BBUINT " + indexName + " = 0;~n"
+				If PicoTarget(ir) Then result :+ indent + "    BMXPicoArray * " + collectionName + " = " + DebugManagedValue(EmitExpression(collectionNode, ir, ownerMethod, diagnostics, locals), collectionNode.semanticType, ir) + ";~n" Else result :+ indent + "    BBARRAY " + collectionName + " = " + DebugManagedValue(EmitExpression(collectionNode, ir, ownerMethod, diagnostics, locals), collectionNode.semanticType, ir) + ";~n"
+				If PicoTarget(ir) Then result :+ indent + "    uint32_t " + indexName + " = 0;~n" Else result :+ indent + "    BBUINT " + indexName + " = 0;~n"
 			End If
-			result :+ indent + "    for (; " + indexName + " < (BBUINT)" + collectionName + "->scales[0]; " + indexName + " = " + indexName + " + 1) {~n"
-			If persistentEach Then result :+ indent + "        " + elementName + " = ((" + elementType + "*)BBARRAYDATA(" + collectionName + ", 1))[" + indexName + "];~n" Else result :+ indent + "        " + elementType + " " + elementName + " = ((" + elementType + "*)BBARRAYDATA(" + collectionName + ", 1))[" + indexName + "];~n"
+			If PicoTarget(ir) Then
+				result :+ indent + "    for (; " + indexName + " < (uint32_t)" + collectionName + "->length; " + indexName + " = " + indexName + " + 1) {~n"
+				If persistentEach Then result :+ indent + "        " + elementName + " = *((" + elementType + "*)bmx_pico_array_element(" + collectionName + ", (int32_t)" + indexName + ", (uint32_t)sizeof(" + elementType + ")));~n" Else result :+ indent + "        " + elementType + " " + elementName + " = *((" + elementType + "*)bmx_pico_array_element(" + collectionName + ", (int32_t)" + indexName + ", (uint32_t)sizeof(" + elementType + ")));~n"
+			Else
+				result :+ indent + "    for (; " + indexName + " < (BBUINT)" + collectionName + "->scales[0]; " + indexName + " = " + indexName + " + 1) {~n"
+				If persistentEach Then result :+ indent + "        " + elementName + " = ((" + elementType + "*)BBARRAYDATA(" + collectionName + ", 1))[" + indexName + "];~n" Else result :+ indent + "        " + elementType + " " + elementName + " = ((" + elementType + "*)BBARRAYDATA(" + collectionName + ", 1))[" + indexName + "];~n"
+			End If
 			Local convertedElement:String = elementName
 			Local objectElement:Int = IsObjectType(collectionNode.semanticType.elementType)
 			If objectElement And StringTemplateType(targetNode.semanticType) Then
@@ -7634,6 +8755,35 @@ Type TCompilerGenericCUnitEmitter
 			Local loopIndent:String = indent + "        "
 			If persistentEach Then loopIndent = indent + "    "
 			Local result:String = indent + "{~n"
+			If PicoTarget(ir) Then
+				If persistentEach Then
+					diagnostics :+ ["BMXC3057 Pico generic Interface EachIn does not yet retain an iterator across Yield"]
+					Return ""
+				End If
+				result :+ indent + "    BMXPicoObject *" + collectionName + " = (BMXPicoObject *)(" + EmitExpression(collectionNode, ir, ownerMethod, diagnostics, locals) + ");~n"
+				If node.valueText = "eachin-iterable" Then
+					result :+ indent + "    BMXPicoObject *" + iteratorName + " = (BMXPicoObject *)" + EmitInterfaceOperation(collectionInterface, factoryNode, factoryMethod, collectionName, ir, ownerMethod, diagnostics, locals) + ";~n"
+				Else
+					result :+ indent + "    BMXPicoObject *" + iteratorName + " = " + collectionName + ";~n"
+				End If
+				result :+ indent + "    const BMXPicoInterfaceDescriptor " + closeableName + "_descriptor = { ~qICloseable~q, ~qbrl_blitz_ICloseable~q };~n"
+				result :+ indent + "    BMXPicoObject *" + closeableName + " = (BMXPicoObject *)bmx_pico_interface_cast((void *)" + iteratorName + ", &" + closeableName + "_descriptor);~n"
+				result :+ indent + "    while (" + EmitInterfaceOperation(iteratorInterface, advanceNode, advanceMethod, iteratorName, ir, ownerMethod, diagnostics, locals) + ") {~n"
+				result :+ indent + "        " + targetType + " " + elementName + " = " + EmitInterfaceOperation(iteratorInterface, currentNode, currentMethod, iteratorName, ir, ownerMethod, diagnostics, locals) + ";~n"
+				Local picoBodyLocals:TMap = CloneLocals(locals)
+				If targetNode.kind = TEMPLATE_NODE_DECLARATION Then
+					result :+ indent + "        " + targetType + " " + targetName + " = " + elementName + ";~n"
+					picoBodyLocals.Insert(targetNode.valueText.ToLower(), targetName)
+				Else
+					result :+ indent + "        " + targetName + " = " + elementName + ";~n"
+				End If
+				result :+ EmitSequentialBlock(node.children[6], ir, ownerMethod, diagnostics, picoBodyLocals, indent + "        ")
+				If hasContinue Then result :+ indent + "        " + LoopControlLabel(node.identity, "continue") + ": ;~n"
+				result :+ indent + "    }~n"
+				result :+ EmitGenericIteratorCleanup(closeableName, ir, indent + "    ")
+				If hasExit Then result :+ indent + "    " + LoopControlLabel(node.identity, "exit") + ": ;~n"
+				Return result + indent + "}~n"
+			End If
 			' Canonical Type expressions have their closed struct-pointer ABI, while
 			' Interface dispatch intentionally stores the evaluate-once receiver as
 			' the runtime object base. C does not implicitly convert between those
@@ -8009,6 +9159,13 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitInterfaceOperation:String(interfaceNode:TGenericSpecializationNode, operation:TGenericTemplateNode, operationMethod:TCompilerGenericMethodIr, receiver:String, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
 		Local receiverPrefix:String
 		receiver = StabilizeCallReceiver(operation, receiver, receiverPrefix)
+		If PicoTarget(ir) Then
+			Local picoResult:String = InterfaceCallHelperName(interfaceNode, operationMethod) + "((BMXPicoObject *)" + receiver
+			For Local index:Int = 1 Until operation.children.length
+				picoResult :+ ", " + EmitCallArgument(operation.children[index], operationMethod.parameters[index - 1], ir, ownerMethod, diagnostics, locals)
+			Next
+			Return WrapStabilizedCall(picoResult + ")", receiverPrefix)
+		End If
 		Local result:String = "((struct " + interfaceNode.readableAbiName + "_methods *)bbObjectInterface((BBOBJECT)" + receiver + ", (BBInterface *)&" + interfaceNode.readableAbiName + "_ifc))->" + operationMethod.slotName + "((BBOBJECT)" + receiver
 		For Local index:Int = 1 Until operation.children.length
 			result :+ ", " + EmitCallArgument(operation.children[index], operationMethod.parameters[index - 1], ir, ownerMethod, diagnostics, locals)
@@ -8019,7 +9176,8 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitInterfaceCall:String(interfaceNode:TGenericSpecializationNode, operation:TGenericTemplateNode, operationMethod:TCompilerGenericMethodIr, receiver:String, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
 		Local receiverPrefix:String
 		receiver = StabilizeCallReceiver(operation, receiver, receiverPrefix)
-		Local result:String = InterfaceCallHelperName(interfaceNode, operationMethod) + "((BBOBJECT)" + receiver
+		Local result:String = InterfaceCallHelperName(interfaceNode, operationMethod) + "("
+		If PicoTarget(ir) Then result :+ "(BMXPicoObject *)" + receiver Else result :+ "(BBOBJECT)" + receiver
 		For Local index:Int = 1 Until operation.children.length
 			result :+ ", " + EmitCallArgument(operation.children[index], operationMethod.parameters[index - 1], ir, ownerMethod, diagnostics, locals)
 		Next
@@ -8080,6 +9238,42 @@ Type TCompilerGenericCUnitEmitter
 		Return callExpression
 	End Function
 
+	Function PicoGenericMethodSlotIndex:Int(typeNode:TGenericSpecializationNode, method:TCompilerGenericMethodIr, diagnostics:String[] Var)
+		If Not typeNode Or Not method Then Return -1
+		Local typeIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(typeNode, diagnostics)
+		If Not typeIr Then Return -1
+		Local slotIndex:Int
+		For Local candidate:TCompilerGenericMethodIr = EachIn typeIr.methods
+			If candidate.isDestructor Then Continue
+			If candidate.slotName = method.slotName Then Return slotIndex
+			slotIndex :+ 1
+		Next
+		Return -1
+	End Function
+
+	Function PicoGenericMethodCount:Int(typeNode:TGenericSpecializationNode, diagnostics:String[] Var)
+		If Not typeNode Then Return 0
+		Local typeIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(typeNode, diagnostics)
+		If Not typeIr Then Return 0
+		Local result:Int
+		For Local method:TCompilerGenericMethodIr = EachIn typeIr.methods
+			If Not method.isDestructor Then result :+ 1
+		Next
+		Return result
+	End Function
+
+	Function PicoGenericMethodPointerType:String(method:TCompilerGenericMethodIr, ownerNode:TGenericSpecializationNode, ir:TCompilerGenericSpecializationIr)
+		If Not method Or Not ownerNode Then Return ""
+		Local parameters:String
+		If Not method.isTypeFunction Then parameters = "struct " + ownerNode.readableAbiName + "_obj *"
+		For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+			If parameters.length Then parameters :+ ", "
+			parameters :+ CValueDeclaration(parameter.semanticType, "", ir, parameter.passingMode)
+		Next
+		If Not parameters.length Then parameters = "void"
+		Return CFunctionPointerDeclaration(method.returnType, "", parameters, ir)
+	End Function
+
 	Function EmitTypeOperation:String(typeNode:TGenericSpecializationNode, operation:TGenericTemplateNode, operationMethod:TCompilerGenericMethodIr, receiver:String, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
 		Local ownerNode:TGenericSpecializationNode = typeNode
 		If operationMethod And operationMethod.declaringSpecialization Then ownerNode = operationMethod.declaringSpecialization
@@ -8094,6 +9288,22 @@ Type TCompilerGenericCUnitEmitter
 		End If
 		Local receiverPrefix:String
 		receiver = StabilizeCallReceiver(operation, receiver, receiverPrefix)
+		If PicoTarget(ir) Then
+			Local slotIndex:Int = PicoGenericMethodSlotIndex(typeNode, operationMethod, diagnostics)
+			Local methodCount:Int = PicoGenericMethodCount(typeNode, diagnostics)
+			Local pointerType:String = PicoGenericMethodPointerType(operationMethod, ownerNode, ir)
+			If slotIndex < 0 Or Not methodCount Or Not pointerType.length Then
+				diagnostics :+ ["BMXC3058 Pico generic Type operation '" + operation.valueText + "' has no embedded virtual slot"]
+				Return DefaultValue(operation.semanticType, ir)
+			End If
+			Local picoResult:String = "((" + pointerType + ")bmx_pico_type_methods((void *)" + receiver + ", &" + typeNode.readableAbiName + "_type, " + methodCount + ")[" + slotIndex + "])("
+			If Not operationMethod.isTypeFunction Then picoResult :+ "(struct " + ownerNode.readableAbiName + "_obj *)" + receiver
+			For Local index:Int = 1 Until operation.children.length
+				If index > 1 Or Not operationMethod.isTypeFunction Then picoResult :+ ", "
+				picoResult :+ EmitCallArgument(operation.children[index], operationMethod.parameters[index - 1], ir, ownerMethod, diagnostics, locals)
+			Next
+			Return "(" + WrapStabilizedCall(picoResult + ")", receiverPrefix) + ")"
+		End If
 		Local result:String = receiver + "->clas->" + operationMethod.slotName + "("
 		If Not operationMethod.isTypeFunction Then result :+ "(struct " + ownerNode.readableAbiName + "_obj *)" + receiver
 		For Local index:Int = 1 Until operation.children.length
@@ -8127,7 +9337,13 @@ Type TCompilerGenericCUnitEmitter
 		Next
 		Local receiverPrefix:String
 		receiver = StabilizeCallReceiver(operation, receiver, receiverPrefix)
-		Local result:String = "((" + CFunctionPointerDeclaration(operation.semanticType, "", signatureParameters, ir) + ")((BBObject *)" + receiver + ")->clas->vfns[" + operation.runtimeDispatchIndex + "])((" + receiverType + ")" + receiver
+		Local dispatchTable:String
+		If PicoTarget(ir) Then
+			dispatchTable = "bmx_pico_type_methods((void *)" + receiver + ", 0, " + (operation.runtimeDispatchIndex + 1) + ")"
+		Else
+			dispatchTable = "((BBObject *)" + receiver + ")->clas->vfns"
+		End If
+		Local result:String = "((" + CFunctionPointerDeclaration(operation.semanticType, "", signatureParameters, ir) + ")" + dispatchTable + "[" + operation.runtimeDispatchIndex + "])((" + receiverType + ")" + receiver
 		For Local index:Int = 1 Until operation.children.length
 			If operation.children[index].kind = TEMPLATE_NODE_CONVERSION And (operation.children[index].valueText = CONVERSION_VAR_REFERENCE Or operation.children[index].valueText = CONVERSION_POINTER_TO_VAR_REFERENCE) Then
 				Local parameter:TGenericTemplateValueParameter = New TGenericTemplateValueParameter
@@ -8165,7 +9381,9 @@ Type TCompilerGenericCUnitEmitter
 		End If
 		Local receiverPrefix:String
 		receiver = StabilizeCallReceiver(operation, receiver, receiverPrefix)
-		Local result:String = helperName + "((BBOBJECT)" + receiver
+		Local receiverType:String = "BBOBJECT"
+		If PicoTarget(ir) Then receiverType = "BMXPicoObject *"
+		Local result:String = helperName + "((" + receiverType + ")" + receiver
 		For Local index:Int = 1 Until operation.children.length
 			If operation.children[index].kind = TEMPLATE_NODE_CONVERSION And (operation.children[index].valueText = CONVERSION_VAR_REFERENCE Or operation.children[index].valueText = CONVERSION_POINTER_TO_VAR_REFERENCE) Then
 				Local parameter:TGenericTemplateValueParameter = New TGenericTemplateValueParameter
@@ -8193,6 +9411,7 @@ Type TCompilerGenericCUnitEmitter
 	End Function
 
 	Function NullValueForType:String(value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr)
+		If PicoTarget(ir) Then Return DefaultValue(value, ir)
 		If value And value.kind = TEMPLATE_TYPE_ARRAY Then Return "&bbEmptyArray"
 		If value And value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "string" Then Return "&bbEmptyString"
 		If ManagedReferenceType(value, ir) Then Return "((" + CType(value, ir) + ")&bbNullObject)"
@@ -8213,6 +9432,11 @@ Type TCompilerGenericCUnitEmitter
 
 	Function DebugManagedValue:String(result:String, value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr)
 		If Not ir Or Not ir.specialization Or Not ir.specialization.debugInstrumentation Or Not value Then Return result
+		If PicoTarget(ir) Then
+			If value.kind = TEMPLATE_TYPE_ARRAY Then Return result
+			If value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "string" Then Return result
+			If ManagedReferenceType(value, ir) Then Return "((" + CType(value, ir) + ")bmx_pico_object_assert((void *)" + result + "))"
+		End If
 		If value.kind = TEMPLATE_TYPE_ARRAY Then Return "bbManagedArrayAssert((BBARRAY)" + result + ")"
 		If value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "string" Then Return "bbManagedStringAssert((BBSTRING)" + result + ")"
 		If ManagedReferenceType(value, ir) Then Return "((" + CType(value, ir) + ")bbManagedObjectAssert((BBOBJECT)" + result + "))"
@@ -8231,6 +9455,11 @@ Type TCompilerGenericCUnitEmitter
 		Local result:String = EmitExpression(node, ir, ownerMethod, diagnostics, locals)
 		If node And node.semanticType Then
 			result = DebugManagedValue(result, node.semanticType, ir)
+			If PicoTarget(ir) Then
+				If node.semanticType.kind = TEMPLATE_TYPE_ARRAY Then Return "(" + result + " != &bmx_pico_empty_array)"
+				If node.semanticType.kind = TEMPLATE_TYPE_BUILTIN And node.semanticType.symbolName.ToLower() = "string" Then Return "(" + result + " != &bmx_pico_empty_string)"
+				If ManagedReferenceType(node.semanticType, ir) And Not ScalarNumericType(node.semanticType) Then Return "((void *)" + result + " != (void *)&bmx_pico_null_object)"
+			End If
 			If node.semanticType.kind = TEMPLATE_TYPE_ARRAY Then Return "(" + result + " != &bbEmptyArray)"
 			If node.semanticType.kind = TEMPLATE_TYPE_BUILTIN And node.semanticType.symbolName.ToLower() = "string" Then Return "(" + result + " != &bbEmptyString)"
 			If ManagedReferenceType(node.semanticType, ir) And Not ScalarNumericType(node.semanticType) Then Return "((BBOBJECT)" + result + " != (BBOBJECT)&bbNullObject)"
@@ -8363,10 +9592,14 @@ Type TCompilerGenericCUnitEmitter
 				End If
 				diagnostics :+ ["BMXC3025 specialization body refers to unknown field '" + node.valueText + "'"]
 			Case TEMPLATE_NODE_ARRAY_LENGTH
+				If node.children.length = 1 And StringTemplateType(node.children[0].semanticType) Then
+					Return "(" + DebugManagedValue(EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals), node.children[0].semanticType, ir) + "->length)"
+				End If
 				If node.children.length <> 1 Or Not TCompilerGenericSpecializationLowerer.SupportedManagedArrayType(node.children[0].semanticType, ir) Then
-					diagnostics :+ ["BMXC3063 generic managed Array length requires one closed one-dimensional Array receiver"]
+					diagnostics :+ ["BMXC3063 generic length requires a String or closed one-dimensional Array receiver"]
 					Return "0"
 				End If
+				If PicoTarget(ir) Then Return "(" + DebugManagedValue(EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals), node.children[0].semanticType, ir) + "->length)"
 				Return "(" + DebugManagedValue(EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals), node.children[0].semanticType, ir) + "->scales[0])"
 			Case TEMPLATE_NODE_ARRAY_ELEMENT
 				If node.children.length < 2 Or Not node.children[0].semanticType Then
@@ -8396,7 +9629,12 @@ Type TCompilerGenericCUnitEmitter
 					Return DefaultValue(node.semanticType, ir)
 				End If
 				If node.children[0].semanticType.rank = 1 And Not node.identity.StartsWith("materialized-receiver") Then
+					If PicoTarget(ir) Then Return "*((" + arrayElementType + " *)bmx_pico_array_element(" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ", (int32_t)(" + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + "), (uint32_t)sizeof(" + arrayElementType + ")))"
 					Return "((" + arrayElementType + "*)BBARRAYDATA(" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ", 1))[" + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + "]"
+				End If
+				If PicoTarget(ir) Then
+					diagnostics :+ ["BMXC3063 Pico generic managed Array element access currently requires one dimension"]
+					Return DefaultValue(node.semanticType, ir)
 				End If
 				Local arrayReceiver:String = EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals)
 				Local receiverPrefix:String
@@ -8415,7 +9653,7 @@ Type TCompilerGenericCUnitEmitter
 			Case TEMPLATE_NODE_ARRAY_SLICE
 				If node.children.length <> 3 Or Not TCompilerGenericSpecializationLowerer.SupportedManagedArrayType(node.children[0].semanticType, ir) Or Not ScalarIntegralType(node.children[1].semanticType) Or Not ScalarIntegralType(node.children[2].semanticType) Then
 					diagnostics :+ ["BMXC3064 generic managed Array slice requires one closed one-dimensional Array receiver and integral lower and upper bounds"]
-					Return "&bbEmptyArray"
+					Return DefaultValue(node.semanticType, ir)
 				End If
 				Local sliceReceiver:String = DebugManagedValue(EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals), node.children[0].semanticType, ir)
 				Local slicePrefix:String
@@ -8425,7 +9663,17 @@ Type TCompilerGenericCUnitEmitter
 					sliceReceiver = sliceTemporary
 				End If
 				Local sliceUpper:String
-				If node.children[2].kind = TEMPLATE_NODE_ARRAY_LENGTH Then sliceUpper = "(" + sliceReceiver + "->scales[0])" Else sliceUpper = EmitExpression(node.children[2], ir, ownerMethod, diagnostics, locals)
+				If node.children[2].kind = TEMPLATE_NODE_ARRAY_LENGTH Then
+					If PicoTarget(ir) Then sliceUpper = "(" + sliceReceiver + "->length)" Else sliceUpper = "(" + sliceReceiver + "->scales[0])"
+				Else
+					sliceUpper = EmitExpression(node.children[2], ir, ownerMethod, diagnostics, locals)
+				End If
+				If PicoTarget(ir) Then
+					Local sliceElement:TTemplateTypeReference = node.children[0].semanticType.elementType
+					Local picoSlice:String = "bmx_pico_array_slice(" + sliceReceiver + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ", " + sliceUpper + ", (uint32_t)sizeof(" + CType(sliceElement, ir) + "), " + PicoGenericArrayElementKind(sliceElement, ir) + ", " + PicoGenericArrayInitializer(sliceElement, ir) + ", " + PicoGenericValueDescriptor(sliceElement, ir) + ")"
+					If slicePrefix.length Then Return "(" + slicePrefix + picoSlice + ")"
+					Return picoSlice
+				End If
 				If node.children[0].semanticType.elementType.runtimeKind = TEMPLATE_RUNTIME_STRUCT Then
 					Local structSlice:String = "bbArraySliceStruct_" + StructAbiName(node.children[0].semanticType.elementType, ir) + "(" + sliceReceiver + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ", " + sliceUpper + ")"
 					If slicePrefix.length Then Return "(" + slicePrefix + structSlice + ")"
@@ -8439,12 +9687,15 @@ Type TCompilerGenericCUnitEmitter
 				Local ordinarySlice:String = "bbArraySlice(~q" + sliceEncoding + "~q, " + sliceReceiver + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ", " + sliceUpper + ")"
 				If slicePrefix.length Then Return "(" + slicePrefix + ordinarySlice + ")"
 				Return ordinarySlice
-			Case TEMPLATE_NODE_ARRAY_LITERAL
+				Case TEMPLATE_NODE_ARRAY_LITERAL
 				If Not TCompilerGenericSpecializationLowerer.SupportedManagedArrayType(node.semanticType, ir) Then
 					diagnostics :+ ["BMXC3070 generic managed Array literal requires a closed supported one-dimensional element ABI"]
 					Return "&bbEmptyArray"
 				End If
-				If Not node.children.length Then Return "&bbEmptyArray"
+					If Not node.children.length Then
+						If PicoTarget(ir) Then Return "&bmx_pico_empty_array"
+						Return "&bbEmptyArray"
+					End If
 				Local elementEncoding:String = ArrayElementEncoding(node.semanticType.elementType, ir)
 				Local elementType:String = CType(node.semanticType.elementType, ir)
 				If Not elementEncoding.length Or Not elementType.length Then
@@ -8452,9 +9703,11 @@ Type TCompilerGenericCUnitEmitter
 					Return "&bbEmptyArray"
 				End If
 				Local temporaryName:String = ArrayLiteralTemporaryName(node)
-				Local allocation:String
-				If node.semanticType.elementType.runtimeKind = TEMPLATE_RUNTIME_STRUCT Then
-					allocation = "bbArrayNew1DStruct_" + StructAbiName(node.semanticType.elementType, ir) + "(" + node.children.length + ")"
+					Local allocation:String
+					If PicoTarget(ir) Then
+						allocation = "bmx_pico_array_new_1d(" + node.children.length + ", (uint32_t)sizeof(" + elementType + "), " + PicoGenericArrayElementKind(node.semanticType.elementType, ir) + ", " + PicoGenericArrayInitializer(node.semanticType.elementType, ir) + ", " + PicoGenericValueDescriptor(node.semanticType.elementType, ir) + ")"
+					Else If node.semanticType.elementType.runtimeKind = TEMPLATE_RUNTIME_STRUCT Then
+						allocation = "bbArrayNew1DStruct_" + StructAbiName(node.semanticType.elementType, ir) + "(" + node.children.length + ")"
 				Else If node.semanticType.elementType.runtimeKind = TEMPLATE_RUNTIME_ENUM Then
 					allocation = "bbArrayNew1DEnum(~q" + elementEncoding + "~q, " + node.children.length + ", " + node.semanticType.elementType.runtimeAbiName + "_BBEnum_impl)"
 				Else
@@ -8462,18 +9715,33 @@ Type TCompilerGenericCUnitEmitter
 				End If
 				Local arrayLiteral:String = "(" + temporaryName + " = " + allocation
 				For Local index:Int = 0 Until node.children.length
-					arrayLiteral :+ ", ((" + elementType + "*)BBARRAYDATA(" + temporaryName + ", 1))[" + index + "] = " + EmitExpression(node.children[index], ir, ownerMethod, diagnostics, locals)
+						If PicoTarget(ir) Then
+							arrayLiteral :+ ", ((" + elementType + "*)bmx_pico_array_data(" + temporaryName + "))[" + index + "] = " + EmitExpression(node.children[index], ir, ownerMethod, diagnostics, locals)
+						Else
+							arrayLiteral :+ ", ((" + elementType + "*)BBARRAYDATA(" + temporaryName + ", 1))[" + index + "] = " + EmitExpression(node.children[index], ir, ownerMethod, diagnostics, locals)
+						End If
 				Next
 				Return arrayLiteral + ", " + temporaryName + ")"
 			Case TEMPLATE_NODE_LITERAL
 				If node.valueText.ToLower() = "true" Then Return "1"
 				If node.valueText.ToLower() = "false" Then Return "0"
-				If node.valueText.ToLower() = "null" Then Return "(BBOBJECT)&bbNullObject"
-				If node.identity = "string-code-units" Then Return EmitStringCodeUnits(node.valueText)
+				If node.valueText.ToLower() = "null" Then Return DefaultValue(node.semanticType, ir)
+				If node.identity = "string-code-units" Then Return EmitStringCodeUnits(node.valueText, ir)
 				If node.valueText.StartsWith("$") Then Return "0x" + node.valueText[1..]
 				Return node.valueText
 			Case TEMPLATE_NODE_OPERATOR
 				If node.children.length = 1 Then
+					If node.identity = "type-measure" Then
+						Local measuredCType:String = CType(node.children[0].semanticType, ir)
+						If Not measuredCType.length Or measuredCType = "void" Then
+							Local measuredName:String = "<unknown>"
+							If node.children[0].semanticType Then measuredName = node.children[0].semanticType.CanonicalName()
+							diagnostics :+ ["BMXC3047 generic " + node.valueText + " requires a closed type with a supported C ABI; received '" + measuredName + "'"]
+							Return DefaultValue(node.semanticType, ir)
+						End If
+						If node.valueText.ToLower() = "sizeof" Then Return "(sizeof(" + measuredCType + "))"
+						If node.valueText.ToLower() = "alignof" Then Return "(__alignof__(" + measuredCType + "))"
+					End If
 					If Not UnaryOperandsSupported(node.valueText, node.children[0].semanticType) And Not (node.valueText.ToLower() = "not" And TruthTypeSupported(node.children[0].semanticType, ir)) Then
 						diagnostics :+ ["BMXC3047 generic unary operator '" + node.valueText + "' requires a closed scalar numeric operand"]
 						Return DefaultValue(node.semanticType, ir)
@@ -8494,14 +9762,18 @@ Type TCompilerGenericCUnitEmitter
 						diagnostics :+ ["BMXC3047 generic binary operator '" + node.valueText + "' requires supported closed operands; received '" + leftName + "' and '" + rightName + "'"]
 						Return DefaultValue(node.semanticType, ir)
 					End If
-					If stringConcatenation Then Return "bbStringConcat(" + EmitStringConcatOperand(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitStringConcatOperand(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
+					If stringConcatenation Then
+						If PicoTarget(ir) Then Return "bmx_pico_string_concat(" + EmitStringConcatOperand(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitStringConcatOperand(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
+						Return "bbStringConcat(" + EmitStringConcatOperand(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitStringConcatOperand(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
+					End If
 					If arrayConcatenation Then
 						Local elementEncoding:String = ArrayElementEncoding(node.semanticType.elementType, ir)
 						If Not elementEncoding.length Then
 							diagnostics :+ ["BMXC3047 generic Array concatenation element type has no runtime encoding"]
 							Return DefaultValue(node.semanticType, ir)
 						End If
-						Return "bbArrayConcat(~q" + elementEncoding + "~q, " + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
+							If PicoTarget(ir) Then Return "bmx_pico_array_concat(" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
+							Return "bbArrayConcat(~q" + elementEncoding + "~q, " + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
 					End If
 					If ordinaryStructEquality Then
 						Local structEquality:String = node.children[0].semanticType.runtimeEqualityAbiName + "(&(" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + "), " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
@@ -8518,6 +9790,11 @@ Type TCompilerGenericCUnitEmitter
 						Local leftString:Int = node.children[0].semanticType.kind = TEMPLATE_TYPE_BUILTIN And node.children[0].semanticType.symbolName.ToLower() = "string"
 						Local rightString:Int = node.children[1].semanticType.kind = TEMPLATE_TYPE_BUILTIN And node.children[1].semanticType.symbolName.ToLower() = "string"
 						If leftString Or rightString Then
+							If PicoTarget(ir) Then
+								If node.valueText = "=" Then Return "(bmx_pico_string_equals(" + leftExpression + ", " + rightExpression + ") != 0)"
+								If node.valueText = "<>" Then Return "(bmx_pico_string_equals(" + leftExpression + ", " + rightExpression + ") == 0)"
+								Return "(bmx_pico_string_compare(" + leftExpression + ", " + rightExpression + ") " + binaryOperator + " 0)"
+							End If
 							If node.valueText = "=" Then Return "(bbStringEquals(" + leftExpression + ", " + rightExpression + ") == 1)"
 							If node.valueText = "<>" Then Return "(bbStringEquals(" + leftExpression + ", " + rightExpression + ") != 1)"
 							Return "(bbStringCompare(" + leftExpression + ", " + rightExpression + ") " + binaryOperator + " 0)"
@@ -8528,9 +9805,15 @@ Type TCompilerGenericCUnitEmitter
 				diagnostics :+ ["BMXC3047 generic intrinsic operator '" + node.valueText + "' has no scalar C99 lowering"]
 			Case TEMPLATE_NODE_CONVERSION
 				If node.children.length = 1 And StringTemplateType(node.semanticType) And ScalarNumericType(node.children[0].semanticType) Then
-					Return NumericToString(EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals), node.children[0].semanticType, diagnostics)
+					Return NumericToString(EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals), node.children[0].semanticType, diagnostics, ir)
 				End If
 				If node.children.length = 1 And ScalarNumericType(node.semanticType) And ScalarNumericType(node.children[0].semanticType) Then
+					Return "((" + CType(node.semanticType, ir) + ")" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ")"
+				End If
+				If node.children.length = 1 And ScalarIntegralType(node.semanticType) And node.children[0].semanticType And node.children[0].semanticType.runtimeKind = TEMPLATE_RUNTIME_ENUM Then
+					Return "((" + CType(node.semanticType, ir) + ")" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ")"
+				End If
+				If node.children.length = 1 And node.semanticType And node.semanticType.runtimeKind = TEMPLATE_RUNTIME_ENUM And ScalarIntegralType(node.children[0].semanticType) Then
 					Return "((" + CType(node.semanticType, ir) + ")" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ")"
 				End If
 				If node.children.length = 1 And IsNullType(node.children[0].semanticType) And ScalarNumericType(node.semanticType) Then
@@ -8562,6 +9845,12 @@ Type TCompilerGenericCUnitEmitter
 				If node.children.length = 1 And ManagedReferenceType(node.children[0].semanticType, ir) And ManagedReferenceType(node.semanticType, ir) Then
 					Local managedOperand:String = EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals)
 					If node.valueText = CONVERSION_EXPLICIT Then
+						If PicoTarget(ir) Then
+							Local picoManagedClass:TGenericSpecializationNode = TypeSpecialization(node.semanticType, ir)
+							If picoManagedClass Then Return "((struct " + picoManagedClass.readableAbiName + "_obj *)bmx_pico_object_cast((void *)" + managedOperand + ", &" + picoManagedClass.readableAbiName + "_type))"
+							Local picoManagedInterface:TGenericSpecializationNode = InterfaceSpecialization(node.semanticType, ir)
+							If picoManagedInterface Then Return "((BMXPicoObject *)bmx_pico_interface_cast((void *)" + managedOperand + ", &" + picoManagedInterface.readableAbiName + "_ifc))"
+						End If
 						If StringTemplateType(node.semanticType) Then Return "((BBSTRING)bbObjectStringcast((BBOBJECT)" + managedOperand + "))"
 						Local managedClass:TGenericSpecializationNode = TypeSpecialization(node.semanticType, ir)
 						If managedClass Then Return "((struct " + managedClass.readableAbiName + "_obj *)bbObjectDowncast((BBOBJECT)" + managedOperand + ", (BBClass *)&" + managedClass.readableAbiName + "))"
@@ -8593,6 +9882,13 @@ Type TCompilerGenericCUnitEmitter
 							Return "&bbEmptyArray"
 						End If
 					Next
+					If PicoTarget(ir) Then
+						If node.semanticType.rank <> 1 Then
+							diagnostics :+ ["BMXC3063 Pico generic managed Array allocation currently requires one dimension"]
+							Return DefaultValue(node.semanticType, ir)
+						End If
+						Return "bmx_pico_array_new_1d((int32_t)(" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + "), (uint32_t)sizeof(" + CType(node.semanticType.elementType, ir) + "), " + PicoGenericArrayElementKind(node.semanticType.elementType, ir) + ", " + PicoGenericArrayInitializer(node.semanticType.elementType, ir) + ", " + PicoGenericValueDescriptor(node.semanticType.elementType, ir) + ")"
+					End If
 					If node.semanticType.rank = 1 And node.semanticType.elementType.runtimeKind = TEMPLATE_RUNTIME_STRUCT Then
 						Return "bbArrayNew1DStruct_" + StructAbiName(node.semanticType.elementType, ir) + "(" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ")"
 					End If
@@ -8635,13 +9931,16 @@ Type TCompilerGenericCUnitEmitter
 						diagnostics :+ ["BMXC3039 generic construction of '" + node.semanticType.CanonicalName() + "' has no retained constructor matching the closed argument signature"]
 						Return DefaultValue(node.semanticType, ir)
 					End If
-					Local allocation:String = "((struct " + allocated.readableAbiName + "_obj *)" + helperName + "((BBClass *)&" + allocated.readableAbiName
+					Local allocation:String = "((struct " + allocated.readableAbiName + "_obj *)" + helperName + "("
+					If Not PicoTarget(ir) Then allocation :+ "(BBClass *)&" + allocated.readableAbiName
 					For Local index:Int = 0 Until node.children.length
-						allocation :+ ", " + EmitCallArgument(node.children[index], constructor.parameters[index], ir, ownerMethod, diagnostics, locals)
+						If index Or Not PicoTarget(ir) Then allocation :+ ", "
+						allocation :+ EmitCallArgument(node.children[index], constructor.parameters[index], ir, ownerMethod, diagnostics, locals)
 					Next
 					If constructor Then
 						For Local index:Int = node.children.length Until constructor.parameters.length
-							allocation :+ ", " + EmitCallArgument(constructor.parameters[index].defaultValue, constructor.parameters[index], ir, ownerMethod, diagnostics, locals)
+							If index Or Not PicoTarget(ir) Then allocation :+ ", "
+							allocation :+ EmitCallArgument(constructor.parameters[index].defaultValue, constructor.parameters[index], ir, ownerMethod, diagnostics, locals)
 						Next
 					End If
 					Return allocation + "))"
@@ -8675,6 +9974,7 @@ Type TCompilerGenericCUnitEmitter
 					Return DefaultValue(node.semanticType, ir)
 				End If
 				If node.semanticType And node.semanticType.runtimeKind = TEMPLATE_RUNTIME_CLASS And Not node.children.length Then
+					If PicoTarget(ir) Then Return "((struct " + node.semanticType.runtimeAbiName + "_obj *)_" + node.semanticType.runtimeAbiName + "_New_ObjectNew())"
 					Return "((struct " + node.semanticType.runtimeAbiName + "_obj *)bbObjectNew((BBClass *)&" + node.semanticType.runtimeAbiName + "))"
 				End If
 				If node.semanticType And node.semanticType.runtimeKind = TEMPLATE_RUNTIME_CLASS And node.identity = "ordinary-constructor-signature" Then
@@ -8683,12 +9983,14 @@ Type TCompilerGenericCUnitEmitter
 						Return DefaultValue(node.semanticType, ir)
 					End If
 					Local signature:TGenericTemplateNode = node.children[0]
-					Local ordinaryAllocation:String = "((struct " + node.semanticType.runtimeAbiName + "_obj *)" + node.referencedSymbol.overloadKey + "((BBClass *)&" + node.semanticType.runtimeAbiName
+					Local ordinaryAllocation:String = "((struct " + node.semanticType.runtimeAbiName + "_obj *)" + node.referencedSymbol.overloadKey + "("
+					If Not PicoTarget(ir) Then ordinaryAllocation :+ "(BBClass *)&" + node.semanticType.runtimeAbiName
 					For Local index:Int = 1 Until node.children.length
 						Local parameter:TGenericTemplateValueParameter = New TGenericTemplateValueParameter
 						parameter.semanticType = signature.children[index - 1].semanticType
 						parameter.passingMode = Int(signature.children[index - 1].valueText)
-						ordinaryAllocation :+ ", " + EmitCallArgument(node.children[index], parameter, ir, ownerMethod, diagnostics, locals)
+						If index > 1 Or Not PicoTarget(ir) Then ordinaryAllocation :+ ", "
+						ordinaryAllocation :+ EmitCallArgument(node.children[index], parameter, ir, ownerMethod, diagnostics, locals)
 					Next
 					Return ordinaryAllocation + "))"
 				End If
@@ -8786,6 +10088,12 @@ Type TCompilerGenericCUnitEmitter
 						Return helperCall + ")"
 					End If
 					If node.children[0].kind = TEMPLATE_NODE_BLOCK And node.children[0].valueText = "ordinary-routine-signature" Then
+						If PicoTarget(ir) And (node.valueText.ToLower() = "min" Or node.valueText.ToLower() = "max") And node.children.length = 3 Then
+							Local comparison:String = "<"
+							If node.valueText.ToLower() = "max" Then comparison = ">"
+							Local valueType:String = CType(node.semanticType, ir)
+							Return "({ " + valueType + " bmx_minmax_left = " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + "; " + valueType + " bmx_minmax_right = " + EmitExpression(node.children[2], ir, ownerMethod, diagnostics, locals) + "; bmx_minmax_left " + comparison + " bmx_minmax_right ? bmx_minmax_left : bmx_minmax_right; })"
+						End If
 						If node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
 							Local ordinaryCall:String = node.referencedSymbol.overloadKey + "("
 							Local ordinarySignature:TGenericTemplateNode = node.children[0]
@@ -8886,6 +10194,9 @@ Type TCompilerGenericCUnitEmitter
 							End If
 							Local selfOwner:TGenericSpecializationNode = selfMethod.declaringSpecialization
 							If Not selfOwner Then selfOwner = ir.specialization
+							If PicoTarget(ir) Then
+								Return EmitTypeOperation(ir.specialization, node, selfMethod, selfExpression, ir, ownerMethod, diagnostics, locals)
+							End If
 							Local selfCall:String = selfExpression + "->clas->" + selfMethod.slotName + "("
 							If Not selfMethod.isTypeFunction Then selfCall :+ "(struct " + selfOwner.readableAbiName + "_obj *)" + selfExpression
 							For Local index:Int = 1 Until node.children.length
@@ -9262,24 +10573,55 @@ Type TCompilerGenericCUnitEmitter
 			If elementCType.length Then Return elementCType + " *"
 			Return ""
 		End If
-		If value.kind = TEMPLATE_TYPE_ARRAY Then Return "BBARRAY"
+		If value.kind = TEMPLATE_TYPE_ARRAY Then
+			If PicoTarget(ir) Then Return "BMXPicoArray *"
+			Return "BBARRAY"
+		End If
 		If value.kind = TEMPLATE_TYPE_STATIC_ARRAY Then Return CType(value.elementType, ir) + " *"
 		If value.kind = TEMPLATE_TYPE_CALLABLE Then Return "BBFuncPtr"
-		If value.kind = TEMPLATE_TYPE_CLOSURE Then Return "BBClosure *"
+		If value.kind = TEMPLATE_TYPE_CLOSURE Then
+			If PicoTarget(ir) Then Return "BMXPicoClosure *"
+			Return "BBClosure *"
+		End If
 		If value.kind = TEMPLATE_TYPE_NAMED Then
 			Local referenced:TGenericSpecializationNode = TCompilerGenericSpecializationLowerer.ReferencedSpecialization(value, ir)
 			If referenced Then
-				If referenced.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_INTERFACE Then Return "BBOBJECT"
+				If referenced.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_INTERFACE Then
+					If PicoTarget(ir) Then Return "BMXPicoObject *"
+					Return "BBOBJECT"
+				End If
 				If referenced.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_STRUCT Then Return "struct " + referenced.readableAbiName
+				If PicoTarget(ir) Then Return "struct " + referenced.readableAbiName + "_obj *"
 				Return "struct " + referenced.readableAbiName + "_obj *"
 			End If
 			If value.runtimeKind = TEMPLATE_RUNTIME_CLASS And value.runtimeAbiName.length Then Return "struct " + value.runtimeAbiName + "_obj *"
-			If value.runtimeKind = TEMPLATE_RUNTIME_INTERFACE And value.runtimeAbiName.length Then Return "BBOBJECT"
+			If value.runtimeKind = TEMPLATE_RUNTIME_INTERFACE And value.runtimeAbiName.length Then
+				If PicoTarget(ir) Then Return "BMXPicoObject *"
+				Return "BBOBJECT"
+			End If
 			If value.runtimeKind = TEMPLATE_RUNTIME_STRUCT And value.runtimeAbiName.length Then Return "struct " + value.runtimeAbiName
-			If value.runtimeKind = TEMPLATE_RUNTIME_ENUM Then Return BuiltinCType(value.runtimeValueType)
+			If value.runtimeKind = TEMPLATE_RUNTIME_ENUM Then Return BuiltinCType(value.runtimeValueType, ir)
 			Return ""
 		End If
 		If value.kind <> TEMPLATE_TYPE_BUILTIN Then Return ""
+		If PicoTarget(ir) Then
+			Select value.symbolName.ToLower()
+				Case "void" Return "void"
+				Case "byte" Return "uint8_t"
+				Case "short" Return "uint16_t"
+				Case "int" Return "int32_t"
+				Case "uint" Return "uint32_t"
+				Case "long" Return "int64_t"
+				Case "ulong" Return "uint64_t"
+				Case "longint" Return "intptr_t"
+				Case "ulongint", "size_t" Return "uintptr_t"
+				Case "float" Return "float"
+				Case "double" Return "double"
+				Case "string" Return "const BMXPicoString *"
+				Case "object" Return "BMXPicoObject *"
+			End Select
+			Return ""
+		End If
 		Select value.symbolName.ToLower()
 			Case "void" Return "void"
 			Case "byte" Return "BBBYTE"
@@ -9344,7 +10686,20 @@ Type TCompilerGenericCUnitEmitter
 		Return result
 	End Function
 
-	Function BuiltinCType:String(value:String)
+	Function BuiltinCType:String(value:String, ir:TCompilerGenericSpecializationIr = Null)
+		If PicoTarget(ir) Then
+			Select value.ToLower()
+				Case "byte" Return "uint8_t"
+				Case "short" Return "uint16_t"
+				Case "int" Return "int32_t"
+				Case "uint" Return "uint32_t"
+				Case "long" Return "int64_t"
+				Case "ulong" Return "uint64_t"
+				Case "longint" Return "intptr_t"
+				Case "ulongint", "size_t" Return "uintptr_t"
+			End Select
+			Return ""
+		End If
 		Select value.ToLower()
 			Case "byte" Return "BBBYTE"
 			Case "short" Return "BBSHORT"
@@ -9364,20 +10719,39 @@ Type TCompilerGenericCUnitEmitter
 		If value And value.kind = TEMPLATE_TYPE_CALLABLE Then
 			Return "((union { BBFuncPtr source; " + CValueDeclaration(value, "target", ir) + "; }){ .source = &brl_blitz_NullFunctionError }.target)"
 		End If
-		If value And value.kind = TEMPLATE_TYPE_CLOSURE Then Return "((BBClosure *)&bbNullObject)"
-		If value And value.kind = TEMPLATE_TYPE_ARRAY Then Return "&bbEmptyArray"
+		If value And value.kind = TEMPLATE_TYPE_CLOSURE Then
+			If PicoTarget(ir) Then Return "((BMXPicoClosure *)&bmx_pico_null_object)"
+			Return "((BBClosure *)&bbNullObject)"
+		End If
+		If value And value.kind = TEMPLATE_TYPE_ARRAY Then
+			If PicoTarget(ir) Then Return "&bmx_pico_empty_array"
+			Return "&bbEmptyArray"
+		End If
 		If value And value.kind = TEMPLATE_TYPE_NAMED Then
 			If value.runtimeKind = TEMPLATE_RUNTIME_STRUCT And value.runtimeAbiName.length Then Return value.runtimeAbiName + "_New_ObjectNew()"
 			If value.runtimeKind = TEMPLATE_RUNTIME_ENUM Then Return "0"
 			Local referenced:TGenericSpecializationNode = TCompilerGenericSpecializationLowerer.ReferencedSpecialization(value, ir)
 			If referenced And referenced.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_STRUCT Then Return referenced.readableAbiName + "_New_ObjectNew()"
+			If PicoTarget(ir) Then Return "((" + CType(value, ir) + ")&bmx_pico_null_object)"
 			Return "((void *)&bbNullObject)"
 		End If
 		If value And value.kind = TEMPLATE_TYPE_BUILTIN Then
-			If value.symbolName.ToLower() = "string" Then Return "&bbEmptyString"
-			If value.symbolName.ToLower() = "object" Then Return "((BBOBJECT)&bbNullObject)"
+			If value.symbolName.ToLower() = "string" Then
+				If PicoTarget(ir) Then Return "&bmx_pico_empty_string"
+				Return "&bbEmptyString"
+			End If
+			If value.symbolName.ToLower() = "object" Then
+				If PicoTarget(ir) Then Return "((BMXPicoObject *)&bmx_pico_null_object)"
+				Return "((BBOBJECT)&bbNullObject)"
+			End If
 		End If
 		Return "0"
+	End Function
+
+	Function PicoGenericArrayElementKind:String(value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr)
+		If StringTemplateType(value) Then Return "BMX_PICO_ARRAY_ELEMENT_STRING"
+		If ManagedReferenceType(value, ir) Then Return "BMX_PICO_ARRAY_ELEMENT_OBJECT"
+		Return "BMX_PICO_ARRAY_ELEMENT_VALUE"
 	End Function
 
 	Function StringTemplateType:Int(value:TTemplateTypeReference)
@@ -9391,11 +10765,26 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitStringConcatOperand:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
 		Local expression:String = EmitExpression(node, ir, ownerMethod, diagnostics, locals)
 		If StringTemplateType(node.semanticType) Then Return expression
-		Return NumericToString(expression, node.semanticType, diagnostics)
+		Return NumericToString(expression, node.semanticType, diagnostics, ir)
 	End Function
 
-	Function NumericToString:String(expression:String, value:TTemplateTypeReference, diagnostics:String[] Var)
+	Function NumericToString:String(expression:String, value:TTemplateTypeReference, diagnostics:String[] Var, ir:TCompilerGenericSpecializationIr = Null)
 		If Not value Or value.kind <> TEMPLATE_TYPE_BUILTIN Then Return "&bbEmptyString"
+		If PicoTarget(ir) Then
+			Select value.symbolName.ToLower()
+				Case "byte", "short", "int" Return "bmx_pico_string_from_int32(" + expression + ")"
+				Case "uint" Return "bmx_pico_string_from_uint32(" + expression + ")"
+				Case "long" Return "bmx_pico_string_from_int64(" + expression + ")"
+				Case "ulong" Return "bmx_pico_string_from_uint64(" + expression + ")"
+				Case "size_t" Return "bmx_pico_string_from_size(" + expression + ")"
+				Case "longint" Return "bmx_pico_string_from_long(" + expression + ")"
+				Case "ulongint" Return "bmx_pico_string_from_ulong(" + expression + ")"
+				Case "float" Return "bmx_pico_string_from_float(" + expression + ", 0)"
+				Case "double" Return "bmx_pico_string_from_double(" + expression + ", 0)"
+			End Select
+			diagnostics :+ ["BMXC3047 numeric-to-String conversion has no Pico runtime mapping for '" + value.CanonicalName() + "'"]
+			Return "&bmx_pico_empty_string"
+		End If
 		Select value.symbolName.ToLower()
 			Case "byte", "short", "int" Return "bbStringFromInt(" + expression + ")"
 			Case "uint" Return "bbStringFromUInt(" + expression + ")"
@@ -9411,10 +10800,14 @@ Type TCompilerGenericCUnitEmitter
 		Return "&bbEmptyString"
 	End Function
 
-	Function EmitStringCodeUnits:String(encoded:String)
-		If Not encoded.length Then Return "&bbEmptyString"
+	Function EmitStringCodeUnits:String(encoded:String, ir:TCompilerGenericSpecializationIr = Null)
+		If Not encoded.length Then
+			If PicoTarget(ir) Then Return "&bmx_pico_empty_string"
+			Return "&bbEmptyString"
+		End If
 		Local units:String[] = encoded.Split(",")
-		Local result:String = "bbStringFromShorts((const unsigned short[]){"
+		Local result:String
+		If PicoTarget(ir) Then result = "bmx_pico_string_from_shorts((const uint16_t[]){" Else result = "bbStringFromShorts((const unsigned short[]){"
 		For Local index:Int = 0 Until units.length
 			If index Then result :+ ", "
 			result :+ units[index]
@@ -10951,6 +12344,7 @@ Type TCompilerGenericTemplateBuilder
 				Local cleanupStep:TGenericTemplateNode = New TGenericTemplateNode
 				cleanupStep.kind = TEMPLATE_NODE_BLOCK
 				cleanupStep.valueText = "cleanup-finally"
+				cleanupStep.identity = result.identity
 				cleanupStep.source = result.source
 				If finallyBody Then cleanupStep.children = [finallyBody]
 				context.PushCleanup(cleanupStep)
@@ -10959,6 +12353,7 @@ Type TCompilerGenericTemplateBuilder
 				Local catchFrameCleanup:TGenericTemplateNode = New TGenericTemplateNode
 				catchFrameCleanup.kind = TEMPLATE_NODE_BLOCK
 				catchFrameCleanup.valueText = "cleanup-try"
+				catchFrameCleanup.identity = result.identity
 				catchFrameCleanup.source = result.source
 				context.PushCleanup(catchFrameCleanup)
 			End If
@@ -11324,6 +12719,28 @@ Type TCompilerGenericTemplateBuilder
 		If passthrough Then Return TemplateExpression(passthrough.operand, model, parameters, diagnostics, parameterOwner, localRoutineContext)
 		Local unary:TBoundUnaryExpression = TBoundUnaryExpression(expression)
 		If unary Then
+			Local unaryOperation:String = unary.operatorText.ToLower()
+			If unaryOperation = "sizeof" Or unaryOperation = "alignof" Then
+				Local measuredType:TSemanticType = unary.operandSemanticType
+				If Not measuredType And unary.operand Then measuredType = unary.operand.semanticType
+				If Not measuredType Then
+					diagnostics :+ ["BMXC3037 generic " + unary.operatorText + " has no resolved operand type"]
+					Return Null
+				End If
+				Local result:TGenericTemplateNode = New TGenericTemplateNode
+				result.kind = TEMPLATE_NODE_OPERATOR
+				result.identity = "type-measure"
+				result.valueText = unary.operatorText
+				result.semanticType = TemplateType(expression.semanticType, model, parameters, diagnostics, parameterOwner)
+				result.source = SourceLocation(expression.syntax, model)
+				Local typeOperand:TGenericTemplateNode = New TGenericTemplateNode
+				typeOperand.kind = TEMPLATE_NODE_BLOCK
+				typeOperand.identity = "measured-type"
+				typeOperand.semanticType = TemplateType(measuredType, model, parameters, diagnostics, parameterOwner)
+				typeOperand.source = result.source
+				If typeOperand.semanticType Then result.children = [typeOperand]
+				Return result
+			End If
 			If unary.resolvedCall And unary.resolvedCall.routine Then
 				Local operatorCall:TBoundCallExpression = New TBoundCallExpression
 				operatorCall.boundKind = BOUND_EXPRESSION_CALL
@@ -11925,7 +13342,7 @@ Type TCompilerGenericTemplateBuilder
 				result.source = SourceLocation(expression.syntax, model)
 				Return result
 			End If
-			If TArraySemanticType(memberExpression.receiver.semanticType) And memberExpression.access And memberExpression.access.member And memberExpression.access.member.name.ToLower() = "length" Then
+			If (TArraySemanticType(memberExpression.receiver.semanticType) Or IsBuiltinSemanticType(memberExpression.receiver.semanticType, "string")) And memberExpression.access And memberExpression.access.member And memberExpression.access.member.name.ToLower() = "length" Then
 				Local result:TGenericTemplateNode = New TGenericTemplateNode
 				result.kind = TEMPLATE_NODE_ARRAY_LENGTH
 				result.valueText = "length"

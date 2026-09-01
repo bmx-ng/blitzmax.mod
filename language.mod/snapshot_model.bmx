@@ -95,6 +95,9 @@ Type TCompilationSnapshotOptions
 	' default BRL/Pub application framework).
 	Field implicitImports:String[] = New String[0]
 	Field requireCoreInterface:Int = True
+	' The core class interface supplies intrinsic language types independently
+	' of whether the BRL.Blitz runtime module is part of this compilation.
+	Field implicitRuntime:Int = True
 	' Build drivers may compile a quoted source file as one unit of its owning
 	' module even though that file does not repeat the Module declaration.
 	' The override is language identity only; output ownership remains a
