@@ -17,6 +17,9 @@ Type TCompilerOptions
 	Field targetArchitecture:String
 	Field conditionalSymbols:String[] = New String[0]
 	Field requireCoreInterface:Int = True
+	' Standalone and embedded consumers can retain the intrinsic core types
+	' without importing the BRL.Blitz runtime module.
+	Field implicitRuntime:Int = True
 	Field sourceModuleName:String
 	Field debugInstrumentation:Int
 	Field coverageInstrumentation:Int
@@ -69,7 +72,10 @@ Type TCompilerOptions
 		result.targetPlatform = targetPlatform.ToLower()
 		result.conditionalSymbols = conditionalSymbols[..]
 		result.parseConfiguredConditionals = True
-		If applicationBuild Then
+		If targetPlatform.ToLower() = "pico" And Not sourceModuleName.length Then
+			result.implicitImports = ["brl.blitz"]
+			If frameworkModule.length And frameworkModule.ToLower() <> "brl.blitz" Then result.implicitImports :+ [frameworkModule.ToLower()]
+		Else If applicationBuild Then
 			If frameworkModule.length Then
 				result.implicitImports = [frameworkModule.ToLower()]
 			Else
@@ -79,6 +85,7 @@ Type TCompilerOptions
 		result.EnsureConditionalSymbol("bmxng")
 		result.EnsureConditionalSymbol("bmxng2")
 		result.requireCoreInterface = requireCoreInterface
+		result.implicitRuntime = implicitRuntime
 		result.sourceModuleName = sourceModuleName.ToLower()
 		Return result
 	End Method
@@ -113,6 +120,8 @@ Function CompilerTargetSupported:Int(platform:String, architecture:String)
 			Return architectureName = "x86" Or architectureName = "x64" Or architectureName = "arm" Or architectureName = "armeabi" Or architectureName = "armeabiv7a" Or architectureName = "arm64v8a"
 		Case "raspberrypi"
 			Return architectureName = "arm" Or architectureName = "arm64"
+		Case "pico"
+			Return architectureName = "arm"
 		Case "emscripten"
 			Return architectureName = "js"
 		Case "nx"
@@ -186,6 +195,7 @@ Function CompilerDefaultConditionalSymbols:String[](platform:String, architectur
 		If architectureName = "arm" Or architectureName = "armeabi" Or architectureName = "armeabiv7a" Or architectureName = "arm64v8a" Then AddCompilerConditional(result, "androidarm")
 	End If
 	If platformName = "raspberrypi" And (architectureName = "arm" Or architectureName = "arm64") Then AddCompilerConditional(result, "raspberrypi" + architectureName)
+	If platformName = "pico" And architectureName = "arm" Then AddCompilerConditional(result, "picoarm")
 	If platformName = "haiku" And (architectureName = "x86" Or architectureName = "x64" Or architectureName = "arm64") Then AddCompilerConditional(result, "haiku" + architectureName)
 	If platformName = "emscripten" And architectureName = "js" Then AddCompilerConditional(result, "emscriptenjs")
 	If platformName = "nx" And architectureName = "arm64" Then AddCompilerConditional(result, "nxarm64")
@@ -194,9 +204,9 @@ Function CompilerDefaultConditionalSymbols:String[](platform:String, architectur
 	End If
 	Local pointer64:Int = architectureName = "x64" Or architectureName = "arm64" Or architectureName = "arm64v8a" Or architectureName = "riscv64"
 	If pointer64 Then AddCompilerConditional(result, "ptr64") Else AddCompilerConditional(result, "ptr32")
-	' LongInt follows the native C long ABI: Windows and the legacy 32-bit
-	' x86/PPC targets use four bytes; the remaining supported targets use eight.
-	Local longInt8:Int = platformName <> "win32" And platformName <> "win64" And architectureName <> "x86" And architectureName <> "ppc"
+	' LongInt follows the selected native C long ABI: Windows, Pico's ILP32 Arm
+	' ABI, and the legacy 32-bit x86/PPC targets use four bytes.
+	Local longInt8:Int = platformName <> "win32" And platformName <> "win64" And platformName <> "pico" And architectureName <> "x86" And architectureName <> "ppc"
 	If longInt8 Then
 		AddCompilerConditional(result, "longint8")
 		AddCompilerConditional(result, "ulongint8")

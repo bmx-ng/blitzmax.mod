@@ -51,7 +51,7 @@ Type TCompilationSnapshotBuilder
 
 		If builder.options.requireCoreInterface Then builder.LoadCore()
 		builder.result.rootDocument = builder.LoadDocument(TSnapshotText.Create(rootPath, rootText), True, Null, Null)
-		If builder.options.requireCoreInterface And builder.result.coreInterface Then builder.LoadImplicitRuntime(rootPath, rootText)
+		If builder.options.requireCoreInterface And builder.options.implicitRuntime And builder.result.coreInterface Then builder.LoadImplicitRuntime(rootPath, rootText)
 		builder.LoadImplicitImports(rootPath)
 		builder.result.succeeded = Not builder.HasErrors()
 		Return builder.result

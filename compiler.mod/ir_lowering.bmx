@@ -1048,6 +1048,13 @@ Type TCompilerIrLowerer
 	Method GenericIrTypeName:String(value:TTemplateTypeReference)
 		If Not value Then Return ""
 		If value.kind = TEMPLATE_TYPE_BUILTIN Then Return CanonicalBuiltinDisplayName(value.symbolName)
+		If value.kind = TEMPLATE_TYPE_ARRAY And value.elementType Then
+			Local suffix:String = "["
+			For Local rankIndex:Int = 1 Until value.rank
+				suffix :+ ","
+			Next
+			Return GenericIrTypeName(value.elementType) + suffix + "]"
+		End If
 		If value.kind = TEMPLATE_TYPE_CLOSURE Then
 			Local result:String = "Closure<"
 			If value.elementType And value.elementType.CanonicalName() <> "void" Then result :+ GenericIrTypeName(value.elementType)
@@ -1460,7 +1467,16 @@ Type TCompilerIrLowerer
 			For Local unit:TCompilerGenericUnit = EachIn genericPlan.units
 				If Not unit Or Not unit.ir Then Continue
 				For Local fieldRecord:TCompilerGenericFieldIr = EachIn unit.ir.fields
-					If fieldRecord Then MarkTemplateRuntimeLayouts(fieldRecord.semanticType, visiting)
+					If fieldRecord Then
+						MarkTemplateRuntimeLayouts(fieldRecord.semanticType, visiting)
+						MarkTemplateNodeRuntimeLayouts(fieldRecord.initializer, visiting)
+					End If
+				Next
+				For Local fieldRecord:TCompilerGenericFieldIr = EachIn unit.ir.staticFields
+					If fieldRecord Then
+						MarkTemplateRuntimeLayouts(fieldRecord.semanticType, visiting)
+						MarkTemplateNodeRuntimeLayouts(fieldRecord.initializer, visiting)
+					End If
 				Next
 				For Local methodRecord:TCompilerGenericMethodIr = EachIn unit.ir.methods
 					MarkTemplateRoutineRuntimeLayouts(methodRecord, visiting)
@@ -1514,7 +1530,22 @@ Type TCompilerIrLowerer
 		MarkTemplateRuntimeLayouts(routine.returnType, visiting)
 		MarkTemplateRuntimeLayouts(routine.receiverType, visiting)
 		For Local parameter:TGenericTemplateValueParameter = EachIn routine.parameters
-			If parameter Then MarkTemplateRuntimeLayouts(parameter.semanticType, visiting)
+			If parameter Then
+				MarkTemplateRuntimeLayouts(parameter.semanticType, visiting)
+				MarkTemplateNodeRuntimeLayouts(parameter.defaultValue, visiting)
+			End If
+		Next
+		MarkTemplateNodeRuntimeLayouts(routine.body, visiting)
+		For Local argument:TGenericTemplateNode = EachIn routine.delegationArguments
+			MarkTemplateNodeRuntimeLayouts(argument, visiting)
+		Next
+	End Method
+
+	Method MarkTemplateNodeRuntimeLayouts(node:TGenericTemplateNode, visiting:TMap)
+		If Not node Then Return
+		MarkTemplateRuntimeLayouts(node.semanticType, visiting)
+		For Local child:TGenericTemplateNode = EachIn node.children
+			MarkTemplateNodeRuntimeLayouts(child, visiting)
 		Next
 	End Method
 
@@ -1948,6 +1979,7 @@ Type TCompilerIrLowerer
 			irClass.visibility = symbol.visibility
 			irClass.isPublished = analysis.model.moduleName.length And symbol.visibility = VISIBILITY_PUBLIC
 			irClass.isAbstract = analysis.model.IsAbstractType(symbol)
+			irClass.isFinal = TypeDeclarationIsFinal(declaration)
 			irClass.source = SourceOf(declaration)
 			irClass.metadata = MetadataOf(symbol)
 			If declaration.header Then
@@ -2923,6 +2955,7 @@ Type TCompilerIrLowerer
 			End If
 		End If
 		routine.isAbstract = symbol.isAbstract
+		routine.isFinal = RoutineDeclarationIsFinal(declaration)
 		If routine.isMethod And symbol.name.ToLower() = "new" Then routine.lifecycleKind = IR_LIFECYCLE_CONSTRUCTOR
 		If routine.isMethod And symbol.name.ToLower() = "delete" Then routine.lifecycleKind = IR_LIFECYCLE_DESTRUCTOR
 		If ownerStruct And routine.lifecycleKind = IR_LIFECYCLE_DESTRUCTOR Then
@@ -4726,7 +4759,7 @@ Type TCompilerIrLowerer
 				concat.left = resultAssignment.target
 				concat.right = resultAssignment.value
 				resultAssignment.operatorText = "="
-				resultAssignment.value = concat
+				resultAssignment.value = SequenceStringConcat(concat, bound.syntax)
 			End If
 			If arrayConcatAssignment And resultAssignment.target And resultAssignment.value Then
 				Local arrayType:TArraySemanticType = TArraySemanticType(assignment.target.semanticType)
@@ -6995,14 +7028,18 @@ Type TCompilerIrLowerer
 							resultCall.receiver = address
 						End If
 					Else
-						resultCall.dispatchKind = IR_CALL_DISPATCH_VIRTUAL
+						Local receiverClass:TCompilerIrClass = ClassForType(call.receiver.semanticType)
+						If options And options.targetPlatform.ToLower() = "pico" And (target.isFinal Or (receiverClass And receiverClass.isFinal)) Then
+							resultCall.dispatchKind = IR_CALL_DISPATCH_EXACT
+						Else
+							resultCall.dispatchKind = IR_CALL_DISPATCH_VIRTUAL
+						End If
 						If IsStableReceiver(loweredReceiver) Then
 							resultCall.receiver = loweredReceiver
 						Else
 							receiverMaterialization = BeginMaterialization(loweredReceiver, bound.syntax)
 							resultCall.receiver = TemporaryReference(receiverMaterialization, call.receiver, bound.syntax)
 						End If
-						Local receiverClass:TCompilerIrClass = ClassForType(call.receiver.semanticType)
 						If receiverClass Then resultCall.classId = receiverClass.classId Else resultCall.classId = target.ownerClassId
 						If sourceRequirementSlot Then resultCall.classSlotId = sourceRequirementSlot.slotId Else resultCall.classSlotId = target.classSlotId
 						resultCall.objectSlotKind = target.objectSlotKind
@@ -7429,7 +7466,7 @@ Type TCompilerIrLowerer
 					InitializeExpression(concat, IR_EXPRESSION_STRING_CONCAT, bound)
 					concat.left = LowerStringOperand(binary.left)
 					concat.right = LowerStringOperand(binary.right)
-					Return concat
+					Return SequenceStringConcat(concat, bound.syntax)
 				End If
 				If IsComparisonOperator(stringOperation) Then
 					Local comparison:TCompilerIrStringCompare = New TCompilerIrStringCompare
@@ -8638,6 +8675,18 @@ Type TCompilerIrLowerer
 		materialization.temporaryId = NewTemporaryId()
 		materialization.temporaryType = value.semanticType
 		materialization.value = value
+		Return materialization
+	End Method
+
+	Method SequenceStringConcat:TCompilerIrExpression(concat:TCompilerIrStringConcat, syntax:TSyntaxNode)
+		If Not concat Or Not concat.left Then Return concat
+		' A concatenation allocates. Materialize its left operand before evaluating
+		' the right so managed backends can root the value across a second nested
+		' concatenation or allocation-capable call.
+		Local materialization:TCompilerIrMaterialize = BeginMaterialization(concat.left, syntax)
+		concat.left = TemporaryReference(materialization, Null, syntax, "string_left")
+		materialization.expression = concat
+		materialization.semanticType = concat.semanticType
 		Return materialization
 	End Method
 
@@ -9886,6 +9935,9 @@ Type TCompilerIrLowerer
 		constructor.declaringImportedClassId = importedClass.importedClassId
 		constructor.source = SourceOf(useSyntax)
 		constructor.parameters = New TCompilerIrParameter[0]
+		If options And options.targetPlatform.ToLower() = "pico" And importedClass.abiName.length Then
+			constructor.objectNewAbiName = "_" + importedClass.abiName + "_New_ObjectNew"
+		End If
 		importedClass.constructors :+ [constructor]
 		Return constructor
 	End Method
@@ -10436,6 +10488,22 @@ Type TCompilerIrLowerer
 		If Not declaration Or Not declaration.signature Then Return False
 		For Local token:TSyntaxToken = EachIn declaration.signature.modifierTokens
 			If token.text.ToLower() = "nodebug" Then Return True
+		Next
+		Return False
+	End Function
+
+	Function RoutineDeclarationIsFinal:Int(declaration:TRoutineDeclarationSyntax)
+		If Not declaration Or Not declaration.signature Then Return False
+		For Local token:TSyntaxToken = EachIn declaration.signature.modifierTokens
+			If token.text.ToLower() = "final" Then Return True
+		Next
+		Return False
+	End Function
+
+	Function TypeDeclarationIsFinal:Int(declaration:TTypeDeclarationSyntax)
+		If Not declaration Or Not declaration.header Then Return False
+		For Local token:TSyntaxToken = EachIn declaration.header.modifierTokens
+			If token.text.ToLower() = "final" Then Return True
 		Next
 		Return False
 	End Function

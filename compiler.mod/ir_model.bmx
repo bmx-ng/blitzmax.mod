@@ -117,6 +117,7 @@ Const IR_CALL_DISPATCH_IMPORTED_VIRTUAL:Int = 4
 Const IR_CALL_DISPATCH_STRUCT:Int = 5
 Const IR_CALL_DISPATCH_INTERFACE_SUPER:Int = 6
 Const IR_CALL_DISPATCH_TYPE_FUNCTION:Int = 7
+Const IR_CALL_DISPATCH_EXACT:Int = 8
 
 Const IR_ENUM_INTRINSIC_ORDINAL:Int = 1
 Const IR_ENUM_INTRINSIC_VALUES:Int = 2
@@ -937,6 +938,7 @@ Type TCompilerIrFunction Extends TCompilerIrNode
 	Field objectSlotKind:Int
 	Field isMethod:Int
 	Field isAbstract:Int
+	Field isFinal:Int
 	Field receiver:TCompilerIrParameter
 	Field lifecycleKind:Int
 	Field constructorChainKind:Int
@@ -1105,6 +1107,7 @@ Type TCompilerIrClass Extends TCompilerIrNode
 	Field isPublished:Int
 	Field hasStableLocalAbi:Int
 	Field isAbstract:Int
+	Field isFinal:Int
 	Field fields:TCompilerIrClassField[] = New TCompilerIrClassField[0]
 	Field declaredFieldStart:Int
 	Field declaredFieldCount:Int

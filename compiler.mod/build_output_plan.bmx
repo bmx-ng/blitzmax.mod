@@ -113,7 +113,12 @@ Type TCompilerBuildOutputPlanner
 		Local runtimeHeaderContent:String
 		Local runtimeHeaderDigest:String
 		Local started:Int = MilliSecs()
-		Local applicationContent:String = TCompilerCBackend.EmitRuntime(ir, backendDiagnostics)
+		Local applicationContent:String
+		If ir.targetPlatform.ToLower() = "pico" Then
+			applicationContent = TCompilerCBackend.Emit(ir, backendDiagnostics)
+		Else
+			applicationContent = TCompilerCBackend.EmitRuntime(ir, backendDiagnostics)
+		End If
 		diagnostics :+ backendDiagnostics
 		If Not backendDiagnostics.length Then
 			plan.AddFile(CreateFile("application-c", applicationCPath, applicationContent), diagnostics)
@@ -205,6 +210,12 @@ Type TCompilerBuildOutputPlanner
 		' tag two definitions.  Other application-owned Structs used by the
 		' routine still require the shared layout authority below.
 		Local ownedRuntimeAbiName:String
+		If unit.ir.isStruct And unit.ir.specialization Then
+			' A generic Struct specialization emits its own complete closed layout.
+			' Its method receiver must not be mistaken for a separate ordinary
+			' application Struct requiring the desktop runtime-header authority.
+			ownedRuntimeAbiName = unit.ir.specialization.readableAbiName
+		End If
 		If unit.ir.routine And unit.ir.routine.receiverIsStruct And unit.ir.routine.receiverType Then
 			ownedRuntimeAbiName = unit.ir.routine.receiverType.runtimeAbiName
 		End If
