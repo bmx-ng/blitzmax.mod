@@ -9674,6 +9674,8 @@ Type TCompilerIrLowerer
 			parameter.semanticType = TypeName(sourceParameter.semanticType)
 			parameter.passingMode = sourceParameter.passingMode
 			parameter.nativeStringEncoding = sourceParameter.nativeStringEncoding
+			parameter.isOptional = sourceParameter.optional
+			PopulateParameterDefault(parameter, sourceParameter)
 			PopulateParameterShape(parameter, sourceParameter.semanticType)
 			externalFunction.parameters[index] = parameter
 		Next
