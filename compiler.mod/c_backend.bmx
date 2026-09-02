@@ -181,9 +181,10 @@ Type TCompilerCBackend
 		result.Append(EmitPicoVirtualPrototypes(irModule))
 		result.Append(EmitPicoStructDescriptors(irModule))
 		result.Append(EmitPicoInterfaceDescriptors(irModule))
+		If EmbeddedObjectTypes() Then result.Append(EmitExternalPrototypes(irModule))
 		result.Append(EmitPicoClassLayouts(irModule))
 		result.Append(EmitImportedStructPrototypes(irModule))
-		result.Append(EmitExternalPrototypes(irModule))
+		If Not EmbeddedObjectTypes() Then result.Append(EmitExternalPrototypes(irModule))
 		AppendEmbeddedStringLiterals(irModule, result)
 		AppendPicoEnums(irModule, result)
 		AppendGlobals(irModule, result)
@@ -7158,16 +7159,51 @@ Type TCompilerCBackend
 		Local arrayConcat:TCompilerIrArrayConcat = TCompilerIrArrayConcat(expression)
 		If arrayConcat Then
 			If EmbeddedArrayTypes() Then
-				AddDiagnostic("BMXC2028", "Array concatenation is not available in the initial Pico embedded profile", arrayConcat.source)
-				Return "&bmx_pico_empty_array"
+				Return "bmx_pico_array_concat(" + EmitExpression(arrayConcat.left) + ", " + EmitExpression(arrayConcat.right) + ")"
 			End If
 			Return "bbArrayConcat(" + CQuoted(arrayConcat.elementEncoding) + ", " + EmitExpression(arrayConcat.left) + ", " + EmitExpression(arrayConcat.right) + ")"
 		End If
 		Local arrayLiteral:TCompilerIrArrayLiteral = TCompilerIrArrayLiteral(expression)
 		If arrayLiteral Then
 			If EmbeddedArrayTypes() Then
-				AddDiagnostic("BMXC2028", "Array literals are not available in the initial Pico embedded profile", arrayLiteral.source)
-				Return "&bmx_pico_empty_array"
+				If Not arrayLiteral.elements.length Then Return "&bmx_pico_empty_array"
+				If Not PicoArrayElementSupported(arrayLiteral.elementType) Or arrayLiteral.callableReturnType.length Then
+					AddDiagnostic("BMXC2028", "Array literal element type '" + arrayLiteral.elementType + "' is not available in the Pico managed-container profile", arrayLiteral.source)
+					Return "&bmx_pico_empty_array"
+				End If
+				Local initializer:String = "0"
+				If arrayLiteral.structId.length Then
+					Local elementStruct:TCompilerIrStruct = StructById(arrayLiteral.structId)
+					If Not PicoPlainStructSupported(elementStruct) Then
+						AddDiagnostic("BMXC2091", "Array literal element Struct '" + arrayLiteral.elementType + "' is not supported by the Pico value-descriptor tier", arrayLiteral.source)
+						Return "&bmx_pico_empty_array"
+					End If
+					initializer = StructArrayInitializerName(arrayLiteral.structId, "")
+				Else If arrayLiteral.importedStructId.length Then
+					Local importedElementStruct:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsById.ValueForKey(arrayLiteral.importedStructId))
+					If Not PicoPlainImportedStructSupported(importedElementStruct) Or Not importedElementStruct.elementInitializerAbiName.length Then
+						AddDiagnostic("BMXC2091", "Imported array literal element Struct '" + arrayLiteral.elementType + "' has no supported Pico element initializer ABI", arrayLiteral.source)
+						Return "&bmx_pico_empty_array"
+					End If
+					initializer = importedElementStruct.elementInitializerAbiName
+				End If
+				Local valueDescriptor:String = "0"
+				If arrayLiteral.structId.length Then
+					Local descriptorStruct:TCompilerIrStruct = StructById(arrayLiteral.structId)
+					If descriptorStruct And descriptorStruct.containsManagedReferences Then valueDescriptor = "&" + PicoStructDescriptorName(descriptorStruct)
+				Else If arrayLiteral.importedStructId.length Then
+					Local importedDescriptorStruct:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsById.ValueForKey(arrayLiteral.importedStructId))
+					If importedDescriptorStruct And importedDescriptorStruct.containsManagedReferences Then valueDescriptor = "&" + PicoImportedStructDescriptorName(importedDescriptorStruct)
+				End If
+				Local elementDataType:String = CType(arrayLiteral.elementType, arrayLiteral.source) + "[]"
+				Local picoResult:TStringBuilder = New TStringBuilder(256)
+				picoResult.Append("bmx_pico_array_from_data(" + arrayLiteral.elements.length + ", (uint32_t)sizeof(" + CType(arrayLiteral.elementType, arrayLiteral.source) + "), " + PicoArrayElementKind(arrayLiteral.elementType) + ", " + initializer + ", " + valueDescriptor + ", (" + elementDataType + "){")
+				For Local picoIndex:Int = 0 Until arrayLiteral.elements.length
+					If picoIndex Then picoResult.Append(", ")
+					picoResult.Append(EmitExpression(arrayLiteral.elements[picoIndex]))
+				Next
+				picoResult.Append("})")
+				Return picoResult.ToString()
 			End If
 			If Not arrayLiteral.elements.length Then Return "&bbEmptyArray"
 			Local arrayFromDataName:String = "bbArrayFromData"

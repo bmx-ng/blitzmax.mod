@@ -7079,6 +7079,8 @@ Type TCompilerGenericCUnitEmitter
 				Select temporary.kind
 					Case TEMPLATE_NODE_ARRAY_LITERAL
 						slots :+ ["{ (void *)&" + ArrayLiteralTemporaryName(temporary) + ", BMX_PICO_ROOT_ARRAY, 0 }"]
+					Case TEMPLATE_NODE_OPERATOR
+						If temporary.valueText = "+" And temporary.semanticType And temporary.semanticType.kind = TEMPLATE_TYPE_ARRAY Then slots :+ ["{ (void *)&" + ArrayConcatTemporaryName(temporary) + ", BMX_PICO_ROOT_ARRAY, 0 }"]
 					Case TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ARRAY_ELEMENT
 						If temporary.identity.StartsWith("materialized-receiver") Then slots :+ ["{ (void *)&" + ArrayReceiverTemporaryName(temporary) + ", BMX_PICO_ROOT_ARRAY, 0 }"]
 					Case TEMPLATE_NODE_CALL
@@ -7176,6 +7178,13 @@ Type TCompilerGenericCUnitEmitter
 				emitted.Insert(name, node)
 			End If
 		End If
+		If PicoTarget(ir) And node.kind = TEMPLATE_NODE_OPERATOR And node.valueText = "+" And node.semanticType And node.semanticType.kind = TEMPLATE_TYPE_ARRAY And node.semanticType.rank = 1 Then
+			Local concatName:String = ArrayConcatTemporaryName(node)
+			If Not emitted.Contains(concatName) Then
+				result :+ indent + "BMXPicoArray *" + concatName + " = &bmx_pico_empty_array;~n"
+				emitted.Insert(concatName, node)
+			End If
+		End If
 		If (node.kind = TEMPLATE_NODE_ARRAY_SLICE Or node.kind = TEMPLATE_NODE_ARRAY_ELEMENT) And node.identity.StartsWith("materialized-receiver") Then
 			Local receiverName:String = ArrayReceiverTemporaryName(node)
 			If Not emitted.Contains(receiverName) Then
@@ -7206,6 +7215,12 @@ Type TCompilerGenericCUnitEmitter
 		Local identity:String = node.identity
 		If Not identity.length Then identity = SourceIdentity(node)
 		Return "bmx_array_" + TCompilerAbiNamer.Sanitize(identity)
+	End Function
+
+	Function ArrayConcatTemporaryName:String(node:TGenericTemplateNode)
+		Local identity:String = node.identity
+		If Not identity.length Then identity = SourceIdentity(node)
+		Return "bmx_array_concat_" + TCompilerAbiNamer.Sanitize(identity)
 	End Function
 
 	Function ArrayReceiverTemporaryName:String(node:TGenericTemplateNode)
@@ -9772,7 +9787,10 @@ Type TCompilerGenericCUnitEmitter
 							diagnostics :+ ["BMXC3047 generic Array concatenation element type has no runtime encoding"]
 							Return DefaultValue(node.semanticType, ir)
 						End If
-							If PicoTarget(ir) Then Return "bmx_pico_array_concat(" + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
+							If PicoTarget(ir) Then
+								Local concatTemporary:String = ArrayConcatTemporaryName(node)
+								Return "((" + concatTemporary + " = " + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + "), bmx_pico_array_concat(" + concatTemporary + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + "))"
+							End If
 							Return "bbArrayConcat(~q" + elementEncoding + "~q, " + EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
 					End If
 					If ordinaryStructEquality Then
