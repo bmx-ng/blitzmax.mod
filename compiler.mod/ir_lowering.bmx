@@ -4778,7 +4778,7 @@ Type TCompilerIrLowerer
 				arrayConcat.left = resultAssignment.target
 				arrayConcat.right = resultAssignment.value
 				resultAssignment.operatorText = "="
-				resultAssignment.value = arrayConcat
+				resultAssignment.value = SequenceArrayConcat(arrayConcat, bound.syntax)
 			End If
 			Return resultAssignment
 		End If
@@ -6556,7 +6556,10 @@ Type TCompilerIrLowerer
 			If literalEnum Then resultLiteral.enumId = literalEnum.enumId
 			Local literalStruct:TCompilerIrStruct = StructForType(arrayType.elementType)
 			Local literalImportedStruct:TCompilerIrImportedStruct = ImportedStructForType(arrayType.elementType)
-			If literalStruct Then resultLiteral.structId = literalStruct.structId
+			If literalStruct Then
+				resultLiteral.structId = literalStruct.structId
+				literalStruct.arrayInitializerRequired = True
+			End If
 			If literalImportedStruct Then resultLiteral.importedStructId = literalImportedStruct.importedStructId
 			resultLiteral.elements = New TCompilerIrExpression[arrayLiteral.elements.length]
 			For Local index:Int = 0 Until arrayLiteral.elements.length
@@ -7435,7 +7438,7 @@ Type TCompilerIrLowerer
 					If concatImportedStruct Then concat.importedStructId = concatImportedStruct.importedStructId
 					concat.left = LowerExpression(binary.left)
 					concat.right = LowerExpression(binary.right)
-					Return concat
+					Return SequenceArrayConcat(concat, bound.syntax)
 				End If
 				If binary.operatorText = "=" Or binary.operatorText = "<>" Then
 					Local identity:TCompilerIrManagedIdentity = New TCompilerIrManagedIdentity
@@ -8685,6 +8688,17 @@ Type TCompilerIrLowerer
 		' concatenation or allocation-capable call.
 		Local materialization:TCompilerIrMaterialize = BeginMaterialization(concat.left, syntax)
 		concat.left = TemporaryReference(materialization, Null, syntax, "string_left")
+		materialization.expression = concat
+		materialization.semanticType = concat.semanticType
+		Return materialization
+	End Method
+
+	Method SequenceArrayConcat:TCompilerIrExpression(concat:TCompilerIrArrayConcat, syntax:TSyntaxNode)
+		If Not concat Or Not concat.left Then Return concat
+		' Array concatenation allocates just like String concatenation. Preserve the
+		' left value in a rooted temporary while the right operand is evaluated.
+		Local materialization:TCompilerIrMaterialize = BeginMaterialization(concat.left, syntax)
+		concat.left = TemporaryReference(materialization, Null, syntax, "array_left")
 		materialization.expression = concat
 		materialization.semanticType = concat.semanticType
 		Return materialization
