@@ -8165,6 +8165,20 @@ Type TCompilerIrLowerer
 		If genericTypeName.ToLower() = TypeName(semanticType).ToLower() Then Return True
 		Local arrayType:TArraySemanticType = TArraySemanticType(semanticType)
 		If arrayType Then
+			' Closed generic ABI types preserve local nominal elements by their
+			' runtime identity (for example @runtime-class:...[]), while the
+			' selected source constructor retains the semantic array type. Compare
+			' the element recursively so Type, Interface, Struct, Enum and nested
+			' generic elements select the constructor published by the specialization.
+			Local arraySuffix:String = "["
+			For Local rankIndex:Int = 1 Until arrayType.rank
+				arraySuffix :+ ","
+			Next
+			arraySuffix :+ "]"
+			Local normalizedGenericName:String = genericTypeName.ToLower()
+			If normalizedGenericName.EndsWith(arraySuffix) Then
+				Return GenericIrSemanticTypeMatches(normalizedGenericName[..normalizedGenericName.length - arraySuffix.length], arrayType.elementType)
+			End If
 			Local canonicalElement:String = CanonicalSemanticTypeName(arrayType.elementType)
 			Return genericTypeName.ToLower() = canonicalElement + "[" + arrayType.rank + "]"
 		End If
