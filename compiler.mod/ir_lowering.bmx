@@ -5359,7 +5359,12 @@ Type TCompilerIrLowerer
 				Local variableType:TSemanticType
 				If forStatement.loopVariable Then variableType = forStatement.loopVariable.declaredType Else If forStatement.target Then variableType = forStatement.target.semanticType
 				Local objectElements:Int = IsObjectReferenceType(collectionType.elementType)
-				Local legacyObjectAdaptation:Int = objectElements And (IsObjectReferenceType(variableType) Or IsStringType(variableType) Or IsNumericType(variableType))
+				Local legacyObjectAdaptation:Int = objectElements And (IsStringType(variableType) Or IsNumericType(variableType))
+				If objectElements And variableType And IsBuiltinObjectType(collectionType.elementType) And IsObjectReferenceType(variableType) Then legacyObjectAdaptation = True
+				If objectElements And variableType And Not legacyObjectAdaptation Then
+					Local objectConversion:TConversion = TConversionClassifier.Create(analysis.model).ClassifyExplicit(collectionType.elementType, variableType)
+					legacyObjectAdaptation = objectConversion And objectConversion.Exists()
+				End If
 				Local elementAssignment:TConversion
 				If variableType And Not objectElements Then elementAssignment = TConversionClassifier.Create(analysis.model).ClassifyAssignmentExpression(Null, collectionType.elementType, variableType)
 				If Not variableType Or (objectElements And Not legacyObjectAdaptation) Or (Not objectElements And (Not elementAssignment Or Not elementAssignment.Exists())) Then

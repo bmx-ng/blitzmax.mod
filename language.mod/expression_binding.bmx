@@ -532,6 +532,47 @@ Type TExpressionBinder
 		Next
 	End Method
 
+	Method BindEachInTarget(iteration:TResolvedEachIn, header:TForHeaderSyntax)
+		If Not iteration Or Not iteration.elementType Or Not header Then Return
+		Local required:TSemanticType
+		Local span:TSourceSpan = header.span
+		Local name:String = "target"
+		If header.declarations.length = 1 Then
+			Local declarator:TVariableDeclaratorSyntax = header.declarations[0]
+			Local symbol:TSymbol = model.DeclaredSymbol(declarator)
+			If symbol Then
+				required = symbol.declaredType
+				name = "loop variable '" + symbol.name + "'"
+			End If
+			span = declarator.span
+		Else If header.target Then
+			required = model.ExpressionType(header.target)
+			span = header.target.span
+		End If
+		If Not required Then Return
+		If conversions.ClassifyExplicit(iteration.elementType, required).Exists() Then Return
+		If IsLegacyEachInObjectConversion(iteration.elementType, required) Then Return
+		AddDiagnostic("BMX3339", "EachIn element type '" + iteration.elementType.DisplayName() + "' cannot be converted to " + name + " of type '" + required.DisplayName() + "'.", span)
+	End Method
+
+	Function IsLegacyEachInObjectConversion:Int(actual:TSemanticType, required:TSemanticType)
+		Local actualObject:Int
+		Local builtin:TBuiltinSemanticType = TBuiltinSemanticType(actual)
+		If builtin And builtin.name.ToLower() = "object" Then actualObject = True
+		Local named:TNamedSemanticType = TNamedSemanticType(actual)
+		If named And named.symbol And (named.symbol.kind = SYMBOL_TYPE Or named.symbol.kind = SYMBOL_INTERFACE) Then actualObject = True
+		If Not actualObject Then Return False
+		If TConversionClassifier.IsString(required) Or TConversionClassifier.NumericRankOf(required) >= 0 Then Return True
+		' A legacy Object result is dynamically filtered to any managed Type or
+		' Interface target. More-specific source Types still require a real
+		' upcast/downcast/interface relationship above.
+		If builtin Then
+			Local requiredNamed:TNamedSemanticType = TNamedSemanticType(required)
+			If requiredNamed And requiredNamed.symbol Then Return requiredNamed.symbol.kind = SYMBOL_TYPE Or requiredNamed.symbol.kind = SYMBOL_INTERFACE
+		End If
+		Return False
+	End Function
+
 	Method BuildBoundDeconstruction(bound:TBoundForStatement, syntax:TForStatementSyntax)
 		If Not bound Or Not bound.iteration Or Not bound.iteration.deconstruct Or Not bound.body Then Return
 		Local loopScope:TScope = model.ScopeFor(syntax)
@@ -1021,7 +1062,11 @@ Type TExpressionBinder
 				collection.semanticType = collectionType
 				Local iteration:TResolvedEachIn = ResolveEachIn(collection, loopScope, forStatement, forStatement.header.collection)
 				If iteration Then eachInResolutions.Insert(forStatement, iteration)
-				If iteration And forStatement.header.declarations.length > 1 Then BindEachInDeconstruction(iteration, forStatement.header, loopScope, forStatement)
+				If iteration And forStatement.header.declarations.length > 1 Then
+					BindEachInDeconstruction(iteration, forStatement.header, loopScope, forStatement)
+				Else If iteration Then
+					BindEachInTarget(iteration, forStatement.header)
+				End If
 			End If
 			BindExpression(forStatement.header.limit, loopScope)
 			BindExpression(forStatement.header.stepExpression, loopScope)
