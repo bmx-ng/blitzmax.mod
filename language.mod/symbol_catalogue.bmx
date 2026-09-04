@@ -102,7 +102,12 @@ Type TModuleCatalogueEntry
 	Field isCore:Int
 	Field imports:String[] = New String[0]
 	Field symbols:TModuleCatalogueSymbol[] = New TModuleCatalogueSymbol[0]
-	Internal Field symbolBuffer:TModuleCatalogueSymbolBuffer
+	?bmxng2
+	Internal
+	?Not bmxng2
+	Public
+	?
+	Field symbolBuffer:TModuleCatalogueSymbolBuffer
 	Public
 
 	Function Create:TModuleCatalogueEntry(name:String, interfacePath:String, interfaceFile:TInterfaceFile, isCore:Int = False)
@@ -138,7 +143,12 @@ Type TModuleCatalogueSymbol
 	Field isPublic:Int
 	Field members:TModuleCatalogueSymbol[] = New TModuleCatalogueSymbol[0]
 	Field membersIndexed:Int
-	Internal Field memberBuffer:TModuleCatalogueSymbolBuffer
+	?bmxng2
+	Internal
+	?Not bmxng2
+	Public
+	?
+	Field memberBuffer:TModuleCatalogueSymbolBuffer
 	Public
 
 	Method IsType:Int()
@@ -158,11 +168,12 @@ Type TModuleSymbolCatalogue
 	Field symbolsByName:TMap = New TMap
 	Field symbolsByQualifiedName:TMap = New TMap
 	Field sourceResolver:TInterfaceSourceResolver = New TInterfaceSourceResolver
-	Private Field updateDepth:Int
-	Private Field moduleBuffer:TModuleCatalogueEntryBuffer
-	Private Field symbolBuffer:TModuleCatalogueSymbolBuffer
-	Private Field typeSymbolBuffer:TModuleCatalogueSymbolBuffer
-	Private Field exportedTopLevelIndexDirty:Int
+	Private
+	Field updateDepth:Int
+	Field moduleBuffer:TModuleCatalogueEntryBuffer
+	Field symbolBuffer:TModuleCatalogueSymbolBuffer
+	Field typeSymbolBuffer:TModuleCatalogueSymbolBuffer
+	Field exportedTopLevelIndexDirty:Int
 	Public
 
 	' Catalogue discovery is naturally a bulk operation. Keep exact public
@@ -556,5 +567,10 @@ End Type
 
 Type TModuleCatalogueSymbolGroup
 	Field symbols:TModuleCatalogueSymbol[] = New TModuleCatalogueSymbol[0]
-	Internal Field symbolBuffer:TModuleCatalogueSymbolBuffer
+	?bmxng2
+	Internal
+	?Not bmxng2
+	Public
+	?
+	Field symbolBuffer:TModuleCatalogueSymbolBuffer
 End Type

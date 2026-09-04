@@ -2302,9 +2302,9 @@ Type TCompilerGenericCUnitEmitter
 
 	Function PicoStructBaselineSupported:Int(ir:TCompilerGenericSpecializationIr)
 		If Not ir Or Not ir.isStruct Or ir.staticFields.length Then Return False
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			If Not field Or field.semanticType.kind = TEMPLATE_TYPE_STATIC_ARRAY Or Not PicoStructValueType(field.semanticType) Then Return False
-			If field.initializer And Not PicoStructNode(field.initializer) Then Return False
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			If Not genericField Or genericField.semanticType.kind = TEMPLATE_TYPE_STATIC_ARRAY Or Not PicoStructValueType(genericField.semanticType) Then Return False
+			If genericField.initializer And Not PicoStructNode(genericField.initializer) Then Return False
 		Next
 		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
 			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
@@ -2312,12 +2312,12 @@ Type TCompilerGenericCUnitEmitter
 			Next
 			If Not PicoStructNode(constructor.body) Then Return False
 		Next
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If Not PicoStructValueType(method.returnType) Then Return False
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If Not PicoStructValueType(genericMethod.returnType) Then Return False
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				If Not parameter Or parameter.passingMode <> PARAMETER_PASS_VALUE Or Not PicoStructValueType(parameter.semanticType) Then Return False
 			Next
-			If Not PicoStructNode(method.body) Then Return False
+			If Not PicoStructNode(genericMethod.body) Then Return False
 		Next
 		Return True
 	End Function
@@ -2356,9 +2356,9 @@ Type TCompilerGenericCUnitEmitter
 		If ir.isRoutine Or ir.isInterface Or ir.isStruct Then Return "specialization kind is not a Type"
 		If ir.staticFields.length Then Return "static fields are not supported"
 		If ir.implementedRuntimeInterfaces.length Then Return "ordinary imported Interface implementation is not supported"
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			If Not field Then Return "missing field IR"
-			If Not PicoTypeValueType(field.semanticType, ir) Then Return "field '" + field.name + "' has unsupported type '" + field.semanticType.CanonicalName() + "'"
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			If Not genericField Then Return "missing field IR"
+			If Not PicoTypeValueType(genericField.semanticType, ir) Then Return "field '" + genericField.name + "' has unsupported type '" + genericField.semanticType.CanonicalName() + "'"
 		Next
 		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
 			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
@@ -2367,12 +2367,12 @@ Type TCompilerGenericCUnitEmitter
 				If Not PicoTypeValueType(parameter.semanticType, ir) Then Return "constructor parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
 			Next
 		Next
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If Not PicoTypeValueType(method.returnType, ir) Then Return "method '" + method.name + "' has unsupported return type '" + method.returnType.CanonicalName() + "'"
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
-				If Not parameter Then Return "method '" + method.name + "' has missing parameter IR"
-				If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "method '" + method.name + "' parameter '" + parameter.name + "' has unsupported passing mode"
-				If Not PicoTypeValueType(parameter.semanticType, ir) Then Return "method '" + method.name + "' parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If Not PicoTypeValueType(genericMethod.returnType, ir) Then Return "method '" + genericMethod.name + "' has unsupported return type '" + genericMethod.returnType.CanonicalName() + "'"
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
+				If Not parameter Then Return "method '" + genericMethod.name + "' has missing parameter IR"
+				If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "method '" + genericMethod.name + "' parameter '" + parameter.name + "' has unsupported passing mode"
+				If Not PicoTypeValueType(parameter.semanticType, ir) Then Return "method '" + genericMethod.name + "' parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
 			Next
 		Next
 		Return ""
@@ -2384,14 +2384,14 @@ Type TCompilerGenericCUnitEmitter
 			Return "Struct ABI shape or body operation is unsupported"
 		End If
 		If ir And ir.isInterface Then
-			For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-				If Not PicoTypeValueType(method.returnType, ir) Then Return "Interface method '" + method.name + "' has unsupported return type '" + method.returnType.CanonicalName() + "'"
-				For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
-					If Not parameter Then Return "Interface method '" + method.name + "' has missing parameter IR"
-					If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "Interface method '" + method.name + "' parameter '" + parameter.name + "' has unsupported passing mode"
-					If Not PicoTypeValueType(parameter.semanticType, ir) Then Return "Interface method '" + method.name + "' parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+			For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+				If Not PicoTypeValueType(genericMethod.returnType, ir) Then Return "Interface method '" + genericMethod.name + "' has unsupported return type '" + genericMethod.returnType.CanonicalName() + "'"
+				For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
+					If Not parameter Then Return "Interface method '" + genericMethod.name + "' has missing parameter IR"
+					If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "Interface method '" + genericMethod.name + "' parameter '" + parameter.name + "' has unsupported passing mode"
+					If Not PicoTypeValueType(parameter.semanticType, ir) Then Return "Interface method '" + genericMethod.name + "' parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
 				Next
-				If method.body And Not PicoTypeNode(method.body, ir) Then Return "Interface method '" + method.name + "' has an unsupported body operation"
+				If genericMethod.body And Not PicoTypeNode(genericMethod.body, ir) Then Return "Interface method '" + genericMethod.name + "' has an unsupported body operation"
 			Next
 			Return ""
 		End If
@@ -2717,10 +2717,10 @@ Type TCompilerGenericCUnitEmitter
 		Next
 		result :+ "#ifndef " + guard + "~n#define " + guard + "~n"
 		result :+ "struct " + abiName + "_obj {~n    BMXPicoObject object;~n"
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			Local declaration:String = CStorageDeclaration(field.semanticType, field.abiName, ir)
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			Local declaration:String = CStorageDeclaration(genericField.semanticType, genericField.abiName, ir)
 			If Not declaration.length Then
-				diagnostics :+ ["BMXC3022 field '" + field.name + "' has no Pico C ABI type"]
+				diagnostics :+ ["BMXC3022 field '" + genericField.name + "' has no Pico C ABI type"]
 				Continue
 			End If
 			result :+ "    " + declaration + ";~n"
@@ -2733,17 +2733,17 @@ Type TCompilerGenericCUnitEmitter
 			result :+ "struct " + abiName + "_obj *" + constructor.abiName + "(" + PicoTypeConstructorParameters(constructor, ir, True) + ");~n"
 			result :+ "void " + constructor.abiName + "_init(struct " + abiName + "_obj *self" + TypeConstructorParameters(constructor, ir, True) + ");~n"
 		Next
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
 			Local parameters:String
 			Local methodOwnerName:String = abiName
-			If method.declaringSpecialization Then methodOwnerName = method.declaringSpecialization.readableAbiName
-			If Not method.isTypeFunction Then parameters = "struct " + methodOwnerName + "_obj *self"
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+			If genericMethod.declaringSpecialization Then methodOwnerName = genericMethod.declaringSpecialization.readableAbiName
+			If Not genericMethod.isTypeFunction Then parameters = "struct " + methodOwnerName + "_obj *self"
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				If parameters.length Then parameters :+ ", "
 				parameters :+ CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
 			Next
 			If Not parameters.length Then parameters = "void"
-			result :+ CFunctionDeclaration(method.returnType, method.abiName, parameters, ir) + ";~n"
+			result :+ CFunctionDeclaration(genericMethod.returnType, genericMethod.abiName, parameters, ir) + ";~n"
 		Next
 		If PicoGenericTypeHasFinalizer(ir) Then result :+ "void " + PicoGenericFinalizerName(ir.specialization) + "(void *object);~n"
 		Return result + "#endif~n"
@@ -3054,9 +3054,9 @@ Type TCompilerGenericCUnitEmitter
 		Local guard:String = DeclarationGuard("pico_interface", abiName + "_methods")
 		Local result:String
 		Local emittedOrdinaryClasses:TMap = New TMap
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			result :+ PicoOrdinaryClassForwardDeclarations(method.returnType, emittedOrdinaryClasses)
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			result :+ PicoOrdinaryClassForwardDeclarations(genericMethod.returnType, emittedOrdinaryClasses)
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				result :+ PicoOrdinaryClassForwardDeclarations(parameter.semanticType, emittedOrdinaryClasses)
 			Next
 		Next
@@ -3073,32 +3073,32 @@ Type TCompilerGenericCUnitEmitter
 		result :+ "#ifndef " + guard + "~n#define " + guard + "~n"
 		result :+ "struct " + abiName + "_methods {~n"
 		If Not ir.methods.length Then result :+ "    void *reserved;~n"
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
 			Local parameters:String = "BMXPicoObject *"
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				parameters :+ ", " + CValueDeclaration(parameter.semanticType, "", ir, parameter.passingMode)
 			Next
-			result :+ "    " + CFunctionPointerDeclaration(method.returnType, method.slotName, parameters, ir) + ";~n"
+			result :+ "    " + CFunctionPointerDeclaration(genericMethod.returnType, genericMethod.slotName, parameters, ir) + ";~n"
 		Next
 		result :+ "};~n"
 		result :+ "extern const BMXPicoInterfaceDescriptor " + abiName + "_ifc;~n"
 		result :+ "void " + abiName + "_register(void);~n"
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If method.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_DEFAULT Then
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If genericMethod.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_DEFAULT Then
 				Local defaultParameters:String = "BMXPicoObject *self"
-				For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+				For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 					defaultParameters :+ ", " + CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
 				Next
-				result :+ CFunctionDeclaration(method.returnType, method.abiName, defaultParameters, ir, "extern ") + ";~n"
+				result :+ CFunctionDeclaration(genericMethod.returnType, genericMethod.abiName, defaultParameters, ir, "extern ") + ";~n"
 			End If
 			Local helperParameters:String = "BMXPicoObject *receiver"
-			For Local index:Int = 0 Until method.parameters.length
-				helperParameters :+ ", " + CValueDeclaration(method.parameters[index].semanticType, "bmx_arg" + index, ir, method.parameters[index].passingMode)
+			For Local index:Int = 0 Until genericMethod.parameters.length
+				helperParameters :+ ", " + CValueDeclaration(genericMethod.parameters[index].semanticType, "bmx_arg" + index, ir, genericMethod.parameters[index].passingMode)
 			Next
-			result :+ CFunctionDeclaration(method.returnType, InterfaceCallHelperName(ir.specialization, method), helperParameters, ir, "static inline ") + " {~n    "
-			If Not VoidType(method.returnType) Then result :+ "return "
-			result :+ "((struct " + abiName + "_methods *)bmx_pico_interface_methods((void *)receiver, &" + abiName + "_ifc, " + ir.methods.length + "))->" + method.slotName + "(receiver"
-			For Local index:Int = 0 Until method.parameters.length
+			result :+ CFunctionDeclaration(genericMethod.returnType, InterfaceCallHelperName(ir.specialization, genericMethod), helperParameters, ir, "static inline ") + " {~n    "
+			If Not VoidType(genericMethod.returnType) Then result :+ "return "
+			result :+ "((struct " + abiName + "_methods *)bmx_pico_interface_methods((void *)receiver, &" + abiName + "_ifc, " + ir.methods.length + "))->" + genericMethod.slotName + "(receiver"
+			For Local index:Int = 0 Until genericMethod.parameters.length
 				result :+ ", bmx_arg" + index
 			Next
 			result :+ ");~n}~n"
@@ -4237,26 +4237,26 @@ Type TCompilerGenericCUnitEmitter
 		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
 			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(constructor.body, ir, ordinaryDeclarations, diagnostics)
 		Next
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(method.body, ir, ordinaryDeclarations, diagnostics)
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(genericMethod.body, ir, ordinaryDeclarations, diagnostics)
 		Next
 		If ordinaryDeclarationText.length Then result.Append(ordinaryDeclarationText + "~n")
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If method.declaringSpecialization And method.declaringSpecialization <> ir.specialization Then Continue
-			result.Append(EmitLocalRoutineSupport(method, method.body, ir, diagnostics))
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If genericMethod.declaringSpecialization And genericMethod.declaringSpecialization <> ir.specialization Then Continue
+			result.Append(EmitLocalRoutineSupport(genericMethod, genericMethod.body, ir, diagnostics))
 			Local parameters:String
-			If Not method.isTypeFunction Then parameters = "struct " + abiName + "_obj *self"
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+			If Not genericMethod.isTypeFunction Then parameters = "struct " + abiName + "_obj *self"
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				If parameters.length Then parameters :+ ", "
 				parameters :+ CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
 			Next
 			If Not parameters.length Then parameters = "void"
-			result.Append(EmitGenericGdbLineDirective(method.source, ir, "") + CFunctionDeclaration(method.returnType, method.abiName, parameters, ir) + " {~n")
-			If Not method.isTypeFunction Then result.Append("    (void)self;~n")
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+			result.Append(EmitGenericGdbLineDirective(genericMethod.source, ir, "") + CFunctionDeclaration(genericMethod.returnType, genericMethod.abiName, parameters, ir) + " {~n")
+			If Not genericMethod.isTypeFunction Then result.Append("    (void)self;~n")
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				result.Append("    (void)" + TCompilerAbiNamer.Sanitize(parameter.name) + ";~n")
 			Next
-			result.Append(EmitBody(method.body, ir, method, diagnostics))
+			result.Append(EmitBody(genericMethod.body, ir, genericMethod, diagnostics))
 			result.Append("}~n~n")
 		Next
 		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
@@ -4277,16 +4277,16 @@ Type TCompilerGenericCUnitEmitter
 		End If
 		result.Append(EmitPicoGenericObjectHooks(ir))
 		Local methodCount:Int
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If Not method.isDestructor Then methodCount :+ 1
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If Not genericMethod.isDestructor Then methodCount :+ 1
 		Next
 		Local methodTable:String = "0"
 		If methodCount Then
 			methodTable = abiName + "_methods"
 			result.Append("static const BMXPicoMethod " + methodTable + "[" + methodCount + "] = {~n")
-			For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-				If method.isDestructor Then Continue
-				result.Append("    (BMXPicoMethod)" + method.abiName + ",~n")
+			For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+				If genericMethod.isDestructor Then Continue
+				result.Append("    (BMXPicoMethod)" + genericMethod.abiName + ",~n")
 			Next
 			result.Append("};~n")
 		End If
@@ -4294,14 +4294,14 @@ Type TCompilerGenericCUnitEmitter
 		Local arrayCount:Int
 		Local stringCount:Int
 		Local valueFieldCount:Int
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			If field.semanticType.kind = TEMPLATE_TYPE_ARRAY Then
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			If genericField.semanticType.kind = TEMPLATE_TYPE_ARRAY Then
 				arrayCount :+ 1
-			Else If StringTemplateType(field.semanticType) Then
+			Else If StringTemplateType(genericField.semanticType) Then
 				stringCount :+ 1
-			Else If PicoGenericStructValueType(field.semanticType, ir) Then
+			Else If PicoGenericStructValueType(genericField.semanticType, ir) Then
 				valueFieldCount :+ 1
-			Else If ManagedReferenceType(field.semanticType, ir) Then
+			Else If ManagedReferenceType(genericField.semanticType, ir) Then
 				referenceCount :+ 1
 			End If
 		Next
@@ -4309,9 +4309,9 @@ Type TCompilerGenericCUnitEmitter
 		If referenceCount Then
 			referenceOffsets = abiName + "_references"
 			result.Append("static const uint32_t " + referenceOffsets + "[" + referenceCount + "] = {~n")
-			For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-				If field.semanticType.kind = TEMPLATE_TYPE_ARRAY Or StringTemplateType(field.semanticType) Or Not ManagedReferenceType(field.semanticType, ir) Then Continue
-				result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + field.abiName + "),~n")
+			For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+				If genericField.semanticType.kind = TEMPLATE_TYPE_ARRAY Or StringTemplateType(genericField.semanticType) Or Not ManagedReferenceType(genericField.semanticType, ir) Then Continue
+				result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + genericField.abiName + "),~n")
 			Next
 			result.Append("};~n")
 		End If
@@ -4319,8 +4319,8 @@ Type TCompilerGenericCUnitEmitter
 		If arrayCount Then
 			arrayOffsets = abiName + "_arrays"
 			result.Append("static const uint32_t " + arrayOffsets + "[" + arrayCount + "] = {~n")
-			For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-				If field.semanticType.kind = TEMPLATE_TYPE_ARRAY Then result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + field.abiName + "),~n")
+			For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+				If genericField.semanticType.kind = TEMPLATE_TYPE_ARRAY Then result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + genericField.abiName + "),~n")
 			Next
 			result.Append("};~n")
 		End If
@@ -4328,8 +4328,8 @@ Type TCompilerGenericCUnitEmitter
 		If stringCount Then
 			stringOffsets = abiName + "_strings"
 			result.Append("static const uint32_t " + stringOffsets + "[" + stringCount + "] = {~n")
-			For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-				If StringTemplateType(field.semanticType) Then result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + field.abiName + "),~n")
+			For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+				If StringTemplateType(genericField.semanticType) Then result.Append("    (uint32_t)offsetof(struct " + abiName + "_obj, " + genericField.abiName + "),~n")
 			Next
 			result.Append("};~n")
 		End If
@@ -4337,9 +4337,9 @@ Type TCompilerGenericCUnitEmitter
 		If valueFieldCount Then
 			valueFields = abiName + "_value_fields"
 			result.Append("static const BMXPicoValueField " + valueFields + "[" + valueFieldCount + "] = {~n")
-			For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-				If Not PicoGenericStructValueType(field.semanticType, ir) Then Continue
-				result.Append("    { (uint32_t)offsetof(struct " + abiName + "_obj, " + field.abiName + "), 0, 1, BMX_PICO_VALUE_STRUCT, " + PicoGenericValueDescriptor(field.semanticType, ir) + " },~n")
+			For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+				If Not PicoGenericStructValueType(genericField.semanticType, ir) Then Continue
+				result.Append("    { (uint32_t)offsetof(struct " + abiName + "_obj, " + genericField.abiName + "), 0, 1, BMX_PICO_VALUE_STRUCT, " + PicoGenericValueDescriptor(genericField.semanticType, ir) + " },~n")
 			Next
 			result.Append("};~n")
 		End If
@@ -4404,8 +4404,8 @@ Type TCompilerGenericCUnitEmitter
 		result.Append("    .value_fields = " + valueFields + ", .value_field_count = " + valueFieldCount + ", .flags = " + finalizerFlags + ", .trace = 0, .finalizer = " + finalizer + ",~n")
 		result.Append("    .compare = " + compareHook + ", .hash_code = " + hashCodeHook + ", .equals = " + equalsHook + "~n};~n~n")
 		result.Append("static void " + abiName + "_initialize(struct " + abiName + "_obj *self) {~n")
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			result.Append("    self->" + field.abiName + " = " + FieldInitializerValue(field, ir, diagnostics) + ";~n")
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			result.Append("    self->" + genericField.abiName + " = " + FieldInitializerValue(genericField, ir, diagnostics) + ";~n")
 		Next
 		result.Append("}~n~n")
 		result.Append("struct " + abiName + "_obj *" + abiName + "_New(void) {~n")
@@ -4427,16 +4427,16 @@ Type TCompilerGenericCUnitEmitter
 
 	Function PicoGenericOwnDestructor:TCompilerGenericMethodIr(ir:TCompilerGenericSpecializationIr)
 		If Not ir Then Return Null
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If method.isDestructor And method.declaringSpecialization = ir.specialization Then Return method
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If genericMethod.isDestructor And genericMethod.declaringSpecialization = ir.specialization Then Return genericMethod
 		Next
 		Return Null
 	End Function
 
 	Function PicoGenericTypeHasFinalizer:Int(ir:TCompilerGenericSpecializationIr)
 		If Not ir Then Return False
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If method.isDestructor Then Return True
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If genericMethod.isDestructor Then Return True
 		Next
 		Return False
 	End Function
@@ -4452,13 +4452,13 @@ Type TCompilerGenericCUnitEmitter
 
 	Function PicoGenericObjectHook:TCompilerGenericMethodIr(ir:TCompilerGenericSpecializationIr, hookName:String)
 		If Not ir Then Return Null
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If method.isDestructor Or method.isStatic Or method.isTypeFunction Or method.name.ToLower() <> hookName Then Continue
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If genericMethod.isDestructor Or genericMethod.isStatic Or genericMethod.isTypeFunction Or genericMethod.name.ToLower() <> hookName Then Continue
 			Select hookName
 				Case "compare", "equals"
-					If method.parameters.length = 1 And PicoGenericBuiltinType(method.returnType, "int") And PicoGenericBuiltinType(method.parameters[0].semanticType, "object") Then Return method
+					If genericMethod.parameters.length = 1 And PicoGenericBuiltinType(genericMethod.returnType, "int") And PicoGenericBuiltinType(genericMethod.parameters[0].semanticType, "object") Then Return genericMethod
 				Case "hashcode"
-					If method.parameters.length = 0 And PicoGenericBuiltinType(method.returnType, "uint") Then Return method
+					If genericMethod.parameters.length = 0 And PicoGenericBuiltinType(genericMethod.returnType, "uint") Then Return genericMethod
 			End Select
 		Next
 		Return Null
@@ -5728,8 +5728,8 @@ Type TCompilerGenericCUnitEmitter
 
 	Function PicoGenericStructContainsManagedFields:Int(ir:TCompilerGenericSpecializationIr)
 		If Not ir Then Return False
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			If ManagedReferenceType(field.semanticType, ir) Or PicoGenericStructValueType(field.semanticType, ir) Then Return True
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			If ManagedReferenceType(genericField.semanticType, ir) Or PicoGenericStructValueType(genericField.semanticType, ir) Then Return True
 		Next
 		Return False
 	End Function
@@ -5752,9 +5752,9 @@ Type TCompilerGenericCUnitEmitter
 				If ManagedReferenceType(parameter.semanticType, ir) Or PicoGenericStructValueType(parameter.semanticType, ir) Then Return True
 			Next
 		End If
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If ManagedReferenceType(method.returnType, ir) Or PicoGenericStructValueType(method.returnType, ir) Or PicoGenericNodeContainsManaged(method.body, ir) Then Return True
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If ManagedReferenceType(genericMethod.returnType, ir) Or PicoGenericStructValueType(genericMethod.returnType, ir) Or PicoGenericNodeContainsManaged(genericMethod.body, ir) Then Return True
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				If ManagedReferenceType(parameter.semanticType, ir) Or PicoGenericStructValueType(parameter.semanticType, ir) Then Return True
 			Next
 		Next
@@ -5770,22 +5770,22 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitPicoGenericStructDescriptor:String(ir:TCompilerGenericSpecializationIr)
 		Local descriptorName:String = PicoGenericStructDescriptorName(ir)
 		Local fieldCount:Int
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			If ManagedReferenceType(field.semanticType, ir) Or PicoGenericStructValueType(field.semanticType, ir) Then fieldCount :+ 1
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			If ManagedReferenceType(genericField.semanticType, ir) Or PicoGenericStructValueType(genericField.semanticType, ir) Then fieldCount :+ 1
 		Next
 		Local result:String
 		If fieldCount Then result = "static const BMXPicoValueField " + descriptorName + "_fields[" + fieldCount + "] = {~n"
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			If Not ManagedReferenceType(field.semanticType, ir) And Not PicoGenericStructValueType(field.semanticType, ir) Then Continue
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			If Not ManagedReferenceType(genericField.semanticType, ir) And Not PicoGenericStructValueType(genericField.semanticType, ir) Then Continue
 			Local kind:String = "BMX_PICO_VALUE_OBJECT"
 			Local nestedDescriptor:String = "0"
-			If field.semanticType.kind = TEMPLATE_TYPE_ARRAY Then kind = "BMX_PICO_VALUE_ARRAY"
-			If StringTemplateType(field.semanticType) Then kind = "BMX_PICO_VALUE_STRING"
-			If PicoGenericStructValueType(field.semanticType, ir) Then
+			If genericField.semanticType.kind = TEMPLATE_TYPE_ARRAY Then kind = "BMX_PICO_VALUE_ARRAY"
+			If StringTemplateType(genericField.semanticType) Then kind = "BMX_PICO_VALUE_STRING"
+			If PicoGenericStructValueType(genericField.semanticType, ir) Then
 				kind = "BMX_PICO_VALUE_STRUCT"
-				nestedDescriptor = PicoGenericValueDescriptor(field.semanticType, ir)
+				nestedDescriptor = PicoGenericValueDescriptor(genericField.semanticType, ir)
 			End If
-			result :+ "    { (uint32_t)offsetof(struct " + ir.specialization.readableAbiName + ", " + field.abiName + "), 0, 1, " + kind + ", " + nestedDescriptor + " },~n"
+			result :+ "    { (uint32_t)offsetof(struct " + ir.specialization.readableAbiName + ", " + genericField.abiName + "), 0, 1, " + kind + ", " + nestedDescriptor + " },~n"
 		Next
 		Local fieldPointer:String = "0"
 		If fieldCount Then
@@ -6322,12 +6322,12 @@ Type TCompilerGenericCUnitEmitter
 		result :+ "    struct " + abiName + " bmx_value = {0};~n"
 		' Install valid sentinels before publishing the in-progress value to the
 		' collector. Field initializers may allocate after the frame is active.
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			If ManagedReferenceType(field.semanticType, ir) Then result :+ "    bmx_value." + field.abiName + " = " + DefaultValue(field.semanticType, ir) + ";~n"
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			If ManagedReferenceType(genericField.semanticType, ir) Then result :+ "    bmx_value." + genericField.abiName + " = " + DefaultValue(genericField.semanticType, ir) + ";~n"
 		Next
 		result :+ EmitPicoGenericRootFrameSetup(ir, constructor, New TGenericTemplateNode[0], New TMap, "    ", "&bmx_value")
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			result :+ "    bmx_value." + field.abiName + " = " + FieldInitializerValue(field, ir, diagnostics) + ";~n"
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			result :+ "    bmx_value." + genericField.abiName + " = " + FieldInitializerValue(genericField, ir, diagnostics) + ";~n"
 		Next
 		If constructor Then
 			For Local parameter:TGenericTemplateValueParameter = EachIn constructor.parameters
@@ -6672,17 +6672,17 @@ Type TCompilerGenericCUnitEmitter
 		Local result:String = UnitPreamble(ir)
 		If Not declarationText.length Then declarationText = EmitPicoInterfaceDeclarations(ir, diagnostics)
 		result :+ declarationText + "~n"
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If method.interfaceMethodKind <> TEMPLATE_INTERFACE_METHOD_DEFAULT Or method.declaringSpecialization <> ir.specialization Then Continue
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If genericMethod.interfaceMethodKind <> TEMPLATE_INTERFACE_METHOD_DEFAULT Or genericMethod.declaringSpecialization <> ir.specialization Then Continue
 			Local parameters:String = "BMXPicoObject *self"
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				parameters :+ ", " + CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
 			Next
-			result :+ CFunctionDeclaration(method.returnType, method.abiName, parameters, ir) + " {~n    (void)self;~n"
-			For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+			result :+ CFunctionDeclaration(genericMethod.returnType, genericMethod.abiName, parameters, ir) + " {~n    (void)self;~n"
+			For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 				result :+ "    (void)" + TCompilerAbiNamer.Sanitize(parameter.name) + ";~n"
 			Next
-			result :+ EmitBody(method.body, ir, method, diagnostics) + "}~n~n"
+			result :+ EmitBody(genericMethod.body, ir, genericMethod, diagnostics) + "}~n~n"
 		Next
 		result :+ "const BMXPicoInterfaceDescriptor " + abiName + "_ifc = { " + CQuoted(SpecializationDisplayName(ir.specialization)) + ", " + CQuoted(abiName) + " };~n"
 		result :+ "void " + abiName + "_register(void) {}~n"
@@ -9253,14 +9253,14 @@ Type TCompilerGenericCUnitEmitter
 		Return callExpression
 	End Function
 
-	Function PicoGenericMethodSlotIndex:Int(typeNode:TGenericSpecializationNode, method:TCompilerGenericMethodIr, diagnostics:String[] Var)
-		If Not typeNode Or Not method Then Return -1
+	Function PicoGenericMethodSlotIndex:Int(typeNode:TGenericSpecializationNode, genericMethod:TCompilerGenericMethodIr, diagnostics:String[] Var)
+		If Not typeNode Or Not genericMethod Then Return -1
 		Local typeIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(typeNode, diagnostics)
 		If Not typeIr Then Return -1
 		Local slotIndex:Int
 		For Local candidate:TCompilerGenericMethodIr = EachIn typeIr.methods
 			If candidate.isDestructor Then Continue
-			If candidate.slotName = method.slotName Then Return slotIndex
+			If candidate.slotName = genericMethod.slotName Then Return slotIndex
 			slotIndex :+ 1
 		Next
 		Return -1
@@ -9271,22 +9271,22 @@ Type TCompilerGenericCUnitEmitter
 		Local typeIr:TCompilerGenericSpecializationIr = TCompilerGenericSpecializationLowerer.Lower(typeNode, diagnostics)
 		If Not typeIr Then Return 0
 		Local result:Int
-		For Local method:TCompilerGenericMethodIr = EachIn typeIr.methods
-			If Not method.isDestructor Then result :+ 1
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn typeIr.methods
+			If Not genericMethod.isDestructor Then result :+ 1
 		Next
 		Return result
 	End Function
 
-	Function PicoGenericMethodPointerType:String(method:TCompilerGenericMethodIr, ownerNode:TGenericSpecializationNode, ir:TCompilerGenericSpecializationIr)
-		If Not method Or Not ownerNode Then Return ""
+	Function PicoGenericMethodPointerType:String(genericMethod:TCompilerGenericMethodIr, ownerNode:TGenericSpecializationNode, ir:TCompilerGenericSpecializationIr)
+		If Not genericMethod Or Not ownerNode Then Return ""
 		Local parameters:String
-		If Not method.isTypeFunction Then parameters = "struct " + ownerNode.readableAbiName + "_obj *"
-		For Local parameter:TGenericTemplateValueParameter = EachIn method.parameters
+		If Not genericMethod.isTypeFunction Then parameters = "struct " + ownerNode.readableAbiName + "_obj *"
+		For Local parameter:TGenericTemplateValueParameter = EachIn genericMethod.parameters
 			If parameters.length Then parameters :+ ", "
 			parameters :+ CValueDeclaration(parameter.semanticType, "", ir, parameter.passingMode)
 		Next
 		If Not parameters.length Then parameters = "void"
-		Return CFunctionPointerDeclaration(method.returnType, "", parameters, ir)
+		Return CFunctionPointerDeclaration(genericMethod.returnType, "", parameters, ir)
 	End Function
 
 	Function EmitTypeOperation:String(typeNode:TGenericSpecializationNode, operation:TGenericTemplateNode, operationMethod:TCompilerGenericMethodIr, receiver:String, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)

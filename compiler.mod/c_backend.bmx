@@ -845,13 +845,13 @@ Type TCompilerCBackend
 		Return CType(slot.returnType, slot.source) + " (*)(" + parameters + ")"
 	End Method
 
-	Method PicoInterfaceFunctionPointerType:String(method:TCompilerIrInterfaceMethod)
-		If Not method Or method.callableReturnType.length Then Return ""
+	Method PicoInterfaceFunctionPointerType:String(interfaceMethod:TCompilerIrInterfaceMethod)
+		If Not interfaceMethod Or interfaceMethod.callableReturnType.length Then Return ""
 		Local parameters:String = "BMXPicoObject *"
-		For Local parameter:TCompilerIrParameter = EachIn method.parameters
-			parameters :+ ", " + CParameterType(parameter, method.source)
+		For Local parameter:TCompilerIrParameter = EachIn interfaceMethod.parameters
+			parameters :+ ", " + CParameterType(parameter, interfaceMethod.source)
 		Next
-		Return CType(method.returnType, method.source) + " (*)(" + parameters + ")"
+		Return CType(interfaceMethod.returnType, interfaceMethod.source) + " (*)(" + parameters + ")"
 	End Method
 
 	Method EmitRuntimeModule:String(irModule:TCompilerIrModule)
