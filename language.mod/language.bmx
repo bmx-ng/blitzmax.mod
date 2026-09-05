@@ -9,7 +9,8 @@ about: Parses and analyses BlitzMax source for compilers, editors, interpreters,
 End Rem
 Module BlitzMax.Language
 
-ModuleInfo "Version: 0.13.10"
+ModuleInfo "Version: 0.13.11"
+ModuleInfo "History: Warn when an ordinary assignment assigns a variable to itself."
 ModuleInfo "Author: Bruce A Henderson and contributors"
 ModuleInfo "License: zlib/libpng"
 ModuleInfo "Copyright: 2026 Bruce A Henderson and contributors"
