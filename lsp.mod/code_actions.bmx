@@ -172,6 +172,14 @@ Type TBlitzMaxLspCodeActions
 						If action Then result.Append(action)
 						Exit
 					Next
+				Case "BMX3411"
+					If Not analysis.model Then Continue
+					For Local diagnostic:TDiagnostic = EachIn analysis.model.diagnostics
+						If Not Matches(document, analysis.syntaxTree.source, diagnostic, requestedRange, "BMX3411") Then Continue
+						Local action:TJSONObject = QualifySelfAssignmentAction(document, analysis, diagnostic, requested)
+						If action Then result.Append(action)
+						Exit
+					Next
 			End Select
 		Next
 	End Function
@@ -579,6 +587,45 @@ Type TBlitzMaxLspCodeActions
 		diagnostics.Append(diagnostic)
 		Local action:TJSONObject = JsonObject()
 		action.Set("title", "Remove postfix type annotation")
+		action.Set("kind", "quickfix")
+		action.Set("diagnostics", diagnostics)
+		action.Set("isPreferred", New TJSONBool.Create(True))
+		action.Set("edit", workspaceEdit)
+		Return action
+	End Function
+
+	Function QualifySelfAssignmentAction:TJSONObject(document:TLspDocument, analysis:TLanguageAnalysis, diagnostic:TDiagnostic, requested:TJSONObject)
+		If Not document Or Not analysis Or Not analysis.model Or Not diagnostic Or ..
+				Not diagnostic.message.Contains("Did you mean 'Self.") Then Return Null
+		Local assignment:TAssignmentStatementSyntax
+		Local navigator:TSyntaxNavigator = TSyntaxNavigator.Create(analysis.syntaxTree)
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local candidate:TAssignmentStatementSyntax = TAssignmentStatementSyntax(node)
+			If candidate And candidate.span.start = diagnostic.span.start And candidate.span.length = diagnostic.span.length Then
+				assignment = candidate
+				Exit
+			End If
+		Next
+		If Not assignment Or assignment.operatorToken.text <> "=" Then Return Null
+		Local name:TNameExpressionSyntax = TNameExpressionSyntax(assignment.left)
+		If Not name Or name.nameToken.missing Then Return Null
+		Local symbol:TSymbol = analysis.model.ReferencedSymbol(name)
+		If Not symbol Or symbol.kind <> SYMBOL_PARAMETER Then Return Null
+
+		Local edit:TJSONObject = JsonObject()
+		edit.Set("range", TLspPositions.Range(analysis.syntaxTree.source, TSourceSpan.Create(name.nameToken.span.start, 0)))
+		edit.Set("newText", "Self.")
+		Local edits:TJSONArray = JsonArray()
+		edits.Append(edit)
+		Local changes:TJSONObject = JsonObject()
+		changes.Set(document.uri, edits)
+		Local workspaceEdit:TJSONObject = JsonObject()
+		workspaceEdit.Set("changes", changes)
+
+		Local diagnostics:TJSONArray = JsonArray()
+		diagnostics.Append(requested)
+		Local action:TJSONObject = JsonObject()
+		action.Set("title", "Qualify field with Self")
 		action.Set("kind", "quickfix")
 		action.Set("diagnostics", diagnostics)
 		action.Set("isPreferred", New TJSONBool.Create(True))

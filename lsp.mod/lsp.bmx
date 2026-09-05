@@ -9,7 +9,8 @@ about: Provides protocol framing, document and workspace services, and an embedd
 End Rem
 Module BlitzMax.LSP
 
-ModuleInfo "Version: 0.24.10"
+ModuleInfo "Version: 0.24.11"
+ModuleInfo "History: Added a preferred Self-qualification fix for hidden-field self-assignment warnings."
 ModuleInfo "Author: Bruce A Henderson and contributors"
 ModuleInfo "License: zlib/libpng"
 ModuleInfo "Copyright: 2026 Bruce A Henderson and contributors"
