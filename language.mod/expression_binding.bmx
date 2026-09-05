@@ -915,6 +915,7 @@ Type TExpressionBinder
 				Local resolvedAssignment:TResolvedCall = ResolveOperator(assignment, assignment.left, ":=", leftType, [assignment.right], [rightType], scope)
 				If resolvedAssignment Then Return
 			End If
+			If assignment.operatorToken.text = "=" Then ValidateSelfAssignment(assignment, assignedSymbol, scope)
 			If assignment.operatorToken.text = "=" Then CheckAssignmentConversion(rightType, leftType, assignment.right.span, "assignment", assignment.right)
 			If assignment.operatorToken.text <> "=" And TNamedSemanticType(leftType) Then
 				ResolveOperator(assignment, assignment.left, assignment.operatorToken.text, leftType, [assignment.right], [rightType], scope)
@@ -3021,6 +3022,68 @@ Type TExpressionBinder
 		Return Null
 	End Method
 
+	Method ValidateSelfAssignment(assignment:TAssignmentStatementSyntax, assignedSymbol:TSymbol, scope:TScope)
+		If Not assignment Or Not assignedSymbol Then Return
+		Select assignedSymbol.kind
+			Case SYMBOL_LOCAL, SYMBOL_GLOBAL, SYMBOL_FIELD, SYMBOL_PARAMETER, SYMBOL_CATCH_PARAMETER
+			Default
+				Return
+		End Select
+		If Not SameStorageReference(assignment.left, assignment.right) Then Return
+		Local message:String = "Variable '" + assignedSymbol.name + "' is assigned to itself."
+		If assignedSymbol.kind = SYMBOL_PARAMETER Then
+			Local field:TSymbol = EnclosingFieldNamed(scope, assignedSymbol.name)
+			If field Then message :+ " Did you mean 'Self." + field.name + "'?"
+		End If
+		AddDiagnostic("BMX3411", message, assignment.span, DIAGNOSTIC_WARNING)
+	End Method
+
+	Method SameStorageReference:Int(left:TExpressionSyntax, right:TExpressionSyntax)
+		Local leftParenthesized:TParenthesizedExpressionSyntax = TParenthesizedExpressionSyntax(left)
+		If leftParenthesized Then Return SameStorageReference(leftParenthesized.expression, right)
+		Local rightParenthesized:TParenthesizedExpressionSyntax = TParenthesizedExpressionSyntax(right)
+		If rightParenthesized Then Return SameStorageReference(left, rightParenthesized.expression)
+
+		Local leftName:TNameExpressionSyntax = TNameExpressionSyntax(left)
+		Local rightName:TNameExpressionSyntax = TNameExpressionSyntax(right)
+		If leftName And rightName Then
+			If leftName.nameToken.text.ToLower() = "self" Or rightName.nameToken.text.ToLower() = "self" Then
+				Return leftName.nameToken.text.ToLower() = "self" And rightName.nameToken.text.ToLower() = "self"
+			End If
+			Local leftSymbol:TSymbol = model.ReferencedSymbol(leftName)
+			Return leftSymbol And leftSymbol = model.ReferencedSymbol(rightName)
+		End If
+
+		Local leftMember:TMemberAccessExpressionSyntax = TMemberAccessExpressionSyntax(left)
+		Local rightMember:TMemberAccessExpressionSyntax = TMemberAccessExpressionSyntax(right)
+		If leftMember And rightMember Then
+			Local leftSymbol:TSymbol = model.ReferencedSymbol(leftMember)
+			Return leftSymbol And leftSymbol = model.ReferencedSymbol(rightMember) And ..
+				SameStorageReference(leftMember.expression, rightMember.expression)
+		End If
+
+		' An unqualified Field has the same implicit Self receiver as an explicitly
+		' qualified access to that Field.
+		If leftName And rightMember Then Return ImplicitAndExplicitSelfFieldMatch(leftName, rightMember)
+		If leftMember And rightName Then Return ImplicitAndExplicitSelfFieldMatch(rightName, leftMember)
+		Return False
+	End Method
+
+	Method ImplicitAndExplicitSelfFieldMatch:Int(name:TNameExpressionSyntax, member:TMemberAccessExpressionSyntax)
+		Local nameSymbol:TSymbol = model.ReferencedSymbol(name)
+		If Not nameSymbol Or nameSymbol.kind <> SYMBOL_FIELD Or nameSymbol <> model.ReferencedSymbol(member) Then Return False
+		Local receiver:TNameExpressionSyntax = TNameExpressionSyntax(member.expression)
+		Return receiver And receiver.nameToken.text.ToLower() = "self"
+	End Method
+
+	Method EnclosingFieldNamed:TSymbol(scope:TScope, name:String)
+		Local selfType:TSemanticType = SelfType(scope)
+		For Local symbol:TSymbol = EachIn MemberSymbols(selfType, name)
+			If symbol.kind = SYMBOL_FIELD Then Return symbol
+		Next
+		Return Null
+	End Method
+
 	Method CanAssignReadOnlyField:Int(fieldSymbol:TSymbol, scope:TScope)
 		If Not fieldSymbol Or fieldSymbol.kind <> SYMBOL_FIELD Then Return False
 		Local routine:TSymbol = EnclosingRoutine(scope)
@@ -3921,8 +3984,8 @@ Type TExpressionBinder
 		Return "<expression>"
 	End Function
 
-	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
-		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, CurrentSourcePath()))
+	Method AddDiagnostic(code:String, message:String, span:TSourceSpan, severity:Int = DIAGNOSTIC_ERROR)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, severity, span, CurrentSourcePath()))
 	End Method
 
 	Method ResolveType:TSemanticType(syntax:TTypeReferenceSyntax, scope:TScope)
