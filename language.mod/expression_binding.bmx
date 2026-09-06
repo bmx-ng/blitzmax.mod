@@ -3032,8 +3032,8 @@ Type TExpressionBinder
 		If Not SameStorageReference(assignment.left, assignment.right) Then Return
 		Local message:String = "Variable '" + assignedSymbol.name + "' is assigned to itself."
 		If assignedSymbol.kind = SYMBOL_PARAMETER Then
-			Local field:TSymbol = EnclosingFieldNamed(scope, assignedSymbol.name)
-			If field Then message :+ " Did you mean 'Self." + field.name + "'?"
+			Local fld:TSymbol = EnclosingFieldNamed(scope, assignedSymbol.name)
+			If fld Then message :+ " Did you mean 'Self." + fld.name + "'?"
 		End If
 		AddDiagnostic("BMX3411", message, assignment.span, DIAGNOSTIC_WARNING)
 	End Method
