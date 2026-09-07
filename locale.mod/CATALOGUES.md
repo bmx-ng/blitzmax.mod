@@ -138,7 +138,9 @@ multiple catalogues so a developer can install a complete locale in one call.
 domain and locale are valid. Release assembly builds a host-native `bmxlocale`,
 checks the canonical registry locks and translations, compiles directly into
 the SDK's `bin/locales` tree, and verifies every output. The separately built
-target `bin/bmxlocale` executable ships as part of the release.
+target `bin/bmxlocale` executable ships as part of binary releases. The macOS
+source distribution builds it locally as part of `build_dist.sh`, alongside
+the other toolchain applications.
 
 ## Locale selection
 
