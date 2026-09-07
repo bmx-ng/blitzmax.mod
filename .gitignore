@@ -12,3 +12,6 @@
 *.o
 
 .generics/
+
+# Compiled locale catalogues are release artifacts
+*.bmxcat

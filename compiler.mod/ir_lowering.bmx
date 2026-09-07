@@ -10,6 +10,7 @@ Import "compiler_options.bmx"
 Import "abi_naming.bmx"
 Import "ir_model.bmx"
 Import "generic_application_plan.bmx"
+Import "bcc_messages.generated.bmx"
 
 Type TCompilerIrLoweringProfile
 	Field initializationMilliseconds:Int
@@ -265,7 +266,7 @@ Type TCompilerIrLowerer
 			If Not document Or Not document.tree Then Continue
 			For Local token:TSyntaxToken = EachIn document.tree.root.tokens
 				If token.kind <> TOKEN_DIRECTIVE Then Continue
-				diagnostics :+ [TCompilerDiagnostic.Create("BMXC0002", "Conditional directives remained after source configuration was applied", document.path, token.span)]
+				diagnostics :+ [TCompilerDiagnostic.Create("BMXC0002", TBccMessages.CompilerConditionalDirectivesRemained(), document.path, token.span)]
 				Return False
 			Next
 		Next
@@ -307,7 +308,7 @@ Type TCompilerIrLowerer
 					irItem.stringLiteralId = RegisterStringValue(item.constantValue.stringValue, irItem.source).literalId
 			End Select
 			If Not irItem.typeTag.length Then
-				AddUnsupported("BMXC1221", "Data item type '" + dataTypeName + "' has no runtime representation", item.syntax)
+				AddUnsupported("BMXC1221", TBccMessages.IrLoweringDataItemTypeHasNoRuntimeRepresentation(dataTypeName), item.syntax)
 				Continue
 			End If
 			If Not irItem.stringLiteralId.length Then irItem.valueText = item.constantValue.DisplayValue()
@@ -325,7 +326,7 @@ Type TCompilerIrLowerer
 				If Not parentReference Or Not parentReference.runtimeAbiName.length Then Continue
 				Local parentInterface:TCompilerIrInterface = EnsureImportedRuntimeInterface(parentReference.runtimeAbiName)
 				If Not parentInterface Then
-					AddUnsupported("BMXC1161", "Generic Interface inheritance requires ordinary Interface ABI '" + parentReference.runtimeAbiName + "'", Null)
+					AddUnsupported("BMXC1161", TBccMessages.IrLoweringGenericInterfaceInheritanceRequiresOrdinaryAbi(parentReference.runtimeAbiName), Null)
 					Continue
 				End If
 				Local duplicate:Int
@@ -406,7 +407,7 @@ Type TCompilerIrLowerer
 			Local raw:TRawStatementSyntax = TRawStatementSyntax(node)
 			If raw And raw.tokens.length >= 1 And raw.tokens[0].text.ToLower() = "incbin" Then
 				If raw.tokens.length < 2 Or raw.tokens[1].kind <> TOKEN_STRING_LITERAL Then
-					AddUnsupported("BMXC1220", "Incbin requires a quoted resource path", raw)
+					AddUnsupported("BMXC1220", TBccMessages.IrLoweringIncbinRequiresQuotedResourcePath(), raw)
 					Continue
 				End If
 				ordinal :+ 1
@@ -1291,7 +1292,7 @@ Type TCompilerIrLowerer
 			Local underlyingType:TSemanticType = analysis.model.BuiltinType("Int")
 			If declaration.underlyingType Then underlyingType = analysis.model.TypeOf(declaration.underlyingType)
 			If Not IsSupportedEnumUnderlyingType(underlyingType) Then
-				AddUnsupported("BMXC1101", "Enum underlying type '" + TypeName(underlyingType) + "' is outside the integral scalar slice", declaration)
+				AddUnsupported("BMXC1101", TBccMessages.IrLoweringEnumUnderlyingTypeOutsideIntegralScalarSlice(TypeName(underlyingType)), declaration)
 				Continue
 			End If
 			Local irEnum:TCompilerIrEnum = New TCompilerIrEnum
@@ -1309,7 +1310,7 @@ Type TCompilerIrLowerer
 				If Not member Or member.kind <> SYMBOL_ENUM_MEMBER Then Continue
 				Local constant:TConstantValue = analysis.model.SymbolConstantValue(member)
 				If Not constant Or constant.kind <> CONSTANT_VALUE_INTEGER Then
-					AddUnsupported("BMXC1101", "Enum member '" + member.name + "' has no integral constant value", member.declaration)
+					AddUnsupported("BMXC1101", TBccMessages.IrLoweringEnumMemberHasNoIntegralConstantValue(member.name), member.declaration)
 					Continue
 				End If
 				Local value:TCompilerIrEnumValue = New TCompilerIrEnumValue
@@ -1366,18 +1367,18 @@ Type TCompilerIrLowerer
 		If existing Then Return existing
 		Local named:TNamedSemanticType = TNamedSemanticType(symbol.declaredType)
 		If Not named Then
-			AddUnsupported("BMXC1102", "Imported Enum '" + symbol.QualifiedName() + "' has no resolved semantic type", symbol.declaration)
+			AddUnsupported("BMXC1102", TBccMessages.IrLoweringImportedEnumHasNoResolvedSemanticType(symbol.QualifiedName()), symbol.declaration)
 			Return Null
 		End If
 		Local record:TInterfaceRecord = symbol.interfaceRecord
 		Local underlyingType:TSemanticType
 		If record And record.baseTypeSyntax Then underlyingType = analysis.model.TypeOf(record.baseTypeSyntax)
 		If Not IsSupportedEnumUnderlyingType(underlyingType) Then
-			AddUnsupported("BMXC1102", "Imported Enum '" + symbol.QualifiedName() + "' has an unsupported underlying type", symbol.declaration)
+			AddUnsupported("BMXC1102", TBccMessages.IrLoweringImportedEnumUnderlyingTypeUnsupported(symbol.QualifiedName()), symbol.declaration)
 			Return Null
 		End If
 		If Not symbol.externalName.length Then
-			AddUnsupported("BMXC1102", "Imported Enum '" + symbol.QualifiedName() + "' has no interface ABI identity", symbol.declaration)
+			AddUnsupported("BMXC1102", TBccMessages.IrLoweringImportedEnumInterfaceAbiIdentityMissing(symbol.QualifiedName()), symbol.declaration)
 			Return Null
 		End If
 		Local irEnum:TCompilerIrEnum = New TCompilerIrEnum
@@ -1396,7 +1397,7 @@ Type TCompilerIrLowerer
 			If Not member Or member.kind <> SYMBOL_ENUM_MEMBER Then Continue
 			Local constant:TConstantValue = analysis.model.SymbolConstantValue(member)
 			If Not constant Or constant.kind <> CONSTANT_VALUE_INTEGER Then
-				AddUnsupported("BMXC1102", "Imported Enum member '" + member.name + "' has no integral constant value", member.declaration)
+				AddUnsupported("BMXC1102", TBccMessages.IrLoweringImportedEnumMemberHasNoIntegralConstantValue(member.name), member.declaration)
 				Continue
 			End If
 			Local value:TCompilerIrEnumValue = New TCompilerIrEnumValue
@@ -1574,7 +1575,7 @@ Type TCompilerIrLowerer
 			If Not declaration Then Continue
 			If declaration.header And declaration.header.genericParameters.length Then
 				If GenericStructTemplatePlanned(symbol) Then Continue
-				AddUnsupported("BMXC1190", "Generic Structs require canonical specialization lowering", declaration)
+				AddUnsupported("BMXC1190", TBccMessages.IrLoweringGenericStructRequiresCanonicalSpecialization(), declaration)
 				Continue
 			End If
 			Local irStruct:TCompilerIrStruct = New TCompilerIrStruct
@@ -1671,7 +1672,7 @@ Type TCompilerIrLowerer
 	Method CompleteStructLayout(symbol:TSymbol)
 		If Not symbol Or completedStructLayouts.Contains(symbol) Then Return
 		If visitingStructLayouts.Contains(symbol) Then
-			AddUnsupported("BMXC1192", "Struct value layout cycle involving '" + symbol.name + "'", symbol.declaration)
+			AddUnsupported("BMXC1192", TBccMessages.IrLoweringStructValueLayoutCycle(symbol.name), symbol.declaration)
 			Return
 		End If
 		Local irStruct:TCompilerIrStruct = TCompilerIrStruct(structsBySymbol.ValueForKey(symbol))
@@ -1705,11 +1706,11 @@ Type TCompilerIrLowerer
 					If Not supportedField Then supportedField = IsSupportedStructFieldType(member.declaredType)
 				End If
 				If Not supportedField Then
-					AddUnsupported("BMXC1193", "Struct field type '" + TypeName(member.declaredType) + "' is outside the scalar, StaticArray, and nested-Struct layout slice", member.declaration)
+					AddUnsupported("BMXC1193", TBccMessages.IrLoweringStructFieldTypeOutsideLayoutSlice(TypeName(member.declaredType)), member.declaration)
 					Continue
 				End If
 				If staticArrayType And nestedImportedStruct And Not ImportedStructHasDefaultHelper(nestedImportedStruct) Then
-					AddUnsupported("BMXC1021", "Imported Struct StaticArray field element type '" + TypeName(fieldElementType) + "' has no published zero-argument value helper", member.declaration)
+					AddUnsupported("BMXC1021", TBccMessages.IrLoweringImportedStructStaticArrayElementHelperMissing(TypeName(fieldElementType)), member.declaration)
 					Continue
 				End If
 				Local irField:TCompilerIrStructField = New TCompilerIrStructField
@@ -1772,7 +1773,7 @@ Type TCompilerIrLowerer
 		If Not symbol.isImported And declaration And declaration.header Then isGeneric = declaration.header.genericParameters.length > 0
 		If isGeneric Then
 			If GenericInterfaceTemplatePlanned(symbol) Then Return Null
-			AddUnsupported("BMXC1160", "Generic Interfaces require canonical specialization lowering", declaration)
+			AddUnsupported("BMXC1160", TBccMessages.IrLoweringGenericInterfaceRequiresCanonicalSpecialization(), declaration)
 			Return Null
 		End If
 		If Not symbol.isImported And (Not declaration Or Not declaration.header) Then Return Null
@@ -1805,8 +1806,8 @@ Type TCompilerIrLowerer
 		If irInterface.abiName.length Then interfacesByAbiName.Insert(irInterface.abiName.ToLower(), irInterface)
 		interfaceSymbols :+ [symbol]
 		result.interfaces :+ [irInterface]
-		If symbol.isImported And Not irInterface.abiName.length Then AddUnsupported("BMXC1166", "Imported Interface '" + symbol.QualifiedName() + "' has no interface ABI name", symbol.declaration)
-		If symbol.isImported And irInterface.abiName.length And TCompilerAbiNamer.Sanitize(irInterface.abiName) <> irInterface.abiName Then AddUnsupported("BMXC1167", "Imported Interface ABI name '" + irInterface.abiName + "' requires an explicit linker-name representation", symbol.declaration)
+		If symbol.isImported And Not irInterface.abiName.length Then AddUnsupported("BMXC1166", TBccMessages.IrLoweringImportedInterfaceAbiNameMissing(symbol.QualifiedName()), symbol.declaration)
+		If symbol.isImported And irInterface.abiName.length And TCompilerAbiNamer.Sanitize(irInterface.abiName) <> irInterface.abiName Then AddUnsupported("BMXC1167", TBccMessages.IrLoweringImportedInterfaceAbiNameRequiresLinkerRepresentation(irInterface.abiName), symbol.declaration)
 		Return irInterface
 	End Method
 
@@ -1847,7 +1848,7 @@ Type TCompilerIrLowerer
 				Local baseInterface:TCompilerIrInterface
 				If namedBase And namedBase.symbol Then baseInterface = EnsureInterfaceShell(namedBase.symbol)
 				If Not baseInterface Then
-					AddUnsupported("BMXC1161", "Interface inheritance requires a non-generic source or imported Interface with a published ABI", edge.syntax)
+					AddUnsupported("BMXC1161", TBccMessages.IrLoweringInterfaceInheritanceRequiresPublishedAbi(), edge.syntax)
 					Continue
 				End If
 				CompleteInterfaceLayout(namedBase.symbol)
@@ -1871,7 +1872,7 @@ Type TCompilerIrLowerer
 					Continue
 				End If
 				If Not IsSupportedReturnType(member.declaredType) Then
-					AddUnsupported("BMXC1163", "Interface method return type '" + TypeName(member.declaredType) + "' is outside the current ABI slice", member.declaration)
+					AddUnsupported("BMXC1163", TBccMessages.IrLoweringInterfaceMethodReturnTypeOutsideAbiSlice(TypeName(member.declaredType)), member.declaration)
 					Continue
 				End If
 				Local interfaceMethod:TCompilerIrInterfaceMethod = New TCompilerIrInterfaceMethod
@@ -1900,7 +1901,7 @@ Type TCompilerIrLowerer
 				For Local index:Int = 0 Until member.parameters.length
 					Local sourceParameter:TSemanticParameter = member.parameters[index]
 					If Not sourceParameter Or Not IsSupportedAbiParameterType(sourceParameter.semanticType) Or Not IsSupportedParameterMode(sourceParameter) Then
-						AddUnsupported("BMXC1163", "Interface method parameters require supported ordinary-C ABI value types", member.declaration)
+						AddUnsupported("BMXC1163", TBccMessages.IrLoweringInterfaceMethodParametersRequireSupportedAbiTypes(), member.declaration)
 						supportedParameters = False
 						Exit
 					End If
@@ -2148,7 +2149,7 @@ Type TCompilerIrLowerer
 					If Not member Or member.kind <> SYMBOL_FIELD Then Continue
 					Local staticArrayType:TStaticArraySemanticType = TStaticArraySemanticType(member.declaredType)
 					If Not IsSupportedClassFieldType(member.declaredType) And Not IsSupportedStaticArrayType(staticArrayType) Then
-						AddUnsupported("BMXC1144", "Field type '" + TypeName(member.declaredType) + "' is outside the simple object layout slice", member.declaration)
+						AddUnsupported("BMXC1144", TBccMessages.IrLoweringTypeFieldTypeOutsideObjectLayoutSlice(TypeName(member.declaredType)), member.declaration)
 						Continue
 					End If
 					Local staticElementStruct:TCompilerIrStruct
@@ -2160,7 +2161,7 @@ Type TCompilerIrLowerer
 						staticElementImportedStruct = ImportedStructForType(staticArrayType.elementType)
 						If irClass.isPublished And staticElementStruct Then ExposeStructLayout(staticElementStruct)
 						If staticElementImportedStruct And Not ImportedStructHasDefaultHelper(staticElementImportedStruct) Then
-							AddUnsupported("BMXC1021", "Imported Struct StaticArray Type field element type '" + TypeName(staticArrayType.elementType) + "' has no published zero-argument value helper", member.declaration)
+							AddUnsupported("BMXC1021", TBccMessages.IrLoweringImportedStructStaticArrayTypeFieldElementHelperMissing(TypeName(staticArrayType.elementType)), member.declaration)
 							Continue
 						End If
 					End If
@@ -2217,13 +2218,13 @@ Type TCompilerIrLowerer
 		If Not declaration.header Then Return True
 		If declaration.header.genericParameters.length Then
 			If genericPlan And genericPlan.specializedSourceSymbols.Contains(symbol) Then Return False
-			AddUnsupported("BMXC1140", "Generic Types require canonical specialization lowering", declaration)
+			AddUnsupported("BMXC1140", TBccMessages.IrLoweringGenericTypeRequiresCanonicalSpecialization(), declaration)
 			Return False
 		End If
 		For Local implementedType:TTypeReferenceSyntax = EachIn declaration.header.implementedTypes
 			Local named:TNamedSemanticType = TNamedSemanticType(analysis.model.TypeOf(implementedType))
 			If Not named Or Not named.symbol Or Not InterfaceForType(named) Then
-				AddUnsupported("BMXC1141", "Interface implementation requires a source or canonical imported Interface with a published ABI", implementedType)
+				AddUnsupported("BMXC1141", TBccMessages.IrLoweringInterfaceImplementationRequiresPublishedAbi(), implementedType)
 				Return False
 			End If
 		Next
@@ -2233,13 +2234,13 @@ Type TCompilerIrLowerer
 			Local baseSymbol:TSymbol
 			If namedBase Then baseSymbol = namedBase.symbol
 			If Not baseSymbol Or baseSymbol.kind <> SYMBOL_TYPE Then
-				AddUnsupported("BMXC1141", "Type inheritance requires a resolved Type base", declaration.header.extendsTypes[0])
+				AddUnsupported("BMXC1141", TBccMessages.IrLoweringTypeInheritanceRequiresResolvedBase(), declaration.header.extendsTypes[0])
 				Return False
 			End If
 			If baseSymbol.isImported Or baseSymbol.genericArity > 0 Then
 				Local importedBase:TCompilerIrImportedClass = ImportedClassForType(baseType)
 				If Not importedBase Then
-					AddUnsupported("BMXC1141", "Imported Type inheritance requires a complete published ABI record", declaration.header.extendsTypes[0])
+					AddUnsupported("BMXC1141", TBccMessages.IrLoweringImportedTypeInheritanceRequiresPublishedAbiRecord(), declaration.header.extendsTypes[0])
 					Return False
 				End If
 			End If
@@ -2311,7 +2312,7 @@ Type TCompilerIrLowerer
 			If Not boundLiteral Or (Not boundLiteral.captures.length And Not boundLiteral.capturesSelf) Then Continue
 			Local ownerSymbol:TSymbol = ContainingRoutineSymbol(literalSymbol)
 			If ownerSymbol And ownerSymbol.genericArity Then
-				AddUnsupported("BMXC1247", "capturing Closure literals in generic routines require canonical environment specialization support", literalSyntax)
+				AddUnsupported("BMXC1247", TBccMessages.IrLoweringCapturingClosureInGenericRoutineUnsupported(), literalSyntax)
 				Continue
 			End If
 			Local ownerPlan:TCompilerClosureCapturePlan = CaptureOwnerPlan(ownerSymbol)
@@ -2319,7 +2320,7 @@ Type TCompilerIrLowerer
 			If boundLiteral.capturesSelf Then
 				If IsInstanceMethodSymbol(ownerSymbol) Then
 					If ownerPlan.capturesSelf And ownerPlan.selfType And boundLiteral.capturedSelfType And TypeName(ownerPlan.selfType) <> TypeName(boundLiteral.capturedSelfType) Then
-						AddUnsupported("BMXC1248", "sibling Closure literals disagree about their captured Self type", literalSyntax)
+						AddUnsupported("BMXC1248", TBccMessages.IrLoweringSiblingClosuresCapturedSelfTypeMismatch(), literalSyntax)
 					Else
 						ownerPlan.capturesSelf = True
 						ownerPlan.selfType = boundLiteral.capturedSelfType
@@ -2338,7 +2339,7 @@ Type TCompilerIrLowerer
 				If plan.activationScoped And (Not literalPlan.activationScoped Or ScopeIsWithin(plan.storageScope, literalPlan.storageScope)) Then literalPlan = plan
 				If plan.fieldsBySymbol.Contains(captured) Then Continue
 				If Not IsSupportedClassFieldType(captured.declaredType) Then
-					AddUnsupported("BMXC1248", "captured value '" + captured.name + "' has unsupported environment type '" + TypeName(captured.declaredType) + "'", captured.declaration)
+					AddUnsupported("BMXC1248", TBccMessages.IrLoweringCapturedValueEnvironmentTypeUnsupported(captured.name, TypeName(captured.declaredType)), captured.declaration)
 					Continue
 				End If
 				plan.captures :+ [captured]
@@ -2365,7 +2366,7 @@ Type TCompilerIrLowerer
 				End If
 			Else If plan.needsParent Then
 				plan.parentPlan = TCompilerClosureCapturePlan(closureCapturePlansByLiteral.ValueForKey(plan.ownerSymbol))
-				If Not plan.parentPlan Then AddUnsupported("BMXC1248", "nested Closure capture has no enclosing environment plan", plan.ownerSymbol.declaration)
+				If Not plan.parentPlan Then AddUnsupported("BMXC1248", TBccMessages.IrLoweringNestedClosureEnclosingEnvironmentPlanMissing(), plan.ownerSymbol.declaration)
 			End If
 		Next
 
@@ -2400,7 +2401,7 @@ Type TCompilerIrLowerer
 			Local captureIndex:Int
 			If plan.parentPlan Then
 				If Not plan.parentPlan.environmentClass Then
-					AddUnsupported("BMXC1248", "nested Closure parent environment has no lowered layout", plan.ownerSymbol.declaration)
+					AddUnsupported("BMXC1248", TBccMessages.IrLoweringNestedClosureParentEnvironmentLayoutMissing(), plan.ownerSymbol.declaration)
 					Continue
 				End If
 				plan.parentField = New TCompilerIrClassField
@@ -2416,7 +2417,7 @@ Type TCompilerIrLowerer
 			End If
 			If plan.capturesSelf Then
 				If Not plan.selfType Or Not IsSupportedClassFieldType(plan.selfType) Then
-					AddUnsupported("BMXC1248", "captured Self has an unsupported environment type", plan.ownerSymbol.declaration)
+					AddUnsupported("BMXC1248", TBccMessages.IrLoweringCapturedSelfEnvironmentTypeUnsupported(), plan.ownerSymbol.declaration)
 					Continue
 				End If
 				plan.selfField = New TCompilerIrClassField
@@ -2572,7 +2573,7 @@ Type TCompilerIrLowerer
 						If abstractSlot Then target = FunctionById(abstractSlot.functionId)
 					End If
 					If Not target And Not targetAbiName.length And Not irInterface.methods[index].defaultImplementationAbiName.length Then
-						AddUnsupported("BMXC1164", "Interface method '" + irInterface.name + "." + irInterface.methods[index].name + "' has no lowered implementation", symbol.declaration)
+						AddUnsupported("BMXC1164", TBccMessages.IrLoweringInterfaceMethodImplementationMissing(irInterface.name, irInterface.methods[index].name), symbol.declaration)
 						Continue
 					End If
 					Local slot:TCompilerIrInterfaceImplementationSlot = New TCompilerIrInterfaceImplementationSlot
@@ -2683,7 +2684,7 @@ Type TCompilerIrLowerer
 			If candidate And candidate.name.ToLower() = "icloseable" Then closeInterface = candidate; Exit
 		Next
 		If Not closeInterface Then
-			AddUnsupported("BMXC1214", "Using resource '" + resourceSymbol.name + "' does not expose an ICloseable Interface contract", syntax)
+			AddUnsupported("BMXC1214", TBccMessages.IrLoweringUsingResourceDoesNotExposeCloseableContract(resourceSymbol.name), syntax)
 			Return Null
 		End If
 		Local closeMethod:TCompilerIrInterfaceMethod
@@ -2691,7 +2692,7 @@ Type TCompilerIrLowerer
 			If candidateMethod.name.ToLower() = "close" And candidateMethod.parameters.length = 0 Then closeMethod = candidateMethod; Exit
 		Next
 		If Not closeMethod Then
-			AddUnsupported("BMXC1214", "Using resource Interface has no parameterless Close method", syntax)
+			AddUnsupported("BMXC1214", TBccMessages.IrLoweringUsingResourceInterfaceCloseMethodMissing(), syntax)
 			Return Null
 		End If
 		Local reference:TCompilerIrSymbolReference = New TCompilerIrSymbolReference
@@ -2959,7 +2960,7 @@ Type TCompilerIrLowerer
 		If routine.isMethod And symbol.name.ToLower() = "new" Then routine.lifecycleKind = IR_LIFECYCLE_CONSTRUCTOR
 		If routine.isMethod And symbol.name.ToLower() = "delete" Then routine.lifecycleKind = IR_LIFECYCLE_DESTRUCTOR
 		If ownerStruct And routine.lifecycleKind = IR_LIFECYCLE_DESTRUCTOR Then
-			AddUnsupported("BMXC1195", "Structs have C value lifetime and cannot declare a Delete method", declaration)
+			AddUnsupported("BMXC1195", TBccMessages.IrLoweringStructCannotDeclareDeleteMethod(), declaration)
 			Return
 		End If
 		If routine.isMethod Then routine.objectSlotKind = ObjectSlotKind(symbol)
@@ -3376,7 +3377,7 @@ Type TCompilerIrLowerer
 		End If
 		For Local parameter:TCompilerIrParameter = EachIn factory.parameters
 			If parameter.passingMode = PARAMETER_PASS_VAR Then
-				AddUnsupported("BMXC1250", "yielding routines cannot retain Var parameters beyond the creating call", symbol.declaration)
+				AddUnsupported("BMXC1250", TBccMessages.IrLoweringYieldingRoutineCannotRetainVarParameters(), symbol.declaration)
 				Continue
 			End If
 			Local retainedParameterType:String = parameter.semanticType
@@ -3534,7 +3535,7 @@ Type TCompilerIrLowerer
 				For Local handler:TCompilerIrCatch = EachIn guarded.catches
 					If IteratorBlockContainsYield(handler.body) Then guardedYield = True
 				Next
-				If IteratorBlockContainsYield(guarded.finallyBody) Then AddUnsupported("BMXC1252", "Yield inside Finally is not supported; Yield from the protected Try or Catch body instead", Null)
+				If IteratorBlockContainsYield(guarded.finallyBody) Then AddUnsupported("BMXC1252", TBccMessages.IrLoweringYieldInsideFinallyUnsupported(), Null)
 				If guardedYield Then
 					guarded.retainedInIterator = True
 					If guarded.finallyBody Then
@@ -3691,7 +3692,7 @@ Type TCompilerIrLowerer
 						target = closeMethod
 				End Select
 				If Not target Then
-					AddUnsupported("BMXC1253", "iterator Interface method '" + irInterface.methods[index].name + "' has no generated implementation", symbol.declaration)
+					AddUnsupported("BMXC1253", TBccMessages.IrLoweringIteratorInterfaceMethodImplementationMissing(irInterface.methods[index].name), symbol.declaration)
 					Continue
 				End If
 				Local slot:TCompilerIrInterfaceImplementationSlot = New TCompilerIrInterfaceImplementationSlot
@@ -3741,7 +3742,7 @@ Type TCompilerIrLowerer
 		Local prefix:TCompilerIrStatement[] = [environmentVariable]
 		If plan.parentPlan Then
 			If Not plan.parentField Or Not currentIncomingClosureCapturePlan Then
-				AddUnsupported("BMXC1249", "nested Closure environment has no active parent environment", plan.ownerSymbol.declaration)
+				AddUnsupported("BMXC1249", TBccMessages.IrLoweringNestedClosureActiveParentEnvironmentMissing(), plan.ownerSymbol.declaration)
 			Else
 				Local parentAssignment:TCompilerIrAssignment = New TCompilerIrAssignment
 				parentAssignment.kind = IR_STATEMENT_ASSIGNMENT
@@ -3753,7 +3754,7 @@ Type TCompilerIrLowerer
 		End If
 		If plan.capturesSelf Then
 			If Not currentReceiver Or Not plan.selfField Then
-				AddUnsupported("BMXC1249", "capturing Closure has no active instance receiver", plan.ownerSymbol.declaration)
+				AddUnsupported("BMXC1249", TBccMessages.IrLoweringCapturingClosureActiveInstanceReceiverMissing(), plan.ownerSymbol.declaration)
 			Else
 				Local selfAssignment:TCompilerIrAssignment = New TCompilerIrAssignment
 				selfAssignment.kind = IR_STATEMENT_ASSIGNMENT
@@ -3884,7 +3885,7 @@ Type TCompilerIrLowerer
 			If Not symbol Or symbol.kind <> SYMBOL_CONST Or Not symbol.isExternal Then Continue
 			Local constantValue:TConstantValue = analysis.model.SymbolConstantValue(symbol)
 			If Not constantValue Then
-				AddUnsupported("BMXC1102", "Extern Const '" + symbol.name + "' has no compile-time value", symbol.declaration)
+				AddUnsupported("BMXC1102", TBccMessages.IrLoweringExternConstCompileTimeValueMissing(symbol.name), symbol.declaration)
 				Continue
 			End If
 			Local declaration:TCompilerIrVariableDeclaration = New TCompilerIrVariableDeclaration
@@ -4222,7 +4223,7 @@ Type TCompilerIrLowerer
 				Local declarator:TVariableDeclaratorSyntax = TVariableDeclaratorSyntax(member.declaration)
 				If irField And declarator And declarator.initializer Then
 					If irField.isStaticArray Then
-						AddUnsupported("BMXC1019", "StaticArray Type fields currently require default initialization", declarator.initializer)
+						AddUnsupported("BMXC1019", TBccMessages.IrLoweringStaticArrayTypeFieldRequiresDefaultInitialization(), declarator.initializer)
 						Continue
 					End If
 					Local boundVariable:TBoundVariable = BoundVariableForSymbol(member)
@@ -4231,7 +4232,7 @@ Type TCompilerIrLowerer
 					If boundInitializer Then
 						irField.initializer = LowerExpression(boundInitializer)
 					Else
-						AddUnsupported("BMXC1145", "Field initializer did not have a bound expression", declarator.initializer)
+						AddUnsupported("BMXC1145", TBccMessages.IrLoweringTypeFieldInitializerExpressionMissing(), declarator.initializer)
 					End If
 				Else If irField And declarator And declarator.arrayDimensions.length Then
 					irField.initializer = LowerFieldArrayAllocation(member, declarator)
@@ -4257,7 +4258,7 @@ Type TCompilerIrLowerer
 				Local declarator:TVariableDeclaratorSyntax = TVariableDeclaratorSyntax(member.declaration)
 				If irField And declarator And declarator.initializer Then
 					If irField.isStaticArray Then
-						AddUnsupported("BMXC1019", "StaticArray Struct fields currently require default initialization", declarator.initializer)
+						AddUnsupported("BMXC1019", TBccMessages.IrLoweringStaticArrayStructFieldRequiresDefaultInitialization(), declarator.initializer)
 						Continue
 					End If
 					Local boundVariable:TBoundVariable = BoundVariableForSymbol(member)
@@ -4266,7 +4267,7 @@ Type TCompilerIrLowerer
 					If boundInitializer Then
 						irField.initializer = LowerExpression(boundInitializer)
 					Else
-						AddUnsupported("BMXC1194", "Struct field initializer did not have a bound expression", declarator.initializer)
+						AddUnsupported("BMXC1194", TBccMessages.IrLoweringStructFieldInitializerExpressionMissing(), declarator.initializer)
 					End If
 				Else If irField And declarator And declarator.arrayDimensions.length Then
 					irField.initializer = LowerFieldArrayAllocation(member, declarator)
@@ -4322,11 +4323,11 @@ Type TCompilerIrLowerer
 		If (Not target Or target.lifecycleKind <> IR_LIFECYCLE_CONSTRUCTOR) And Not importedTarget Then Return 0
 		If routine.ownerStructId.length Then
 			If importedTarget Then
-				AddUnsupported("BMXC1200", "Struct constructors cannot delegate to an imported Type constructor", call.syntax)
+				AddUnsupported("BMXC1200", TBccMessages.IrLoweringStructConstructorCannotDelegateToImportedType(), call.syntax)
 				Return 0
 			End If
 			If target.ownerStructId <> routine.ownerStructId Then
-				AddUnsupported("BMXC1200", "Struct constructors may only delegate to another constructor on the same Struct", call.syntax)
+				AddUnsupported("BMXC1200", TBccMessages.IrLoweringStructConstructorDelegationRequiresSameStruct(), call.syntax)
 				Return 0
 			End If
 			routine.constructorChainKind = IR_CONSTRUCTOR_CHAIN_SAME_TYPE
@@ -4354,7 +4355,7 @@ Type TCompilerIrLowerer
 	Method ValidateStructConstructorChain(routine:TCompilerIrFunction, completed:TMap, visiting:TMap)
 		If Not routine Or completed.Contains(routine.functionId) Then Return
 		If visiting.Contains(routine.functionId) Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC1201", "Recursive Struct constructor delegation involving '" + routine.name + "'", routine.source.path, routine.source.span)]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC1201", TBccMessages.IrLoweringRecursiveStructConstructorDelegation(routine.name), routine.source.path, routine.source.span)]
 			Return
 		End If
 		visiting.Insert(routine.functionId, routine.functionId)
@@ -4403,7 +4404,7 @@ Type TCompilerIrLowerer
 			If TTypeDeclarationSyntax(node) Then
 			Else If TEnumDeclarationSyntax(node) Then
 				Local enumSymbol:TSymbol = analysis.model.DeclaredSymbol(node)
-				If Not enumSymbol Or Not enumsBySymbol.Contains(enumSymbol) Then AddUnsupported("BMXC1101", "Enum declaration could not be lowered", node)
+				If Not enumSymbol Or Not enumsBySymbol.Contains(enumSymbol) Then AddUnsupported("BMXC1101", TBccMessages.IrLoweringEnumDeclarationCouldNotBeLowered(), node)
 			Else If TExternBlockSyntax(node) Then
 				ValidateExternBlock(TExternBlockSyntax(node))
 			End If
@@ -4421,30 +4422,30 @@ Type TCompilerIrLowerer
 		If Not declaration And Not functionLiteral Then Return False
 		If symbol.isExternal Then Return False
 		If symbol.genericArity Then
-			AddUnsupported("BMXC1105", "Generic routines require canonical specialization lowering", declaration)
+			AddUnsupported("BMXC1105", TBccMessages.IrLoweringGenericRoutineRequiresCanonicalSpecialization(), declaration)
 			Return False
 		End If
 		If Not IsSupportedReturnType(symbol.declaredType) Then
-			AddUnsupported("BMXC1106", "Routine return type '" + TypeName(symbol.declaredType) + "' is outside the scalar IR slice", declaration)
+			AddUnsupported("BMXC1106", TBccMessages.IrLoweringRoutineReturnTypeOutsideScalarSlice(TypeName(symbol.declaredType)), declaration)
 			Return False
 		End If
 		For Local parameter:TSemanticParameter = EachIn symbol.parameters
 			Local callableType:TCallableSemanticType
 			If parameter Then callableType = TCallableSemanticType(parameter.semanticType)
 			If callableType And parameter.passingMode <> PARAMETER_PASS_VALUE Then
-				AddUnsupported("BMXC1107", "Callable parameters require value passing in the ordinary-C ABI IR slice", declaration)
+				AddUnsupported("BMXC1107", TBccMessages.IrLoweringCallableParametersRequireValuePassing(), declaration)
 				Return False
 			End If
 			If callableType And declaration And declaration.isMethod And symbol.name.ToLower() = "delete" Then
-				AddUnsupported("BMXC1107", "Callable destructor parameters are outside the lifecycle ABI", declaration)
+				AddUnsupported("BMXC1107", TBccMessages.IrLoweringCallableDestructorParametersOutsideLifecycleAbi(), declaration)
 				Return False
 			End If
 			If parameter And Not IsSupportedAbiParameterType(parameter.semanticType) Then
-				AddUnsupported("BMXC1107", "Parameter type '" + TypeName(parameter.semanticType) + "' is outside the ordinary-C ABI IR slice", declaration)
+				AddUnsupported("BMXC1107", TBccMessages.IrLoweringParameterTypeOutsideOrdinaryCAbiSlice(TypeName(parameter.semanticType)), declaration)
 				Return False
 			End If
 			If Not IsSupportedParameterMode(parameter) Then
-				AddUnsupported("BMXC1107", "Var parameters require a directly addressable value ABI type", declaration)
+				AddUnsupported("BMXC1107", TBccMessages.IrLoweringVarParameterRequiresAddressableAbiType(), declaration)
 				Return False
 			End If
 		Next
@@ -4462,7 +4463,7 @@ Type TCompilerIrLowerer
 			If routineDeclaration Then
 				Local routineSymbol:TSymbol = SymbolForDeclaration(routineDeclaration)
 				If Not ExternalFunction(routineSymbol, routineDeclaration) Then
-					If Not routineSymbol Or Not routineSymbol.isExternal Or routineSymbol.kind <> SYMBOL_ROUTINE Then AddUnsupported("BMXC1102", "Extern routines require a native ABI binding", routineDeclaration)
+					If Not routineSymbol Or Not routineSymbol.isExternal Or routineSymbol.kind <> SYMBOL_ROUTINE Then AddUnsupported("BMXC1102", TBccMessages.IrLoweringExternRoutineRequiresNativeAbiBinding(), routineDeclaration)
 				End If
 				Continue
 			End If
@@ -4475,7 +4476,7 @@ Type TCompilerIrLowerer
 					' no external-Global IR record.
 					If symbol And symbol.kind = SYMBOL_CONST Then Continue
 					If Not ResolveExternalGlobal(symbol, declarator) Then
-						If Not symbol Or Not symbol.isExternal Or symbol.kind <> SYMBOL_GLOBAL Then AddUnsupported("BMXC1102", "Extern variables must be Global declarations with a native ABI binding", declarator)
+						If Not symbol Or Not symbol.isExternal Or symbol.kind <> SYMBOL_GLOBAL Then AddUnsupported("BMXC1102", TBccMessages.IrLoweringExternVariableRequiresGlobalNativeAbiBinding(), declarator)
 					End If
 				Next
 				Continue
@@ -4487,10 +4488,10 @@ Type TCompilerIrLowerer
 				Local irStruct:TCompilerIrStruct
 				If symbol And symbol.kind = SYMBOL_STRUCT Then irStruct = TCompilerIrStruct(structsBySymbol.ValueForKey(symbol))
 				If irStruct Then Continue
-				AddUnsupported("BMXC1102", "Only Struct ABI declarations are implemented as Extern types", typeDeclaration)
+				AddUnsupported("BMXC1102", TBccMessages.IrLoweringExternTypeRequiresStructAbiDeclaration(), typeDeclaration)
 				Continue
 			End If
-			AddUnsupported("BMXC1102", "Only routine and Global declarations are implemented in Extern blocks", node)
+			AddUnsupported("BMXC1102", TBccMessages.IrLoweringExternBlockDeclarationUnsupported(), node)
 		Next
 	End Method
 
@@ -4547,12 +4548,12 @@ Type TCompilerIrLowerer
 			Local declarationSyntax:TVariableDeclarationStatementSyntax = TVariableDeclarationStatementSyntax(bound.syntax)
 			Local isThreadedGlobal:Int = declarationSyntax And declarationSyntax.declarationToken And declarationSyntax.declarationToken.text.ToLower() = "threadedglobal"
 			If variables.variables.length <> 1 Then
-				AddUnsupported("BMXC1001", "Multiple declarators in one statement are not yet lowered", bound.syntax)
+				AddUnsupported("BMXC1001", TBccMessages.IrLoweringMultipleDeclaratorsUnsupported(), bound.syntax)
 				Return Null
 			End If
 			Local variable:TBoundVariable = variables.variables[0]
 			If Not variable Or Not variable.symbol Then
-				AddUnsupported("BMXC1002", "Variable declaration has no semantic symbol", bound.syntax)
+				AddUnsupported("BMXC1002", TBccMessages.IrLoweringVariableDeclarationSemanticSymbolMissing(), bound.syntax)
 				Return Null
 			End If
 			' Open generic static storage, including ThreadedGlobal, is owned by
@@ -4562,21 +4563,21 @@ Type TCompilerIrLowerer
 			Local staticArrayType:TStaticArraySemanticType = TStaticArraySemanticType(variable.symbol.declaredType)
 			Local callableType:TCallableSemanticType = TCallableSemanticType(variable.symbol.declaredType)
 			If callableType And ((variable.symbol.kind <> SYMBOL_LOCAL And variable.symbol.kind <> SYMBOL_GLOBAL) Or Not IsSupportedCallableType(callableType)) Then
-				AddUnsupported("BMXC1185", "Callable storage currently requires an ordinary-C-compatible Local or Global declaration", bound.syntax)
+				AddUnsupported("BMXC1185", TBccMessages.IrLoweringCallableStorageRequiresCompatibleDeclaration(), bound.syntax)
 				Return Null
 			End If
 			If Not IsSupportedValueType(variable.symbol.declaredType) And Not IsSupportedStaticArrayType(staticArrayType) And Not callableType Then
-				AddUnsupported("BMXC1003", "Variable type '" + TypeName(variable.symbol.declaredType) + "' is outside the scalar IR slice", bound.syntax)
+				AddUnsupported("BMXC1003", TBccMessages.IrLoweringVariableTypeOutsideScalarSlice(TypeName(variable.symbol.declaredType)), bound.syntax)
 				Return Null
 			End If
 			If staticArrayType And variable.initializer Then
-				AddUnsupported("BMXC1019", "StaticArray declarations currently require default initialization", bound.syntax)
+				AddUnsupported("BMXC1019", TBccMessages.IrLoweringStaticArrayDeclarationRequiresDefaultInitialization(), bound.syntax)
 				Return Null
 			End If
 			If staticArrayType Then
 				Local importedStaticArrayStruct:TCompilerIrImportedStruct = ImportedStructForType(staticArrayType.elementType)
 				If importedStaticArrayStruct And Not ImportedStructHasDefaultHelper(importedStaticArrayStruct) Then
-					AddUnsupported("BMXC1021", "Imported Struct StaticArray element type '" + TypeName(staticArrayType.elementType) + "' has no published zero-argument value helper", bound.syntax)
+					AddUnsupported("BMXC1021", TBccMessages.IrLoweringImportedStructStaticArrayDeclarationElementHelperMissing(TypeName(staticArrayType.elementType)), bound.syntax)
 					Return Null
 				End If
 			End If
@@ -4719,7 +4720,7 @@ Type TCompilerIrLowerer
 				End If
 			End If
 			If Not TBoundSymbolExpression(assignmentTarget) And Not supportedArrayTarget And Not supportedFieldTarget And Not supportedStaticGlobalTarget Then
-				AddUnsupported("BMXC1005", "Only symbol, field, heap-array and StaticArray element assignment is implemented", bound.syntax)
+				AddUnsupported("BMXC1005", TBccMessages.IrLoweringAssignmentTargetUnsupported(), bound.syntax)
 				Return Null
 			End If
 			Local stableManagedConcatTarget:Int = TBoundSymbolExpression(assignmentTarget) <> Null Or supportedStaticGlobalTarget
@@ -4730,7 +4731,7 @@ Type TCompilerIrLowerer
 			Local pointerArithmeticAssignment:Int = IsPointerType(assignment.target.semanticType) And (assignment.operatorText = ":+" Or assignment.operatorText = ":-")
 			Local enumCompoundAssignment:Int = EnumForType(assignment.target.semanticType) <> Null And SupportedCompoundAssignmentOperator(assignment.operatorText)
 			If assignment.operatorText <> "=" And Not stringConcatAssignment And Not arrayConcatAssignment And Not pointerArithmeticAssignment And Not enumCompoundAssignment And (Not IsNumericType(assignment.target.semanticType) Or Not SupportedCompoundAssignmentOperator(assignment.operatorText)) Then
-				AddUnsupported("BMXC1005", "Compound assignment requires a supported scalar or Enum target, or a stable String/heap-array target with :+", bound.syntax)
+				AddUnsupported("BMXC1005", TBccMessages.IrLoweringCompoundAssignmentTargetUnsupported(), bound.syntax)
 				Return Null
 			End If
 			Local resultAssignment:TCompilerIrAssignment = New TCompilerIrAssignment
@@ -4816,7 +4817,7 @@ Type TCompilerIrLowerer
 		Local thrown:TBoundThrowStatement = TBoundThrowStatement(bound)
 		If thrown Then
 			If Not thrown.expression Or Not IsManagedReferenceType(thrown.expression.semanticType) Then
-				AddUnsupported("BMXC1215", "Throw requires a managed Object, String, or Array expression", bound.syntax)
+				AddUnsupported("BMXC1215", TBccMessages.IrLoweringThrowRequiresManagedExpression(), bound.syntax)
 				Return Null
 			End If
 			Local resultThrow:TCompilerIrThrow = New TCompilerIrThrow
@@ -4829,11 +4830,11 @@ Type TCompilerIrLowerer
 		Local asserted:TBoundAssertStatement = TBoundAssertStatement(bound)
 		If asserted Then
 			If Not IsAssertConditionType(asserted.condition.semanticType) Then
-				AddUnsupported("BMXC1204", "Assert condition type '" + TypeName(asserted.condition.semanticType) + "' cannot be converted to BlitzMax truth", bound.syntax)
+				AddUnsupported("BMXC1204", TBccMessages.IrLoweringAssertConditionTypeNotConvertibleToTruth(TypeName(asserted.condition.semanticType)), bound.syntax)
 				Return Null
 			End If
 			If asserted.message And Not IsAssertMessageType(asserted.message.semanticType) Then
-				AddUnsupported("BMXC1205", "Assert message type '" + TypeName(asserted.message.semanticType) + "' cannot be converted to String by the current IR", bound.syntax)
+				AddUnsupported("BMXC1205", TBccMessages.IrLoweringAssertMessageTypeNotConvertibleToString(TypeName(asserted.message.semanticType)), bound.syntax)
 				Return Null
 			End If
 			' Production assertions are debug instrumentation: release builds
@@ -4854,7 +4855,7 @@ Type TCompilerIrLowerer
 		Local released:TBoundReleaseStatement = TBoundReleaseStatement(bound)
 		If released Then
 			If Not released.expression Or Not TConversionClassifier.IsIntegral(released.expression.semanticType) Then
-				AddUnsupported("BMXC1216", "Release requires an integer handle expression", bound.syntax)
+				AddUnsupported("BMXC1216", TBccMessages.IrLoweringReleaseRequiresIntegerHandle(), bound.syntax)
 				Return Null
 			End If
 			Local resultRelease:TCompilerIrRelease = New TCompilerIrRelease
@@ -4870,7 +4871,7 @@ Type TCompilerIrLowerer
 			Local selectorIsString:Int = IsStringType(selected.expression.semanticType)
 			Local selectorUsesManagedIdentity:Int = IsObjectReferenceType(selected.expression.semanticType) Or TArraySemanticType(selected.expression.semanticType) <> Null
 			If Not selectorIsString And Not selectorEnum And Not IsNumericType(selected.expression.semanticType) And Not IsPointerType(selected.expression.semanticType) And Not selectorUsesManagedIdentity Then
-				AddUnsupported("BMXC1212", "Select selector type '" + TypeName(selected.expression.semanticType) + "' requires String, managed Object/Array identity, Enum, pointer, or scalar numeric comparison IR", bound.syntax)
+				AddUnsupported("BMXC1212", TBccMessages.IrLoweringSelectSelectorTypeUnsupported(TypeName(selected.expression.semanticType)), bound.syntax)
 				Return Null
 			End If
 			Local resultSelect:TCompilerIrSelect = New TCompilerIrSelect
@@ -4902,7 +4903,7 @@ Type TCompilerIrLowerer
 		Local guarded:TBoundTryStatement = TBoundTryStatement(bound)
 		If guarded Then
 			If Not guarded.catches.length And Not guarded.finallyBody Then
-				AddUnsupported("BMXC1213", "Try requires Catch or Finally", bound.syntax)
+				AddUnsupported("BMXC1213", TBccMessages.IrLoweringTryRequiresCatchOrFinally(), bound.syntax)
 				Return Null
 			End If
 			Local resultTry:TCompilerIrTry = New TCompilerIrTry
@@ -4958,7 +4959,7 @@ Type TCompilerIrLowerer
 						resultCatch.catchKind = IR_CATCH_CLASS
 						resultCatch.importedClassId = catchImportedClass.importedClassId
 					Else
-						AddUnsupported("BMXC1213", "Catch type '" + resultCatch.parameterType + "' has no runtime downcast identity", guardedCatch.syntax)
+						AddUnsupported("BMXC1213", TBccMessages.IrLoweringCatchTypeDowncastIdentityMissing(resultCatch.parameterType), guardedCatch.syntax)
 						Return Null
 					End If
 				End If
@@ -4993,7 +4994,7 @@ Type TCompilerIrLowerer
 				Local boundResource:TBoundVariableDeclarationStatement = usingStatement.resources[resourceIndex]
 				Local resourceVariable:TCompilerIrVariableDeclaration = TCompilerIrVariableDeclaration(LowerStatement(boundResource))
 				If Not resourceVariable Or boundResource.variables.length <> 1 Then
-					AddUnsupported("BMXC1214", "Using requires one lowered managed resource per declaration", boundResource.syntax)
+					AddUnsupported("BMXC1214", TBccMessages.IrLoweringUsingRequiresLoweredResourcePerDeclaration(), boundResource.syntax)
 					Return Null
 				End If
 				Local resource:TCompilerIrUsingResource = New TCompilerIrUsingResource
@@ -5039,7 +5040,7 @@ Type TCompilerIrLowerer
 			If readSyntax Then
 				Local operation:TDataReadOperation = analysis.model.DataReadOperation(readSyntax)
 				If Not operation Then
-					AddUnsupported("BMXC1222", "ReadData has no analyzed data operation", bound.syntax)
+					AddUnsupported("BMXC1222", TBccMessages.IrLoweringReadDataOperationMissing(), bound.syntax)
 					Return Null
 				End If
 				Local resultRead:TCompilerIrDataRead = New TCompilerIrDataRead
@@ -5053,7 +5054,7 @@ Type TCompilerIrLowerer
 					irTarget.conversionKind = target.conversionKind
 					irTarget.target = LowerExpression(target.expression)
 					If Not irTarget.target Or Not IsAddressableExpression(irTarget.target) Then
-						AddUnsupported("BMXC1222", "ReadData target is not addressable in typed IR", target.syntax)
+						AddUnsupported("BMXC1222", TBccMessages.IrLoweringReadDataTargetNotAddressable(), target.syntax)
 						Return Null
 					End If
 					resultRead.targets[index] = irTarget
@@ -5125,11 +5126,11 @@ Type TCompilerIrLowerer
 					If forStatement.loopVariable Then objectVariableType = forStatement.loopVariable.declaredType Else If forStatement.target Then objectVariableType = forStatement.target.semanticType
 					Local legacyObjectElements:Int = forStatement.iteration.protocolKind = EACH_IN_PROTOCOL_OBJECT_ENUMERATOR And IsBuiltinObjectType(forStatement.iteration.elementType)
 					If Not IsSupportedValueType(forStatement.iteration.elementType) Or Not objectVariableType Or (legacyObjectElements And Not IsObjectReferenceType(objectVariableType) And Not IsStringType(objectVariableType) And Not IsNumericType(objectVariableType)) Or (Not legacyObjectElements And TypeName(objectVariableType).ToLower() <> TypeName(forStatement.iteration.elementType).ToLower()) Then
-						AddUnsupported("BMXC1020", "Object iterator EachIn requires a matching supported loop variable, or an object-reference target for a legacy Object result", bound.syntax)
+						AddUnsupported("BMXC1020", TBccMessages.IrLoweringObjectIteratorEachInLoopVariableUnsupported(), bound.syntax)
 						Return Null
 					End If
 					If Not IsLoweredEachInReceiver(forStatement.collection.semanticType) Or Not IsLoweredEachInReceiver(forStatement.iteration.iteratorType) Then
-						AddUnsupported("BMXC1020", "Object iterator EachIn currently requires source or imported Type, or non-generic Interface receivers", bound.syntax)
+						AddUnsupported("BMXC1020", TBccMessages.IrLoweringObjectIteratorEachInReceiverUnsupported(), bound.syntax)
 						Return Null
 					End If
 					Local resultObjectEach:TCompilerIrForEachObject = New TCompilerIrForEachObject
@@ -5156,7 +5157,7 @@ Type TCompilerIrLowerer
 					Else
 						resultObjectEach.target = LowerAddressableExpression(forStatement.target)
 						If Not resultObjectEach.target Or Not IsAddressableExpression(resultObjectEach.target) Then
-							AddUnsupported("BMXC1020", "Object iterator EachIn requires an addressable Local, Var parameter, Field, Global, or array element target", bound.syntax)
+							AddUnsupported("BMXC1020", TBccMessages.IrLoweringObjectIteratorEachInTargetNotAddressable(), bound.syntax)
 							Return Null
 						End If
 					End If
@@ -5218,7 +5219,7 @@ Type TCompilerIrLowerer
 								Local sourceClass:TCompilerIrClass = ClassForType(objectVariableType)
 								Local importedClass:TCompilerIrImportedClass = ImportedClassForType(objectVariableType)
 								If Not sourceClass And Not importedClass Then
-									AddUnsupported("BMXC1020", "Legacy ObjectEnumerator target has no runtime cast identity", bound.syntax)
+									AddUnsupported("BMXC1020", TBccMessages.IrLoweringLegacyObjectEnumeratorCastIdentityMissing(), bound.syntax)
 									Return Null
 								End If
 								Local objectCast:TCompilerIrObjectCast = New TCompilerIrObjectCast
@@ -5252,13 +5253,13 @@ Type TCompilerIrLowerer
 				If forStatement.collection Then staticCollectionType = StaticArrayTypeOf(forStatement.collection)
 				If staticCollectionType Then
 					If Not IsSupportedStaticArrayType(staticCollectionType) Then
-						AddUnsupported("BMXC1019", "StaticArray EachIn element type is not implemented", bound.syntax)
+						AddUnsupported("BMXC1019", TBccMessages.IrLoweringStaticArrayEachInElementTypeUnsupported(), bound.syntax)
 						Return Null
 					End If
 					Local staticVariableType:TSemanticType
 					If forStatement.loopVariable Then staticVariableType = forStatement.loopVariable.declaredType Else If forStatement.target Then staticVariableType = forStatement.target.semanticType
 					If Not IsSupportedStaticArrayEachInConversion(staticCollectionType.elementType, staticVariableType) Then
-						AddUnsupported("BMXC1019", "StaticArray EachIn loop variable type is not implemented for this element type", bound.syntax)
+						AddUnsupported("BMXC1019", TBccMessages.IrLoweringStaticArrayEachInLoopVariableTypeUnsupported(), bound.syntax)
 						Return Null
 					End If
 					Local resultStaticEach:TCompilerIrForEachStaticArray = New TCompilerIrForEachStaticArray
@@ -5287,7 +5288,7 @@ Type TCompilerIrLowerer
 					Else
 						resultStaticEach.target = LowerAddressableExpression(forStatement.target)
 						If Not resultStaticEach.target Or Not IsAddressableExpression(resultStaticEach.target) Then
-							AddUnsupported("BMXC1019", "StaticArray EachIn requires an addressable Local, Var parameter, Field, Global, or array element target", bound.syntax)
+							AddUnsupported("BMXC1019", TBccMessages.IrLoweringStaticArrayEachInTargetNotAddressable(), bound.syntax)
 							Return Null
 						End If
 					End If
@@ -5309,7 +5310,7 @@ Type TCompilerIrLowerer
 					Local stringVariableType:TSemanticType
 					If forStatement.loopVariable Then stringVariableType = forStatement.loopVariable.declaredType Else If forStatement.target Then stringVariableType = forStatement.target.semanticType
 					If Not IsNumericType(stringVariableType) Then
-						AddUnsupported("BMXC1018", "String EachIn requires a numeric loop variable for UTF-16 code units", bound.syntax)
+						AddUnsupported("BMXC1018", TBccMessages.IrLoweringStringEachInRequiresNumericLoopVariable(), bound.syntax)
 						Return Null
 					End If
 					Local resultStringEach:TCompilerIrForEachString = New TCompilerIrForEachString
@@ -5332,7 +5333,7 @@ Type TCompilerIrLowerer
 					Else
 						resultStringEach.target = LowerAddressableExpression(forStatement.target)
 						If Not resultStringEach.target Or Not IsAddressableExpression(resultStringEach.target) Then
-							AddUnsupported("BMXC1018", "String EachIn requires an addressable Local, Var parameter, Field, Global, or array element target", bound.syntax)
+							AddUnsupported("BMXC1018", TBccMessages.IrLoweringStringEachInTargetNotAddressable(), bound.syntax)
 							Return Null
 						End If
 					End If
@@ -5353,7 +5354,7 @@ Type TCompilerIrLowerer
 				Local collectionType:TArraySemanticType
 				If forStatement.collection Then collectionType = TArraySemanticType(forStatement.collection.semanticType)
 				If Not collectionType Or collectionType.rank <= 0 Or Not IsSupportedArrayElementType(collectionType.elementType) Then
-					AddUnsupported("BMXC1008", "EachIn requires a supported managed Array", bound.syntax)
+					AddUnsupported("BMXC1008", TBccMessages.IrLoweringEachInRequiresSupportedManagedArray(), bound.syntax)
 					Return Null
 				End If
 				Local variableType:TSemanticType
@@ -5368,7 +5369,7 @@ Type TCompilerIrLowerer
 				Local elementAssignment:TConversion
 				If variableType And Not objectElements Then elementAssignment = TConversionClassifier.Create(analysis.model).ClassifyAssignmentExpression(Null, collectionType.elementType, variableType)
 				If Not variableType Or (objectElements And Not legacyObjectAdaptation) Or (Not objectElements And (Not elementAssignment Or Not elementAssignment.Exists())) Then
-					AddUnsupported("BMXC1017", "Array EachIn element type '" + TypeName(collectionType.elementType) + "' cannot be assigned to loop variable type '" + TypeName(variableType) + "'", bound.syntax)
+					AddUnsupported("BMXC1017", TBccMessages.IrLoweringArrayEachInElementTypeMismatch(TypeName(collectionType.elementType), TypeName(variableType)), bound.syntax)
 					Return Null
 				End If
 				Local resultEach:TCompilerIrForEachArray = New TCompilerIrForEachArray
@@ -5392,7 +5393,7 @@ Type TCompilerIrLowerer
 				Else
 					resultEach.target = LowerAddressableExpression(forStatement.target)
 					If Not resultEach.target Or Not IsAddressableExpression(resultEach.target) Then
-						AddUnsupported("BMXC1017", "Array EachIn requires an addressable Local, Var parameter, Field, Global, or array element target", bound.syntax)
+						AddUnsupported("BMXC1017", TBccMessages.IrLoweringArrayEachInTargetNotAddressable(), bound.syntax)
 						Return Null
 					End If
 				End If
@@ -5458,7 +5459,7 @@ Type TCompilerIrLowerer
 							Local sourceClass:TCompilerIrClass = ClassForType(variableType)
 							Local importedClass:TCompilerIrImportedClass = ImportedClassForType(variableType)
 							If Not sourceClass And Not importedClass Then
-								AddUnsupported("BMXC1016", "Object Array EachIn target has no runtime cast identity", bound.syntax)
+								AddUnsupported("BMXC1016", TBccMessages.IrLoweringObjectArrayEachInCastIdentityMissing(), bound.syntax)
 								Return Null
 							End If
 							Local objectCast:TCompilerIrObjectCast = New TCompilerIrObjectCast
@@ -5494,7 +5495,7 @@ Type TCompilerIrLowerer
 			Local variableType:TSemanticType
 			If forStatement.loopVariable Then variableType = forStatement.loopVariable.declaredType Else If forStatement.target Then variableType = forStatement.target.semanticType
 			If Not IsNumericType(variableType) Or Not forStatement.initialValue Or Not IsNumericType(forStatement.initialValue.semanticType) Or Not forStatement.limit Or Not IsNumericType(forStatement.limit.semanticType) Or (forStatement.stepExpression And Not IsNumericType(forStatement.stepExpression.semanticType)) Then
-				AddUnsupported("BMXC1009", "Range For loops require numeric variable, initializer, limit, and step types", bound.syntax)
+				AddUnsupported("BMXC1009", TBccMessages.IrLoweringRangeForRequiresNumericTypes(), bound.syntax)
 				Return Null
 			End If
 			Local resultFor:TCompilerIrForRange = New TCompilerIrForRange
@@ -5517,7 +5518,7 @@ Type TCompilerIrLowerer
 			Else
 				resultFor.target = LowerAddressableExpression(forStatement.target)
 				If Not resultFor.target Or Not IsAddressableExpression(resultFor.target) Then
-					AddUnsupported("BMXC1009", "Range For requires an addressable Local, Var parameter, Field, Global, or array element target", bound.syntax)
+					AddUnsupported("BMXC1009", TBccMessages.IrLoweringRangeForTargetNotAddressable(), bound.syntax)
 					Return Null
 				End If
 			End If
@@ -5566,7 +5567,7 @@ Type TCompilerIrLowerer
 			If restoreSyntax Then
 				Local binding:TDataRestoreBinding = analysis.model.ResolvedDataRestore(restoreSyntax)
 				If Not binding Then
-					AddUnsupported("BMXC1223", "RestoreData has no resolved data label", bound.syntax)
+					AddUnsupported("BMXC1223", TBccMessages.IrLoweringRestoreDataLabelMissing(), bound.syntax)
 					Return Null
 				End If
 				Local resultRestore:TCompilerIrDataRestore = New TCompilerIrDataRestore
@@ -5591,7 +5592,7 @@ Type TCompilerIrLowerer
 			If controlKind Then
 				Local target:TCompilerLoopLoweringContext = ResolveLoopContext(labelExpression)
 				If Not target Then
-					AddUnsupported("BMXC1007", "Loop control target was not retained by semantic analysis", bound.syntax)
+					AddUnsupported("BMXC1007", TBccMessages.IrLoweringLoopControlTargetMissing(), bound.syntax)
 					Return Null
 				End If
 				MarkLoopControl(target, controlKind)
@@ -5607,18 +5608,18 @@ Type TCompilerIrLowerer
 			End If
 		End If
 
-		AddUnsupported("BMXC1006", "Bound statement kind '" + bound.boundKind + "' is not implemented", bound.syntax)
+		AddUnsupported("BMXC1006", TBccMessages.IrLoweringBoundStatementKindUnsupported(bound.boundKind), bound.syntax)
 		Return Null
 	End Method
 
 	Method LowerDeclaredArrayAllocation:TCompilerIrExpression(variable:TBoundVariable, syntax:TSyntaxNode)
 		Local arrayType:TArraySemanticType = TArraySemanticType(variable.symbol.declaredType)
 		If Not arrayType Or arrayType.rank <= 0 Or variable.arrayDimensions.length <> arrayType.rank Then
-			AddUnsupported("BMXC1134", "Heap-array declaration allocation requires one dimension per declared rank", syntax)
+			AddUnsupported("BMXC1134", TBccMessages.IrLoweringHeapArrayAllocationRankMismatch(), syntax)
 			Return Null
 		End If
 		If Not IsSupportedArrayElementType(arrayType.elementType) Then
-			AddUnsupported("BMXC1132", "Array element type '" + TypeName(arrayType.elementType) + "' is not implemented", syntax)
+			AddUnsupported("BMXC1132", TBccMessages.IrLoweringArrayElementTypeUnsupported(TypeName(arrayType.elementType)), syntax)
 			Return Null
 		End If
 		Local arrayNew:TCompilerIrArrayNew = New TCompilerIrArrayNew
@@ -6506,7 +6507,7 @@ Type TCompilerIrLowerer
 		Local supportedCallableValue:Int = TCallableSemanticType(bound.semanticType) And IsSupportedCallableType(TCallableSemanticType(bound.semanticType))
 		Local supportedClosureValue:Int = IsSupportedClosureType(TClosureSemanticType(bound.semanticType))
 		If Not IsSupportedValueType(bound.semanticType) And Not supportedCallableValue And Not supportedClosureValue And Not supportedStaticStorage And Not routineReference And Not functionLiteral And Not callableStorageReference And Not callableStorageAddress And Not callableDefaultConversion And Not (IsVoidType(bound.semanticType) And TBoundCallExpression(bound)) Then
-			AddUnsupported("BMXC1010", "Expression type '" + TypeName(bound.semanticType) + "' is outside the scalar IR slice", bound.syntax)
+			AddUnsupported("BMXC1010", TBccMessages.IrLoweringExpressionTypeOutsideScalarSlice(TypeName(bound.semanticType)), bound.syntax)
 			Return Null
 		End If
 
@@ -6539,11 +6540,11 @@ Type TCompilerIrLowerer
 		If arrayLiteral Then
 			Local arrayType:TArraySemanticType = TArraySemanticType(bound.semanticType)
 			If Not arrayType Or arrayType.rank <> 1 Then
-				AddUnsupported("BMXC1135", "Only one-dimensional array literals are implemented", bound.syntax)
+				AddUnsupported("BMXC1135", TBccMessages.IrLoweringArrayLiteralRequiresOneDimension(), bound.syntax)
 				Return Null
 			End If
 			If Not IsSupportedArrayElementType(arrayType.elementType) Then
-				AddUnsupported("BMXC1132", "Array element type '" + TypeName(arrayType.elementType) + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1132", TBccMessages.IrLoweringArrayElementTypeUnsupported(TypeName(arrayType.elementType)), bound.syntax)
 				Return Null
 			End If
 			If Not arrayLiteral.elements.length Then Return ManagedDefault(TypeName(bound.semanticType), IR_MANAGED_REFERENCE_ARRAY, SourceOf(bound.syntax))
@@ -6600,7 +6601,7 @@ Type TCompilerIrLowerer
 				If selfPlan Then Return CaptureSelfFieldAccess(selfPlan, SourceOf(bound.syntax))
 			End If
 			If Not currentReceiver Then
-				AddUnsupported("BMXC1151", "Self is only available while lowering an instance method", bound.syntax)
+				AddUnsupported("BMXC1151", TBccMessages.IrLoweringSelfRequiresInstanceMethod(), bound.syntax)
 				Return Null
 			End If
 			Local selfReference:TCompilerIrSymbolReference = New TCompilerIrSymbolReference
@@ -6642,7 +6643,7 @@ Type TCompilerIrLowerer
 				staticLength.text = String(staticMemberType.length)
 				Return staticLength
 			End If
-			AddUnsupported("BMXC1134", "StaticArray member lowering currently supports only length", bound.syntax)
+			AddUnsupported("BMXC1134", TBccMessages.IrLoweringStaticArrayMemberUnsupported(), bound.syntax)
 			Return Null
 		End If
 		If member And IsStringType(member.receiver.semanticType) Then
@@ -6663,7 +6664,7 @@ Type TCompilerIrLowerer
 				arrayLength.receiver = LowerExpression(member.receiver)
 				Return arrayLength
 			End If
-			AddUnsupported("BMXC1130", "Array member lowering currently supports only length", bound.syntax)
+			AddUnsupported("BMXC1130", TBccMessages.IrLoweringArrayMemberUnsupported(), bound.syntax)
 			Return Null
 		End If
 
@@ -6684,7 +6685,7 @@ Type TCompilerIrLowerer
 		End If
 		If indexed And indexed.access And indexed.access.accessKind = INDEX_ACCESS_STRING Then
 			If indexed.indexes.length <> 1 Then
-				AddUnsupported("BMXC1123", "String indexing requires one integral index", bound.syntax)
+				AddUnsupported("BMXC1123", TBccMessages.IrLoweringStringIndexRequiresIntegralIndex(), bound.syntax)
 				Return Null
 			End If
 			Local stringElement:TCompilerIrStringElement = New TCompilerIrStringElement
@@ -6700,7 +6701,7 @@ Type TCompilerIrLowerer
 		If indexed And indexed.access And indexed.access.accessKind = INDEX_ACCESS_POINTER Then
 			Local pointerType:TPointerSemanticType = TPointerSemanticType(indexed.receiver.semanticType)
 			If Not pointerType Or indexed.indexes.length <> 1 Or IsVoidType(pointerType.elementType) Or Not IsSupportedPointerElementType(pointerType.elementType) Then
-				AddUnsupported("BMXC1206", "Raw pointer indexing requires one integral index and a supported non-Void element type", bound.syntax)
+				AddUnsupported("BMXC1206", TBccMessages.IrLoweringPointerIndexUnsupported(), bound.syntax)
 				Return Null
 			End If
 			Local pointerElement:TCompilerIrPointerElement = New TCompilerIrPointerElement
@@ -6721,7 +6722,7 @@ Type TCompilerIrLowerer
 		If indexed And indexed.access And indexed.access.accessKind = INDEX_ACCESS_STATIC_ARRAY Then
 			Local staticIndexedType:TStaticArraySemanticType = StaticArrayTypeOf(indexed.receiver)
 			If Not IsSupportedStaticArrayType(staticIndexedType) Or indexed.indexes.length <> 1 Then
-				AddUnsupported("BMXC1135", "Only one-dimensional supported StaticArray indexing is implemented", bound.syntax)
+				AddUnsupported("BMXC1135", TBccMessages.IrLoweringStaticArrayIndexUnsupported(), bound.syntax)
 				Return Null
 			End If
 			Local staticElement:TCompilerIrArrayElement = New TCompilerIrArrayElement
@@ -6745,11 +6746,11 @@ Type TCompilerIrLowerer
 		If indexed And indexed.access And indexed.access.accessKind = INDEX_ACCESS_ARRAY Then
 			Local arrayType:TArraySemanticType = TArraySemanticType(indexed.receiver.semanticType)
 			If Not arrayType Or arrayType.rank <= 0 Or indexed.indexes.length <> arrayType.rank Then
-				AddUnsupported("BMXC1131", "Heap-array indexing requires one index per declared rank", bound.syntax)
+				AddUnsupported("BMXC1131", TBccMessages.IrLoweringHeapArrayIndexRankMismatch(), bound.syntax)
 				Return Null
 			End If
 			If Not IsSupportedArrayElementType(arrayType.elementType) Then
-				AddUnsupported("BMXC1132", "Array element type '" + TypeName(arrayType.elementType) + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1132", TBccMessages.IrLoweringArrayElementTypeUnsupported(TypeName(arrayType.elementType)), bound.syntax)
 				Return Null
 			End If
 			Local element:TCompilerIrArrayElement = New TCompilerIrArrayElement
@@ -6826,7 +6827,7 @@ Type TCompilerIrLowerer
 				Return arrayReceiver
 			End If
 			If Not IsStringType(slice.receiver.semanticType) Then
-				AddUnsupported("BMXC1210", "Slice receiver type '" + TypeName(slice.receiver.semanticType) + "' is outside the String and one-dimensional heap Array slice", bound.syntax)
+				AddUnsupported("BMXC1210", TBccMessages.IrLoweringSliceReceiverTypeUnsupported(TypeName(slice.receiver.semanticType)), bound.syntax)
 				Return Null
 			End If
 			Local stringSlice:TCompilerIrStringSlice = New TCompilerIrStringSlice
@@ -6958,18 +6959,18 @@ Type TCompilerIrLowerer
 			End If
 			If Not target And Not importedStructTarget And importedObjectSlotKind = IR_OBJECT_SLOT_NONE And Not importedTarget And Not externalTarget Then
 				If isSuperCall Then
-					AddUnsupported("BMXC1152", "Super method dispatch currently requires a lowered source base implementation", bound.syntax)
+					AddUnsupported("BMXC1152", TBccMessages.IrLoweringSuperMethodRequiresSourceBaseImplementation(), bound.syntax)
 					Return Null
 				End If
 				Local unresolvedCallName:String = "<unresolved>"
 				If call.resolvedCall And call.resolvedCall.routine Then unresolvedCallName = call.resolvedCall.routine.QualifiedName()
 				Local unresolvedReceiverType:String = "<none>"
 				If call.receiver And call.receiver.semanticType Then unresolvedReceiverType = TypeName(call.receiver.semanticType)
-				AddUnsupported("BMXC1012", "Call target '" + unresolvedCallName + "' on receiver type '" + unresolvedReceiverType + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1012", TBccMessages.IrLoweringCallTargetUnsupported(unresolvedCallName, unresolvedReceiverType), bound.syntax)
 				Return Null
 			End If
 			If target And target.lifecycleKind <> IR_LIFECYCLE_NONE Then
-				AddUnsupported("BMXC1153", "Constructor delegation and direct destructor calls require dedicated lifecycle operations", bound.syntax)
+				AddUnsupported("BMXC1153", TBccMessages.IrLoweringLifecycleCallRequiresDedicatedOperation(), bound.syntax)
 				Return Null
 			End If
 			Local resultCall:TCompilerIrCall = New TCompilerIrCall
@@ -6981,7 +6982,7 @@ Type TCompilerIrLowerer
 				If call.receiver And Not target.isMethod And target.ownerClassId.length Then
 					Local receiverClass:TCompilerIrClass = ClassForType(call.receiver.semanticType)
 					If Not receiverClass Or Not target.classSlotId.length Then
-						AddUnsupported("BMXC1150", "Object-qualified Type Function call has no source class-table slot", bound.syntax)
+						AddUnsupported("BMXC1150", TBccMessages.IrLoweringObjectQualifiedTypeFunctionSourceSlotMissing(), bound.syntax)
 						Return Null
 					End If
 					resultCall.dispatchKind = IR_CALL_DISPATCH_TYPE_FUNCTION
@@ -6997,12 +6998,12 @@ Type TCompilerIrLowerer
 					End If
 				Else If isSuperCall Then
 					If Not target.isMethod Then
-						AddUnsupported("BMXC1152", "Super dispatch requires an instance method", bound.syntax)
+						AddUnsupported("BMXC1152", TBccMessages.IrLoweringSuperDispatchRequiresInstanceMethod(), bound.syntax)
 						Return Null
 					End If
 					Local dispatchClass:TCompilerIrClass = ActiveSuperDispatchClass()
 					If Not dispatchClass Or Not dispatchClass.baseClassId.length Then
-						AddUnsupported("BMXC1152", "Super dispatch class does not have a lowered source base layout", bound.syntax)
+						AddUnsupported("BMXC1152", TBccMessages.IrLoweringSuperDispatchSourceBaseLayoutMissing(), bound.syntax)
 						Return Null
 					End If
 					resultCall.dispatchKind = IR_CALL_DISPATCH_SUPER
@@ -7013,7 +7014,7 @@ Type TCompilerIrLowerer
 					resultCall.objectSlotKind = target.objectSlotKind
 				Else If target.isMethod Then
 					If Not call.receiver Then
-						AddUnsupported("BMXC1150", "Method call did not retain its bound receiver", bound.syntax)
+						AddUnsupported("BMXC1150", TBccMessages.IrLoweringMethodCallReceiverMissing(), bound.syntax)
 						Return Null
 					End If
 					Local previousPreserveStructReceiver:Int = preserveStructLValue
@@ -7055,7 +7056,7 @@ Type TCompilerIrLowerer
 				End If
 			Else If importedStructTarget Then
 				If importedStructTarget.isConstructor Then
-					AddUnsupported("BMXC1153", "Imported Struct constructors require a struct-new operation", bound.syntax)
+					AddUnsupported("BMXC1153", TBccMessages.IrLoweringImportedStructConstructorRequiresStructNew(), bound.syntax)
 					Return Null
 				End If
 				resultCall.functionId = importedStructTarget.routineId
@@ -7063,7 +7064,7 @@ Type TCompilerIrLowerer
 				resultCall.isExternal = True
 				If importedStructTarget.isMethod Then
 					If Not call.receiver Then
-						AddUnsupported("BMXC1150", "Imported Struct method call did not retain its receiver", bound.syntax)
+						AddUnsupported("BMXC1150", TBccMessages.IrLoweringImportedStructMethodReceiverMissing(), bound.syntax)
 						Return Null
 					End If
 					resultCall.dispatchKind = IR_CALL_DISPATCH_STRUCT
@@ -7091,7 +7092,7 @@ Type TCompilerIrLowerer
 					resultCall.functionName = importedTarget.name
 					resultCall.isExternal = True
 				Else If Not call.receiver Then
-					AddUnsupported("BMXC1173", "Imported virtual method call did not retain its bound receiver", bound.syntax)
+					AddUnsupported("BMXC1173", TBccMessages.IrLoweringImportedVirtualMethodReceiverMissing(), bound.syntax)
 					Return Null
 				Else
 				Local sourceReceiverClass:TCompilerIrClass = ClassForType(call.receiver.semanticType)
@@ -7103,7 +7104,7 @@ Type TCompilerIrLowerer
 					receiverClass = EnsureImportedClass(objectOwner)
 				End If
 				If Not sourceReceiverClass And Not receiverClass Then
-					AddUnsupported("BMXC1173", "Imported virtual method receiver type has no published class ABI", bound.syntax)
+					AddUnsupported("BMXC1173", TBccMessages.IrLoweringImportedVirtualMethodReceiverAbiMissing(), bound.syntax)
 					Return Null
 				End If
 				If importedTarget Then
@@ -7116,7 +7117,7 @@ Type TCompilerIrLowerer
 					Else If sourceReceiverClass Then
 						Local inheritedSlot:TCompilerIrClassFunctionSlot = SourceClassImportedSlot(sourceReceiverClass, importedTarget)
 						If Not inheritedSlot Then
-							AddUnsupported("BMXC1173", "Imported method '" + importedTarget.name + "' has no inherited slot in source receiver type '" + sourceReceiverClass.semanticType + "' (declaring imported class '" + importedTarget.declaringImportedClassId + "', source imported base '" + sourceReceiverClass.baseImportedClassId + "')", bound.syntax)
+							AddUnsupported("BMXC1173", TBccMessages.IrLoweringImportedMethodInheritedSlotMissing(importedTarget.name, sourceReceiverClass.semanticType, importedTarget.declaringImportedClassId, sourceReceiverClass.baseImportedClassId), bound.syntax)
 							Return Null
 						End If
 						resultCall.classSlotId = inheritedSlot.slotId
@@ -7131,7 +7132,7 @@ Type TCompilerIrLowerer
 					' The class and Type Function slot were selected above.
 				Else If isSuperCall Then
 					If Not importedTarget Then
-						AddUnsupported("BMXC1152", "Imported Super dispatch requires an exact imported base implementation", bound.syntax)
+						AddUnsupported("BMXC1152", TBccMessages.IrLoweringImportedSuperDispatchImplementationMissing(), bound.syntax)
 						Return Null
 					End If
 					resultCall.dispatchKind = IR_CALL_DISPATCH_SUPER
@@ -7163,7 +7164,7 @@ Type TCompilerIrLowerer
 					If Not sourceTypeFunctionClass Then importedTypeFunctionClass = ImportedClassForType(call.receiver.semanticType)
 					Local typeFunctionSlot:TCompilerIrClassFunctionSlot = TCompilerIrClassFunctionSlot(slotsByRoutineSymbol.ValueForKey(call.resolvedCall.routine))
 					If Not typeFunctionSlot Or typeFunctionSlot.isMethod Or (Not sourceTypeFunctionClass And Not importedTypeFunctionClass) Then
-						AddUnsupported("BMXC1150", "Object-qualified imported Type Function call has no class-table slot", bound.syntax)
+						AddUnsupported("BMXC1150", TBccMessages.IrLoweringObjectQualifiedImportedTypeFunctionSlotMissing(), bound.syntax)
 						Return Null
 					End If
 					resultCall.dispatchKind = IR_CALL_DISPATCH_TYPE_FUNCTION
@@ -7184,7 +7185,7 @@ Type TCompilerIrLowerer
 			If Not argumentsSucceeded Then Return Null
 			If externalTarget And (externalTarget.isGenericMethod Or externalTarget.isDirectMethod) Then
 				If Not call.receiver Then
-					AddUnsupported("BMXC1150", "Direct or generic method call did not retain its bound receiver", bound.syntax)
+					AddUnsupported("BMXC1150", TBccMessages.IrLoweringDirectOrGenericMethodReceiverMissing(), bound.syntax)
 					Return Null
 				End If
 				Local previousPreserveGenericStructReceiver:Int = preserveStructLValue
@@ -7253,7 +7254,7 @@ Type TCompilerIrLowerer
 				Local addressed:TCompilerIrExpression = LowerExpression(unary.operand)
 				If Not addressed Then Return Null
 				If Not IsAddressableExpression(addressed) Then
-					AddUnsupported("BMXC1120", "VarPtr operand is not addressable in typed compiler IR", bound.syntax)
+					AddUnsupported("BMXC1120", TBccMessages.IrLoweringVarPtrOperandNotAddressable(), bound.syntax)
 					Return Null
 				End If
 				Local address:TCompilerIrAddressOf = New TCompilerIrAddressOf
@@ -7270,17 +7271,17 @@ Type TCompilerIrLowerer
 			End If
 			If TCallableSemanticType(unary.operand.semanticType) Then
 				If unary.operatorText.ToLower() = "not" Then Return CallableTruth(unary.operand, True, bound.syntax)
-				AddUnsupported("BMXC1186", "Callable unary operation '" + unary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1186", TBccMessages.IrLoweringCallableUnaryOperationUnsupported(unary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If TClosureSemanticType(unary.operand.semanticType) Then
 				If unary.operatorText.ToLower() = "not" Then Return ManagedTruth(unary.operand, True, bound.syntax, IR_MANAGED_REFERENCE_CLOSURE)
-				AddUnsupported("BMXC1243", "Closure unary operation '" + unary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1243", TBccMessages.IrLoweringClosureUnaryOperationUnsupported(unary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If IsObjectReferenceType(unary.operand.semanticType) Or IsObjectReferenceType(bound.semanticType) Then
 				If unary.operatorText.ToLower() = "not" Then Return ManagedTruth(unary.operand, True, bound.syntax, IR_MANAGED_REFERENCE_OBJECT)
-				AddUnsupported("BMXC1147", "Object unary operation '" + unary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1147", TBccMessages.IrLoweringObjectUnaryOperationUnsupported(unary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If IsArrayType(unary.operand.semanticType) Or IsArrayType(bound.semanticType) Then
@@ -7292,7 +7293,7 @@ Type TCompilerIrLowerer
 					If Not unaryArrayLength.receiver Then Return Null
 					Return unaryArrayLength
 				End If
-				AddUnsupported("BMXC1133", "Array unary operation '" + unary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1133", TBccMessages.IrLoweringArrayUnaryOperationUnsupported(unary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If IsStringType(unary.operand.semanticType) Or IsStringType(bound.semanticType) Then
@@ -7315,7 +7316,7 @@ Type TCompilerIrLowerer
 					stringChr.codePoint = LowerExpression(unary.operand)
 					Return stringChr
 				End If
-				AddUnsupported("BMXC1123", "String unary operation '" + unary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1123", TBccMessages.IrLoweringStringUnaryOperationUnsupported(unary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If IsPointerType(unary.operand.semanticType) Or IsPointerType(bound.semanticType) Then
@@ -7326,12 +7327,12 @@ Type TCompilerIrLowerer
 					pointerTruth.negate = True
 					Return pointerTruth
 				End If
-				AddUnsupported("BMXC1120", "Pointer unary operations require explicit pointer IR operations", bound.syntax)
+				AddUnsupported("BMXC1120", TBccMessages.IrLoweringPointerUnaryOperationRequiresExplicitIr(), bound.syntax)
 				Return Null
 			End If
 			If StructForType(unary.operand.semanticType) Or ImportedStructForType(unary.operand.semanticType) Then
 				If unary.operatorText.ToLower() = "not" Then Return StructTruth(True, bound.syntax)
-				AddUnsupported("BMXC1217", "Struct unary operation '" + unary.operatorText + "' requires a resolved operator", bound.syntax)
+				AddUnsupported("BMXC1217", TBccMessages.IrLoweringStructUnaryOperationRequiresResolvedOperator(unary.operatorText), bound.syntax)
 				Return Null
 			End If
 			Local resultUnary:TCompilerIrUnary = New TCompilerIrUnary
@@ -7376,7 +7377,7 @@ Type TCompilerIrLowerer
 					closureIdentity.right = LowerContextualExpression(binary.right, binary.left.semanticType)
 					Return closureIdentity
 				End If
-				AddUnsupported("BMXC1243", "Closure operation '" + binary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1243", TBccMessages.IrLoweringClosureBinaryOperationUnsupported(binary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If IsObjectReferenceType(binary.left.semanticType) Or IsObjectReferenceType(binary.right.semanticType) Then
@@ -7400,7 +7401,7 @@ Type TCompilerIrLowerer
 					objectIdentity.right = LowerContextualExpression(binary.right, binary.left.semanticType)
 					Return objectIdentity
 				End If
-				AddUnsupported("BMXC1147", "Object operation '" + binary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1147", TBccMessages.IrLoweringObjectBinaryOperationUnsupported(binary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If IsArrayType(binary.left.semanticType) Or IsArrayType(binary.right.semanticType) Or IsArrayType(bound.semanticType) Then
@@ -7454,7 +7455,7 @@ Type TCompilerIrLowerer
 					identity.right = LowerContextualExpression(binary.right, binary.left.semanticType)
 					Return identity
 				End If
-				AddUnsupported("BMXC1133", "Array operation '" + binary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1133", TBccMessages.IrLoweringArrayBinaryOperationUnsupported(binary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If IsStringType(binary.left.semanticType) Or IsStringType(binary.right.semanticType) Or IsStringType(bound.semanticType) Then
@@ -7484,7 +7485,7 @@ Type TCompilerIrLowerer
 					comparison.right = LowerStringOperand(binary.right)
 					Return comparison
 				End If
-				AddUnsupported("BMXC1123", "String binary operation '" + binary.operatorText + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1123", TBccMessages.IrLoweringStringBinaryOperationUnsupported(binary.operatorText), bound.syntax)
 				Return Null
 			End If
 			If IsPointerType(binary.left.semanticType) Or IsPointerType(binary.right.semanticType) Or IsPointerType(bound.semanticType) Then
@@ -7500,7 +7501,7 @@ Type TCompilerIrLowerer
 					Return pointerTruthBinary
 				End If
 				If pointerOperation <> "+" And pointerOperation <> "-" And Not IsComparisonOperator(pointerOperation) Then
-					AddUnsupported("BMXC1120", "Pointer operation '" + binary.operatorText + "' is not implemented", bound.syntax)
+					AddUnsupported("BMXC1120", TBccMessages.IrLoweringPointerBinaryOperationUnsupported(binary.operatorText), bound.syntax)
 					Return Null
 				End If
 				Local pointerBinary:TCompilerIrPointerBinary = New TCompilerIrPointerBinary
@@ -7539,13 +7540,13 @@ Type TCompilerIrLowerer
 				If StructForType(bound.semanticType) Or ImportedStructForType(bound.semanticType) Then Return StructDefault(bound.semanticType, SourceOf(bound.syntax), bound.syntax)
 				If IsPointerType(bound.semanticType) Then Return ScalarDefault(TypeName(bound.semanticType), SourceOf(bound.syntax))
 				If IsNumericType(bound.semanticType) Or EnumForType(bound.semanticType) Then Return ScalarDefault(TypeName(bound.semanticType), SourceOf(bound.syntax))
-				AddUnsupported("BMXC1216", "Null default conversion to '" + TypeName(bound.semanticType) + "' has no typed IR representation", bound.syntax)
+				AddUnsupported("BMXC1216", TBccMessages.IrLoweringNullDefaultConversionUnsupported(TypeName(bound.semanticType)), bound.syntax)
 				Return Null
 			End If
 			If conversion.conversionKind = CONVERSION_ENUM_TO_STRING Then
 				Local stringEnum:TCompilerIrEnum = EnumForType(conversion.operand.semanticType)
 				If Not stringEnum Then
-					AddUnsupported("BMXC1103", "Enum-to-String conversion requires a retained Enum descriptor", bound.syntax)
+					AddUnsupported("BMXC1103", TBccMessages.IrLoweringEnumToStringRequiresDescriptor(), bound.syntax)
 					Return Null
 				End If
 				Local enumToString:TCompilerIrEnumIntrinsic = New TCompilerIrEnumIntrinsic
@@ -7633,7 +7634,7 @@ Type TCompilerIrLowerer
 			If importedConstructor And importedConstructor.isConstructor Then
 				importedStructNew.importedConstructorId = importedConstructor.routineId
 			Else If creation.arguments.length Then
-				AddUnsupported("BMXC1196", "Imported Struct construction arguments require a published constructor helper", bound.syntax)
+				AddUnsupported("BMXC1196", TBccMessages.IrLoweringImportedStructConstructionRequiresConstructorHelper(), bound.syntax)
 				Return Null
 			End If
 			If creation.resolvedConstructor And creation.resolvedConstructor.routine Then
@@ -7651,7 +7652,7 @@ Type TCompilerIrLowerer
 			Local constructor:TCompilerIrFunction
 			If creation.resolvedConstructor And creation.resolvedConstructor.routine Then constructor = TCompilerIrFunction(functionsBySymbol.ValueForKey(creation.resolvedConstructor.routine))
 			If creation.arguments.length And Not constructor Then
-				AddUnsupported("BMXC1196", "Struct construction arguments require a lowered constructor", bound.syntax)
+				AddUnsupported("BMXC1196", TBccMessages.IrLoweringStructConstructionRequiresLoweredConstructor(), bound.syntax)
 				Return Null
 			End If
 			Local structNew:TCompilerIrStructNew = New TCompilerIrStructNew
@@ -7688,7 +7689,7 @@ Type TCompilerIrLowerer
 					selectedConstructor = ImplicitImportedConstructor(importedClass, bound.syntax)
 				End If
 				If Not selectedConstructor Then
-					AddUnsupported("BMXC1171", "Imported Type allocation requires a selected constructor with a published object-construction ABI", bound.syntax)
+					AddUnsupported("BMXC1171", TBccMessages.IrLoweringImportedTypeAllocationRequiresConstructorAbi(), bound.syntax)
 					Return Null
 				End If
 				Local importedObjectNew:TCompilerIrObjectNew = New TCompilerIrObjectNew
@@ -7742,17 +7743,17 @@ Type TCompilerIrLowerer
 				dynamicObjectNew.dynamicClassSource = LowerExpression(creation.instanceExpression)
 				Return dynamicObjectNew
 			End If
-			AddUnsupported("BMXC1148", "Object allocation requires an implicit default or lowered source constructor", bound.syntax)
+			AddUnsupported("BMXC1148", TBccMessages.IrLoweringObjectAllocationRequiresConstructor(), bound.syntax)
 			Return Null
 		End If
 		If creation And IsArrayType(bound.semanticType) Then
 			Local createdArray:TArraySemanticType = TArraySemanticType(bound.semanticType)
 			If Not createdArray Or createdArray.rank <= 0 Or creation.dimensions.length <> createdArray.rank Then
-				AddUnsupported("BMXC1134", "Heap-array allocation requires one dimension per declared rank", bound.syntax)
+				AddUnsupported("BMXC1134", TBccMessages.IrLoweringHeapArrayAllocationDimensionMismatch(), bound.syntax)
 				Return Null
 			End If
 			If Not IsSupportedArrayElementType(createdArray.elementType) Then
-				AddUnsupported("BMXC1132", "Array element type '" + TypeName(createdArray.elementType) + "' is not implemented", bound.syntax)
+				AddUnsupported("BMXC1132", TBccMessages.IrLoweringArrayElementTypeUnsupported(TypeName(createdArray.elementType)), bound.syntax)
 				Return Null
 			End If
 			Local arrayNew:TCompilerIrArrayNew = New TCompilerIrArrayNew
@@ -7783,7 +7784,7 @@ Type TCompilerIrLowerer
 		If passthrough Then Return LowerExpression(passthrough.operand)
 		If creation And MissingExecutableGenericSpecialization(creation.createdType) Then Return Null
 
-		AddUnsupported("BMXC1015", "Bound expression kind '" + bound.boundKind + "' is not implemented", bound.syntax)
+		AddUnsupported("BMXC1015", TBccMessages.IrLoweringBoundExpressionKindUnsupported(bound.boundKind), bound.syntax)
 		Return Null
 	End Method
 
@@ -7792,13 +7793,13 @@ Type TCompilerIrLowerer
 		Local rangeType:TSemanticType = indexed.indexes[0].semanticType
 		Local rangeStruct:TCompilerIrImportedStruct = ImportedStructForType(rangeType)
 		If Not rangeStruct Then
-			AddUnsupported("BMXC1211", "The standard Range value has no published Struct ABI", bound.syntax)
+			AddUnsupported("BMXC1211", TBccMessages.IrLoweringRangeStructAbiMissing(), bound.syntax)
 			Return Null
 		End If
 		Local startRoutine:TCompilerIrImportedStructRoutine = GenericImportedStructRoutine(rangeStruct, indexed.access.rangeStartRoutine)
 		Local endRoutine:TCompilerIrImportedStructRoutine = GenericImportedStructRoutine(rangeStruct, indexed.access.rangeEndRoutine)
 		If Not startRoutine Or Not endRoutine Then
-			AddUnsupported("BMXC1211", "The standard Range value has no published bound-resolution ABI", bound.syntax)
+			AddUnsupported("BMXC1211", TBccMessages.IrLoweringRangeBoundResolutionAbiMissing(), bound.syntax)
 			Return Null
 		End If
 
@@ -7839,7 +7840,7 @@ Type TCompilerIrLowerer
 		Else
 			Local arrayType:TArraySemanticType = TArraySemanticType(indexed.receiver.semanticType)
 			If Not arrayType Or arrayType.rank <> 1 Or Not IsSupportedArrayElementType(arrayType.elementType) Then
-				AddUnsupported("BMXC1210", "Range slicing supports String and one-dimensional heap Array values", bound.syntax)
+				AddUnsupported("BMXC1210", TBccMessages.IrLoweringRangeSlicingReceiverUnsupported(), bound.syntax)
 				Return Null
 			End If
 			Local arraySlice:TCompilerIrArraySlice = New TCompilerIrArraySlice
@@ -7892,7 +7893,7 @@ Type TCompilerIrLowerer
 		If access.lookupType Then externalGlobal = TCompilerIrExternalGlobal(genericStaticGlobalsByKey.ValueForKey(GenericStaticGlobalKey(TypeName(access.lookupType), access.member.name)))
 		If Not externalGlobal And access.receiverType Then externalGlobal = TCompilerIrExternalGlobal(genericStaticGlobalsByKey.ValueForKey(GenericStaticGlobalKey(TypeName(access.receiverType), access.member.name)))
 		If Not externalGlobal Then
-			AddUnsupported("BMXC1230", "Generic static member '" + access.member.QualifiedName() + "' has no requested canonical specialization owner", bound.syntax)
+			AddUnsupported("BMXC1230", TBccMessages.IrLoweringGenericStaticMemberSpecializationOwnerMissing(access.member.QualifiedName()), bound.syntax)
 			Return Null
 		End If
 		Local resultSymbol:TCompilerIrSymbolReference = New TCompilerIrSymbolReference
@@ -8015,7 +8016,7 @@ Type TCompilerIrLowerer
 		If Not symbolId.length Then
 			Local symbolName:String = "<unresolved>"
 			If symbol Then symbolName = symbol.QualifiedName()
-			AddUnsupported("BMXC1011", "Symbol '" + symbolName + "' is not owned by the lowered unit", bound.syntax)
+			AddUnsupported("BMXC1011", TBccMessages.IrLoweringSymbolNotOwnedByLoweredUnit(symbolName), bound.syntax)
 			Return Null
 		End If
 		Local resultSymbol:TCompilerIrSymbolReference = New TCompilerIrSymbolReference
@@ -8222,7 +8223,7 @@ Type TCompilerIrLowerer
 		intrinsic.enumId = irEnum.enumId
 		If intrinsicKind = IR_ENUM_INTRINSIC_ORDINAL Or intrinsicKind = IR_ENUM_INTRINSIC_TO_STRING Then
 			If Not call.receiver Then
-				AddUnsupported("BMXC1103", "Enum instance intrinsic '" + routine.name + "' has no receiver", bound.syntax)
+				AddUnsupported("BMXC1103", TBccMessages.IrLoweringEnumInstanceIntrinsicReceiverMissing(routine.name), bound.syntax)
 				Return Null
 			End If
 			intrinsic.receiver = LowerExpression(call.receiver)
@@ -8243,17 +8244,17 @@ Type TCompilerIrLowerer
 			If closureType Then callableType = closureType.signature
 		End If
 		If Not call Or Not call.resolvedCall Then
-			AddUnsupported("BMXC1184", "Indirect call is missing its resolved callable signature", bound.syntax)
+			AddUnsupported("BMXC1184", TBccMessages.IrLoweringIndirectCallSignatureMissing(), bound.syntax)
 			Return Null
 		End If
 		If Not callableType Or Not IsSupportedCallableType(callableType) Then
 			Local callableName:String = "<unresolved>"
 			If callableType Then callableName = TypeName(callableType)
-			AddUnsupported("BMXC1184", "Indirect call target type '" + callableName + "' is not supported by the runtime ABI", bound.syntax)
+			AddUnsupported("BMXC1184", TBccMessages.IrLoweringIndirectCallTargetTypeUnsupported(callableName), bound.syntax)
 			Return Null
 		End If
 		If call.arguments.length <> callableType.parameterTypes.length Then
-			AddUnsupported("BMXC1184", "Indirect call requires " + callableType.parameterTypes.length + " arguments but received " + call.arguments.length, bound.syntax)
+			AddUnsupported("BMXC1184", TBccMessages.IrLoweringIndirectCallArgumentCountMismatch(callableType.parameterTypes.length, call.arguments.length), bound.syntax)
 			Return Null
 		End If
 		Local indirect:TCompilerIrIndirectCall
@@ -8279,14 +8280,14 @@ Type TCompilerIrLowerer
 		End If
 		For Local index:Int = 0 Until call.arguments.length
 			If TBoundOmittedArgumentExpression(call.arguments[index]) Then
-				AddUnsupported("BMXC1184", "Indirect callable invocation does not accept omitted arguments", bound.syntax)
+				AddUnsupported("BMXC1184", TBccMessages.IrLoweringIndirectCallOmittedArgumentsUnsupported(), bound.syntax)
 				Return Null
 			End If
 			Local requiredStaticArray:TStaticArraySemanticType = TStaticArraySemanticType(callableType.parameterTypes[index])
 			If requiredStaticArray Then
 				Local actualStaticArray:TStaticArraySemanticType = StaticArrayTypeOf(call.arguments[index])
 				If Not actualStaticArray Or Not TGenericRoutineInference.SameType(actualStaticArray, requiredStaticArray) Then
-					AddUnsupported("BMXC1022", "StaticArray argument " + index + " does not match callable parameter extent and element type '" + TypeName(requiredStaticArray) + "'", call.arguments[index].syntax)
+					AddUnsupported("BMXC1022", TBccMessages.IrLoweringCallableStaticArrayArgumentMismatch(index, TypeName(requiredStaticArray)), call.arguments[index].syntax)
 					Return Null
 				End If
 			End If
@@ -8344,7 +8345,7 @@ Type TCompilerIrLowerer
 	Method CallableTruth:TCompilerIrExpression(bound:TBoundExpression, negate:Int, syntax:TSyntaxNode)
 		Local callableType:TCallableSemanticType = TCallableSemanticType(bound.semanticType)
 		If Not IsSupportedCallableType(callableType) Then
-			AddUnsupported("BMXC1186", "Callable truth test requires an ordinary-C-compatible signature", syntax)
+			AddUnsupported("BMXC1186", TBccMessages.IrLoweringCallableTruthRequiresCompatibleSignature(), syntax)
 			Return Null
 		End If
 		Local truth:TCompilerIrCallableTruth = New TCompilerIrCallableTruth
@@ -8381,7 +8382,7 @@ Type TCompilerIrLowerer
 
 	Method LowerInterfaceCall:TCompilerIrExpression(call:TBoundCallExpression, irInterface:TCompilerIrInterface, interfaceMethod:TCompilerIrInterfaceMethod, bound:TBoundExpression)
 		If Not call.receiver Or Not irInterface Then
-			AddUnsupported("BMXC1165", "Interface call did not retain a source Interface receiver", bound.syntax)
+			AddUnsupported("BMXC1165", TBccMessages.IrLoweringInterfaceCallReceiverMissing(), bound.syntax)
 			Return Null
 		End If
 		Local resultCall:TCompilerIrCall = New TCompilerIrCall
@@ -8413,14 +8414,14 @@ Type TCompilerIrLowerer
 
 	Method LowerInterfaceSuperCall:TCompilerIrExpression(call:TBoundCallExpression, irInterface:TCompilerIrInterface, interfaceMethod:TCompilerIrInterfaceMethod, bound:TBoundExpression)
 		If Not call.resolvedCall Or Not call.resolvedCall.routine Or call.resolvedCall.routine.interfaceMethodKind <> INTERFACE_METHOD_DEFAULT Then
-			AddUnsupported("BMXC1168", "Qualified Interface Super call must select a Default method body", bound.syntax)
+			AddUnsupported("BMXC1168", TBccMessages.IrLoweringInterfaceSuperCallRequiresDefaultMethod(), bound.syntax)
 			Return Null
 		End If
 		Local target:TCompilerIrFunction = TCompilerIrFunction(functionsBySymbol.ValueForKey(call.resolvedCall.routine))
 		Local targetAbiName:String
 		If Not target Then targetAbiName = call.resolvedCall.routine.externalName
 		If Not target And Not targetAbiName.length Then
-			AddUnsupported("BMXC1168", "Qualified Interface Super call has no published default implementation", bound.syntax)
+			AddUnsupported("BMXC1168", TBccMessages.IrLoweringInterfaceSuperCallImplementationMissing(), bound.syntax)
 			Return Null
 		End If
 		Local resultCall:TCompilerIrCall = New TCompilerIrCall
@@ -8499,7 +8500,7 @@ Type TCompilerIrLowerer
 				Local sourceBaseLayout:TCompilerIrImportedClass = ImportedClassById(sourceLayout.baseImportedClassId)
 				If sourceBaseLayout Then layoutDetail :+ " (" + sourceBaseLayout.name + ", " + sourceBaseLayout.abiName + ")"
 			End If
-			AddUnsupported("BMXC1146", "Field access is outside the lowered object layout (" + layoutDetail + ")", bound.syntax)
+			AddUnsupported("BMXC1146", TBccMessages.IrLoweringFieldAccessOutsideObjectLayout(layoutDetail), bound.syntax)
 			Return Null
 		End If
 		Local access:TCompilerIrFieldAccess = New TCompilerIrFieldAccess
@@ -8594,7 +8595,7 @@ Type TCompilerIrLowerer
 		If known Then Return known
 		Local staticArrayType:TStaticArraySemanticType = TStaticArraySemanticType(symbol.declaredType)
 		If Not IsSupportedAbiParameterType(symbol.declaredType) And Not IsSupportedStaticArrayType(staticArrayType) Then
-			AddUnsupported("BMXC1182", "Imported field type '" + TypeName(symbol.declaredType) + "' is outside the current value ABI slice", useSyntax)
+			AddUnsupported("BMXC1182", TBccMessages.IrLoweringImportedFieldTypeOutsideValueAbi(TypeName(symbol.declaredType)), useSyntax)
 			Return Null
 		End If
 		Local owner:TSymbol = symbol.containingScope.owner
@@ -8936,7 +8937,7 @@ Type TCompilerIrLowerer
 			Return enumToString
 		End If
 		If IsNumericType(bound.semanticType) Then Return LowerStringOperand(bound)
-		AddUnsupported("BMXC1205", "Assert message type '" + TypeName(bound.semanticType) + "' cannot be converted to String by the current IR", syntax)
+		AddUnsupported("BMXC1205", TBccMessages.IrLoweringAssertMessageTypeNotConvertibleToString(TypeName(bound.semanticType)), syntax)
 		Return Null
 	End Method
 
@@ -8964,7 +8965,7 @@ Type TCompilerIrLowerer
 	Method LowerResolvedArguments:TCompilerIrExpression[](arguments:TBoundExpression[], routine:TSymbol, useSyntax:TSyntaxNode, succeeded:Int Var, resolvedCall:TResolvedCall = Null)
 		succeeded = False
 		If Not routine Then
-			AddUnsupported("BMXC1180", "Resolved call did not retain its selected routine while lowering arguments", useSyntax)
+			AddUnsupported("BMXC1180", TBccMessages.IrLoweringResolvedCallRoutineMissing(), useSyntax)
 			Return New TCompilerIrExpression[0]
 		End If
 		Local resultArguments:TCompilerIrExpression[] = New TCompilerIrExpression[routine.parameters.length]
@@ -8978,7 +8979,7 @@ Type TCompilerIrLowerer
 				If requiredStaticArray Then
 					Local actualStaticArray:TStaticArraySemanticType = StaticArrayTypeOf(boundArgument)
 					If Not actualStaticArray Or Not TGenericRoutineInference.SameType(actualStaticArray, requiredStaticArray) Then
-						AddUnsupported("BMXC1022", "StaticArray argument " + index + " does not match parameter extent and element type '" + TypeName(requiredStaticArray) + "'", boundArgument.syntax)
+						AddUnsupported("BMXC1022", TBccMessages.IrLoweringStaticArrayArgumentMismatch(index, TypeName(requiredStaticArray)), boundArgument.syntax)
 						Return resultArguments
 					End If
 				End If
@@ -9004,7 +9005,7 @@ Type TCompilerIrLowerer
 			Else
 				Local parameter:TSemanticParameter = routine.parameters[index]
 				If Not parameter Or Not parameter.optional Or Not parameter.defaultValue Then
-					AddUnsupported("BMXC1180", "Omitted argument for parameter " + index + " has no semantic default", useSyntax)
+					AddUnsupported("BMXC1180", TBccMessages.IrLoweringOmittedArgumentDefaultMissing(index), useSyntax)
 					Return resultArguments
 				End If
 				Local defaultType:TSemanticType = parameter.semanticType
@@ -9060,12 +9061,12 @@ Type TCompilerIrLowerer
 			Case CONSTANT_VALUE_CALLABLE
 				Local callableType:TCallableSemanticType = TCallableSemanticType(semanticType)
 				If Not callableType Or Not IsSupportedCallableType(callableType) Or Not value.callableSymbol Then
-					AddUnsupported("BMXC1181", "Callable default argument is outside the ordinary-C function-pointer IR slice", useSyntax)
+					AddUnsupported("BMXC1181", TBccMessages.IrLoweringCallableDefaultOutsideFunctionPointerSlice(), useSyntax)
 					Return Null
 				End If
 				Local callableReference:TCompilerIrCallableReference = CallableReferenceForSymbol(value.callableSymbol, callableType, source, useSyntax)
 				If callableReference Then Return callableReference
-				AddUnsupported("BMXC1181", "Callable default target must be a lowered source or imported ordinary-C free routine", useSyntax)
+				AddUnsupported("BMXC1181", TBccMessages.IrLoweringCallableDefaultTargetUnsupported(), useSyntax)
 				Return Null
 		End Select
 		Return Null
@@ -9079,34 +9080,34 @@ Type TCompilerIrLowerer
 
 	Method LowerCallableReference:TCompilerIrExpression(bound:TBoundRoutineReferenceExpression)
 		If Not bound Or Not bound.routine Then
-			AddUnsupported("BMXC1183", "Callable reference has no resolved routine", bound.syntax)
+			AddUnsupported("BMXC1183", TBccMessages.IrLoweringCallableReferenceRoutineMissing(), bound.syntax)
 			Return Null
 		End If
 		Local closureType:TClosureSemanticType = TClosureSemanticType(bound.semanticType)
 		If bound.receiver Or closureType Then Return LowerBoundMethodReference(bound, closureType)
 		Local callableType:TCallableSemanticType = TCallableSemanticType(bound.semanticType)
 		If Not IsSupportedCallableType(callableType) Or IsInstanceMethodSymbol(bound.routine) Then
-			AddUnsupported("BMXC1183", "Callable reference requires an ordinary-C-compatible free routine", bound.syntax)
+			AddUnsupported("BMXC1183", TBccMessages.IrLoweringCallableReferenceRequiresCompatibleFreeRoutine(), bound.syntax)
 			Return Null
 		End If
 		Local resultReference:TCompilerIrCallableReference = CallableReferenceForSymbol(bound.routine, callableType, SourceOf(bound.syntax), bound.syntax, bound.staticReceiverType, bound.typeArguments)
 		If resultReference Then Return resultReference
-		AddUnsupported("BMXC1183", "Callable reference target has no lowered source or imported ABI identity", bound.syntax)
+		AddUnsupported("BMXC1183", TBccMessages.IrLoweringCallableReferenceTargetIdentityMissing(), bound.syntax)
 		Return Null
 	End Method
 
 	Method LowerBoundMethodReference:TCompilerIrExpression(bound:TBoundRoutineReferenceExpression, closureType:TClosureSemanticType)
 		If Not bound Or Not bound.routine Or Not bound.receiver Or Not closureType Or Not IsSupportedClosureType(closureType) Then
-			AddUnsupported("BMXC1250", "Bound Method reference requires a supported managed Closure signature and object receiver", bound.syntax)
+			AddUnsupported("BMXC1250", TBccMessages.IrLoweringBoundMethodReferenceRequiresClosureSignatureAndObjectReceiver(), bound.syntax)
 			Return Null
 		End If
 		Local receiverType:TNamedSemanticType = TNamedSemanticType(bound.receiver.semanticType)
 		If Not receiverType Or Not receiverType.symbol Or (receiverType.symbol.kind <> SYMBOL_TYPE And receiverType.symbol.kind <> SYMBOL_INTERFACE) Then
-			AddUnsupported("BMXC1250", "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined", bound.syntax)
+			AddUnsupported("BMXC1250", TBccMessages.IrLoweringBoundMethodReferenceStructReceiverUnsupported(), bound.syntax)
 			Return Null
 		End If
 		If bound.routine.genericArity Then
-			AddUnsupported("BMXC1250", "Bound generic Method references require specialization-owned adapter support", bound.syntax)
+			AddUnsupported("BMXC1250", TBccMessages.IrLoweringBoundGenericMethodReferenceRequiresAdapter(), bound.syntax)
 			Return Null
 		End If
 
@@ -9181,19 +9182,19 @@ Type TCompilerIrLowerer
 
 	Method LowerFunctionLiteral:TCompilerIrExpression(bound:TBoundFunctionLiteralExpression)
 		If Not bound Or Not bound.routine Then
-			AddUnsupported("BMXC1241", "Function literal has no synthesized routine", bound.syntax)
+			AddUnsupported("BMXC1241", TBccMessages.IrLoweringFunctionLiteralRoutineMissing(), bound.syntax)
 			Return Null
 		End If
 		Local callableType:TCallableSemanticType = TCallableSemanticType(bound.semanticType)
 		Local closureType:TClosureSemanticType = TClosureSemanticType(bound.semanticType)
 		If closureType Then callableType = closureType.signature
 		If Not IsSupportedCallableType(callableType) Then
-			AddUnsupported("BMXC1242", "Function literal target is not an ordinary-C-compatible thin callable", bound.syntax)
+			AddUnsupported("BMXC1242", TBccMessages.IrLoweringFunctionLiteralTargetUnsupported(), bound.syntax)
 			Return Null
 		End If
 		Local reference:TCompilerIrCallableReference = CallableReferenceForSymbol(bound.routine, callableType, SourceOf(bound.syntax), bound.syntax)
 		If Not reference Then
-			AddUnsupported("BMXC1241", "Function literal synthesized routine has no lowered ABI identity", bound.syntax)
+			AddUnsupported("BMXC1241", TBccMessages.IrLoweringFunctionLiteralTargetIdentityMissing(), bound.syntax)
 			Return Null
 		End If
 		If closureType Then
@@ -9210,7 +9211,7 @@ Type TCompilerIrLowerer
 			If capturePlan Then
 				literal.environment = CaptureEnvironmentReference(capturePlan, literal.source)
 				If Not literal.environment Then
-					AddUnsupported("BMXC1249", "capturing Closure literal has no active synthesized environment", bound.syntax)
+					AddUnsupported("BMXC1249", TBccMessages.IrLoweringCapturingClosureSynthesizedEnvironmentMissing(), bound.syntax)
 					Return Null
 				End If
 			End If
@@ -9382,7 +9383,7 @@ Type TCompilerIrLowerer
 					Return value
 				End If
 			Next
-			AddUnsupported("BMXC1202", "Imported Struct type '" + value.semanticType + "' has no published zero-argument constructor for default initialization", syntax)
+			AddUnsupported("BMXC1202", TBccMessages.IrLoweringImportedStructDefaultConstructorMissing(value.semanticType), syntax)
 		End If
 		Return Null
 	End Method
@@ -9506,7 +9507,7 @@ Type TCompilerIrLowerer
 					If logicalName.EndsWith(".bmx") Then
 						sourceUnitPath = ResolveQuotedSourceUnitPath(writtenLogicalName, edge.target)
 						If Not sourceUnitPath.length Then
-							AddUnsupported("BMXC1110", "Quoted source path escapes its module or application source root", edge.syntax)
+							AddUnsupported("BMXC1110", TBccMessages.IrLoweringQuotedSourcePathEscapesRoot(), edge.syntax)
 							Continue
 						End If
 						dependencyIdentity = sourceUnitPath
@@ -9631,13 +9632,13 @@ Type TCompilerIrLowerer
 		Local sourceDeclaration:TRoutineDeclarationSyntax = TRoutineDeclarationSyntax(symbol.declaration)
 		If sourceDeclaration And sourceDeclaration.isMethod Then Return Null
 		If symbol.isExternal And Not symbol.isImported And TClosureSemanticType(symbol.declaredType) Then
-			AddUnsupported("BMXC1244", "Closure values have no native ABI representation", callSyntax)
+			AddUnsupported("BMXC1244", TBccMessages.IrLoweringClosureNativeAbiRepresentationMissing(), callSyntax)
 			Return Null
 		End If
 		If symbol.isExternal And Not symbol.isImported Then
 			For Local parameter:TSemanticParameter = EachIn symbol.parameters
 				If parameter And TClosureSemanticType(parameter.semanticType) Then
-					AddUnsupported("BMXC1244", "Closure values have no native ABI representation", callSyntax)
+					AddUnsupported("BMXC1244", TBccMessages.IrLoweringClosureNativeAbiRepresentationMissing(), callSyntax)
 					Return Null
 				End If
 			Next
@@ -9645,32 +9646,32 @@ Type TCompilerIrLowerer
 		If TCallableSemanticType(symbol.declaredType) And symbol.containingScope And symbol.containingScope.owner Then
 			Local owner:TSymbol = symbol.containingScope.owner
 			If owner.kind <> SYMBOL_TYPE Or Not symbol.interfaceRecord Or symbol.interfaceRecord.kind <> INTERFACE_RECORD_TYPE_FUNCTION Then
-				AddUnsupported("BMXC1112", "Imported member callable returns require a supported Type-function slot ABI", callSyntax)
+				AddUnsupported("BMXC1112", TBccMessages.IrLoweringImportedMemberCallableReturnSlotUnsupported(), callSyntax)
 				Return Null
 			End If
 		End If
 		If Not symbol.externalName.length Then
-			AddUnsupported("BMXC1111", "Imported routine '" + symbol.QualifiedName() + "' has no interface ABI name", callSyntax)
+			AddUnsupported("BMXC1111", TBccMessages.IrLoweringImportedRoutineAbiNameMissing(symbol.QualifiedName()), callSyntax)
 			Return Null
 		End If
 		Local linkerName:String = ExternalRoutineLinkerName(symbol.externalName)
 		If Not linkerName.length Then
-			AddUnsupported("BMXC1115", "Imported/native ABI name '" + symbol.externalName + "' requires an explicit linker-name representation", callSyntax)
+			AddUnsupported("BMXC1115", TBccMessages.IrLoweringImportedNativeAbiNameRequiresLinkerRepresentation(symbol.externalName), callSyntax)
 			Return Null
 		End If
 		If Not IsSupportedReturnType(symbol.declaredType) Then
-			AddUnsupported("BMXC1112", "Imported routine return type '" + TypeName(symbol.declaredType) + "' is outside the scalar ABI slice", callSyntax)
+			AddUnsupported("BMXC1112", TBccMessages.IrLoweringImportedRoutineReturnOutsideScalarAbi(TypeName(symbol.declaredType)), callSyntax)
 			Return Null
 		End If
 		For Local parameter:TSemanticParameter = EachIn symbol.parameters
 			If Not parameter Or Not IsSupportedAbiParameterType(parameter.semanticType) Then
 				Local parameterType:String = "?"
 				If parameter Then parameterType = TypeName(parameter.semanticType)
-				AddUnsupported("BMXC1112", "Imported routine '" + symbol.QualifiedName() + "' parameter type '" + parameterType + "' is outside the supported ordinary-C ABI slice", callSyntax)
+				AddUnsupported("BMXC1112", TBccMessages.IrLoweringImportedRoutineParameterOutsideOrdinaryCAbi(symbol.QualifiedName(), parameterType), callSyntax)
 				Return Null
 			End If
 			If Not IsSupportedParameterMode(parameter) Then
-				AddUnsupported("BMXC1112", "Imported routine Var parameters require a directly addressable value ABI type", callSyntax)
+				AddUnsupported("BMXC1112", TBccMessages.IrLoweringImportedRoutineVarParameterTypeUnsupported(), callSyntax)
 				Return Null
 			End If
 		Next
@@ -9774,16 +9775,16 @@ Type TCompilerIrLowerer
 			If declaringOwner And declaringOwner.declaredType Then abiReceiverType = declaringOwner.declaredType
 		End If
 		If symbol.genericArity Or Not symbol.externalName.length Or TCompilerAbiNamer.Sanitize(symbol.externalName) <> symbol.externalName Then
-			AddUnsupported("BMXC1172", "Direct imported method '" + symbol.QualifiedName() + "' has no usable function ABI identity", callSyntax)
+			AddUnsupported("BMXC1172", TBccMessages.IrLoweringDirectImportedMethodAbiIdentityMissing(symbol.QualifiedName()), callSyntax)
 			Return Null
 		End If
 		If Not IsSupportedValueType(abiReceiverType) Or Not IsSupportedReturnType(symbol.declaredType) Then
-			AddUnsupported("BMXC1175", "Direct imported method '" + symbol.QualifiedName() + "' has an unsupported receiver or return type", callSyntax)
+			AddUnsupported("BMXC1175", TBccMessages.IrLoweringDirectImportedMethodTypeUnsupported(symbol.QualifiedName()), callSyntax)
 			Return Null
 		End If
 		For Local parameter:TSemanticParameter = EachIn symbol.parameters
 			If Not parameter Or Not IsSupportedAbiParameterType(parameter.semanticType) Or Not IsSupportedParameterMode(parameter) Then
-				AddUnsupported("BMXC1175", "Direct imported method parameters require supported ordinary-C ABI value types", callSyntax)
+				AddUnsupported("BMXC1175", TBccMessages.IrLoweringDirectImportedMethodParameterTypeUnsupported(), callSyntax)
 				Return Null
 			End If
 		Next
@@ -9831,16 +9832,16 @@ Type TCompilerIrLowerer
 		Local importedClass:TCompilerIrImportedClass = EnsureImportedClass(owner)
 		If Not importedClass Then Return Null
 		If symbol.genericArity <> 0 Then
-			AddUnsupported("BMXC1174", "Generic imported method '" + symbol.QualifiedName() + "' requires canonical specialization lowering", callSyntax)
+			AddUnsupported("BMXC1174", TBccMessages.IrLoweringGenericImportedMethodRequiresSpecialization(symbol.QualifiedName()), callSyntax)
 			Return Null
 		End If
 		If Not IsSupportedReturnType(symbol.declaredType) Then
-			AddUnsupported("BMXC1175", "Imported method return type '" + TypeName(symbol.declaredType) + "' is outside the current value ABI slice", callSyntax)
+			AddUnsupported("BMXC1175", TBccMessages.IrLoweringImportedMethodReturnTypeUnsupported(TypeName(symbol.declaredType)), callSyntax)
 			Return Null
 		End If
 		For Local parameter:TSemanticParameter = EachIn symbol.parameters
 			If Not parameter Or Not IsSupportedAbiParameterType(parameter.semanticType) Or Not IsSupportedParameterMode(parameter) Then
-				AddUnsupported("BMXC1175", "Imported method parameters require supported ordinary-C ABI value types", callSyntax)
+				AddUnsupported("BMXC1175", TBccMessages.IrLoweringImportedMethodParameterTypeUnsupported(), callSyntax)
 				Return Null
 			End If
 		Next
@@ -9854,7 +9855,7 @@ Type TCompilerIrLowerer
 			End If
 		End If
 		If Not slotName.length Then
-			AddUnsupported("BMXC1172", "Imported method '" + symbol.QualifiedName() + "' has no class-slot ABI name derived from '" + symbol.externalName + "'", callSyntax)
+			AddUnsupported("BMXC1172", TBccMessages.IrLoweringImportedMethodClassSlotAbiNameMissing(symbol.QualifiedName(), symbol.externalName), callSyntax)
 			Return Null
 		End If
 		Local importedMethod:TCompilerIrImportedMethod = New TCompilerIrImportedMethod
@@ -9987,17 +9988,17 @@ Type TCompilerIrLowerer
 		Local importedClass:TCompilerIrImportedClass = EnsureImportedClass(owner)
 		If Not importedClass Then Return Null
 		If symbol.genericArity <> 0 Then
-			AddUnsupported("BMXC1177", "Generic imported constructor requires canonical specialization lowering", useSyntax)
+			AddUnsupported("BMXC1177", TBccMessages.IrLoweringGenericImportedConstructorRequiresSpecialization(), useSyntax)
 			Return Null
 		End If
 		For Local parameter:TSemanticParameter = EachIn symbol.parameters
 			If Not parameter Or Not IsSupportedAbiParameterType(parameter.semanticType) Or parameter.passingMode <> PARAMETER_PASS_VALUE Then
-				AddUnsupported("BMXC1178", "Imported constructor parameters require supported value ABI types", useSyntax)
+				AddUnsupported("BMXC1178", TBccMessages.IrLoweringImportedConstructorParameterTypeUnsupported(), useSyntax)
 				Return Null
 			End If
 		Next
 		If Not symbol.externalName.length Then
-			AddUnsupported("BMXC1179", "Imported constructor has no published ABI name", useSyntax)
+			AddUnsupported("BMXC1179", TBccMessages.IrLoweringImportedConstructorAbiNameMissing(), useSyntax)
 			Return Null
 		End If
 		Local constructor:TCompilerIrImportedConstructor = New TCompilerIrImportedConstructor
@@ -10010,7 +10011,7 @@ Type TCompilerIrLowerer
 		If symbol.parameters.length Then
 			constructor.objectNewAbiName = constructor.implementationAbiName + "_ObjectNew"
 			If TCompilerAbiNamer.Sanitize(constructor.objectNewAbiName) <> constructor.objectNewAbiName Then
-				AddUnsupported("BMXC1179", "Imported constructor object-allocation ABI name requires an explicit linker-name representation", useSyntax)
+				AddUnsupported("BMXC1179", TBccMessages.IrLoweringImportedConstructorAllocationAbiNameRequiresLinkerRepresentation(), useSyntax)
 				Return Null
 			End If
 		End If
@@ -10051,11 +10052,11 @@ Type TCompilerIrLowerer
 	Method ResolveExternalGlobal:TCompilerIrExternalGlobal(symbol:TSymbol, useSyntax:TSyntaxNode)
 		If Not symbol Or (Not symbol.isImported And Not symbol.isExternal) Or symbol.kind <> SYMBOL_GLOBAL Then Return Null
 		If symbol.isExternal And Not symbol.isImported And TClosureSemanticType(symbol.declaredType) Then
-			AddUnsupported("BMXC1244", "Closure values have no native ABI representation", useSyntax)
+			AddUnsupported("BMXC1244", TBccMessages.IrLoweringClosureNativeAbiRepresentationMissing(), useSyntax)
 			Return Null
 		End If
 		If Not symbol.externalName.length Then
-			AddUnsupported("BMXC1121", "Imported/native Global '" + symbol.QualifiedName() + "' has no ABI name", useSyntax)
+			AddUnsupported("BMXC1121", TBccMessages.IrLoweringImportedGlobalAbiNameMissing(symbol.QualifiedName()), useSyntax)
 			Return Null
 		End If
 		Local linkerName:String = symbol.externalName
@@ -10069,11 +10070,11 @@ Type TCompilerIrLowerer
 			End If
 		End If
 		If Not linkerName.length Then
-			AddUnsupported("BMXC1115", "Imported/native ABI name '" + symbol.externalName + "' requires an explicit linker-name representation", useSyntax)
+			AddUnsupported("BMXC1115", TBccMessages.IrLoweringImportedNativeAbiNameRequiresLinkerRepresentation(symbol.externalName), useSyntax)
 			Return Null
 		End If
 		If Not IsSupportedAbiParameterType(symbol.declaredType) Then
-			AddUnsupported("BMXC1122", "Imported/native Global type '" + TypeName(symbol.declaredType) + "' is outside the scalar, pointer, and callable ABI slice", useSyntax)
+			AddUnsupported("BMXC1122", TBccMessages.IrLoweringImportedGlobalTypeOutsideAbiSlice(TypeName(symbol.declaredType)), useSyntax)
 			Return Null
 		End If
 		Local existing:TCompilerIrExternalGlobal = TCompilerIrExternalGlobal(externalGlobalsBySymbol.ValueForKey(symbol))
@@ -10489,6 +10490,11 @@ Type TCompilerIrLowerer
 		diagnostics :+ [TCompilerDiagnostic.Create(code, message, source.path, source.span, source.line, source.column)]
 	End Method
 
+	Method AddUnsupported(code:String, message:TLocalisedMessage, syntax:TSyntaxNode)
+		Local source:TCompilerSourceLocation = SourceOf(syntax)
+		diagnostics :+ [TCompilerDiagnostic.Create(code, message, source.path, source.span, source.line, source.column)]
+	End Method
+
 	Method ApplyInstrumentation(routine:TCompilerIrFunction, declaration:TRoutineDeclarationSyntax)
 		If Not options Then Return
 		routine.debugInstrumentation = options.debugInstrumentation
@@ -10817,14 +10823,14 @@ Type TCompilerIrLowerer
 
 	Method LowerEachInMethodCall:TCompilerIrExpression(resolved:TResolvedCall, receiver:TCompilerIrExpression, receiverType:TSemanticType, syntax:TSyntaxNode)
 		If Not resolved Or Not resolved.routine Then
-			AddUnsupported("BMXC1020", "ObjectEnumerator EachIn is missing a resolved protocol operation", syntax)
+			AddUnsupported("BMXC1020", TBccMessages.IrLoweringObjectEnumeratorEachInProtocolOperationMissing(), syntax)
 			Return Null
 		End If
 		Local protocolArguments:TCompilerIrExpression[] = New TCompilerIrExpression[resolved.routine.parameters.length]
 		For Local parameterIndex:Int = 0 Until resolved.routine.parameters.length
 			Local protocolParameter:TSemanticParameter = resolved.routine.parameters[parameterIndex]
 			If Not protocolParameter.optional Or Not protocolParameter.defaultValue Then
-				AddUnsupported("BMXC1020", "EachIn protocol method '" + resolved.routine.name + "' requires a non-default argument", syntax)
+				AddUnsupported("BMXC1020", TBccMessages.IrLoweringEachInProtocolMethodRequiresNonDefaultArgument(resolved.routine.name), syntax)
 				Return Null
 			End If
 			Local protocolParameterType:TSemanticType = protocolParameter.semanticType
@@ -10850,7 +10856,7 @@ Type TCompilerIrLowerer
 				Next
 			End If
 			If Not interfaceMethod Then
-				AddUnsupported("BMXC1020", "Interface instance method has no emitted dispatch slot", syntax)
+				AddUnsupported("BMXC1020", TBccMessages.IrLoweringInterfaceInstanceMethodDispatchSlotMissing(), syntax)
 				Return Null
 			End If
 			Local interfaceCall:TCompilerIrCall = New TCompilerIrCall
@@ -10875,7 +10881,7 @@ Type TCompilerIrLowerer
 				protocolMethod = ImportedMethod(resolved.routine, syntax)
 			End If
 			If Not protocolMethod Then
-				AddUnsupported("BMXC1020", "Imported Type instance method has no published class-slot ABI", syntax)
+				AddUnsupported("BMXC1020", TBccMessages.IrLoweringImportedTypeInstanceMethodClassSlotMissing(), syntax)
 				Return Null
 			End If
 			Local importedCall:TCompilerIrCall = New TCompilerIrCall
@@ -10896,7 +10902,7 @@ Type TCompilerIrLowerer
 		If sourceReceiver And inheritedImportedMethod Then
 			Local inheritedSlot:TCompilerIrClassFunctionSlot = SourceClassImportedSlot(sourceReceiver, inheritedImportedMethod)
 			If Not inheritedSlot Then
-				AddUnsupported("BMXC1020", "Inherited imported instance method has no source-class slot", syntax)
+				AddUnsupported("BMXC1020", TBccMessages.IrLoweringInheritedImportedInstanceMethodSourceSlotMissing(), syntax)
 				Return Null
 			End If
 			Local inheritedCall:TCompilerIrCall = New TCompilerIrCall
@@ -10914,12 +10920,12 @@ Type TCompilerIrLowerer
 		End If
 		Local target:TCompilerIrFunction = TCompilerIrFunction(functionsBySymbol.ValueForKey(resolved.routine))
 		If Not target Or Not target.isMethod Then
-			AddUnsupported("BMXC1020", "Instance operation must resolve to a lowered source method", syntax)
+			AddUnsupported("BMXC1020", TBccMessages.IrLoweringInstanceOperationRequiresLoweredSourceMethod(), syntax)
 			Return Null
 		End If
 		Local receiverClass:TCompilerIrClass = ClassForType(receiverType)
 		If Not receiverClass Then
-			AddUnsupported("BMXC1020", "Instance method receiver has no lowered source class", syntax)
+			AddUnsupported("BMXC1020", TBccMessages.IrLoweringInstanceMethodReceiverSourceClassMissing(), syntax)
 			Return Null
 		End If
 		Local result:TCompilerIrCall = New TCompilerIrCall
@@ -10976,15 +10982,15 @@ Type TCompilerIrLowerer
 		Local known:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsBySymbol.ValueForKey(symbol))
 		If known And completedImportedStructLayouts.Contains(symbol) Then Return known
 		If known And visitingImportedStructLayouts.Contains(symbol) Then
-			AddUnsupported("BMXC1192", "Imported Struct value layout cycle involving '" + symbol.name + "'", symbol.declaration)
+			AddUnsupported("BMXC1192", TBccMessages.IrLoweringImportedStructValueLayoutCycle(symbol.name), symbol.declaration)
 			Return known
 		End If
 		If symbol.genericArity <> 0 Then
-			AddUnsupported("BMXC1197", "Generic imported Struct '" + symbol.QualifiedName() + "' requires canonical specialization lowering", symbol.declaration)
+			AddUnsupported("BMXC1197", TBccMessages.IrLoweringGenericImportedStructRequiresSpecialization(symbol.QualifiedName()), symbol.declaration)
 			Return Null
 		End If
 		If Not symbol.externalName.length Or TCompilerAbiNamer.Sanitize(symbol.externalName) <> symbol.externalName Then
-			AddUnsupported("BMXC1198", "Imported Struct '" + symbol.QualifiedName() + "' has no usable C ABI name", symbol.declaration)
+			AddUnsupported("BMXC1198", TBccMessages.IrLoweringImportedStructAbiNameMissing(symbol.QualifiedName()), symbol.declaration)
 			Return Null
 		End If
 		Local existing:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsByAbiName.ValueForKey(symbol.externalName.ToLower()))
@@ -11028,7 +11034,7 @@ Type TCompilerIrLowerer
 						If Not supportedField Then supportedField = IsSupportedStructFieldType(member.declaredType)
 					End If
 					If Not supportedField Then
-						AddUnsupported("BMXC1199", "Imported Struct field type '" + TypeName(member.declaredType) + "' is outside the current layout slice", member.declaration)
+						AddUnsupported("BMXC1199", TBccMessages.IrLoweringImportedStructFieldTypeOutsideLayout(TypeName(member.declaredType)), member.declaration)
 						Continue
 					End If
 					Local fieldRecord:TCompilerIrImportedField = New TCompilerIrImportedField
@@ -11104,20 +11110,20 @@ Type TCompilerIrLowerer
 		If Not owner Then owner = EnsureImportedStruct(symbol.containingScope.owner)
 		If Not owner Then Return Null
 		If symbol.genericArity <> 0 Or Not symbol.externalName.length Then
-			AddUnsupported("BMXC1199", "Imported Struct routine '" + symbol.QualifiedName() + "' has no supported ABI identity", useSyntax)
+			AddUnsupported("BMXC1199", TBccMessages.IrLoweringImportedStructRoutineAbiIdentityMissing(symbol.QualifiedName()), useSyntax)
 			Return Null
 		End If
 		If Not IsSupportedReturnType(symbol.declaredType) Then
-			AddUnsupported("BMXC1199", "Imported Struct routine return type '" + TypeName(symbol.declaredType) + "' is outside the current value slice", useSyntax)
+			AddUnsupported("BMXC1199", TBccMessages.IrLoweringImportedStructRoutineReturnTypeUnsupported(TypeName(symbol.declaredType)), useSyntax)
 			Return Null
 		End If
 		For Local parameter:TSemanticParameter = EachIn symbol.parameters
 			If Not parameter Or Not IsSupportedAbiParameterType(parameter.semanticType) Then
-				AddUnsupported("BMXC1199", "Imported Struct routine parameters require supported value ABI types", useSyntax)
+				AddUnsupported("BMXC1199", TBccMessages.IrLoweringImportedStructRoutineParameterTypeUnsupported(), useSyntax)
 				Return Null
 			End If
 			If Not IsSupportedParameterMode(parameter) Then
-				AddUnsupported("BMXC1199", "Imported Struct routine parameters require supported value or Var ABI modes", useSyntax)
+				AddUnsupported("BMXC1199", TBccMessages.IrLoweringImportedStructRoutineParameterModeUnsupported(), useSyntax)
 				Return Null
 			End If
 		Next
@@ -11274,15 +11280,15 @@ Type TCompilerIrLowerer
 		Local known:TCompilerIrImportedClass = TCompilerIrImportedClass(importedClassesBySymbol.ValueForKey(symbol))
 		If known Then Return known
 		If symbol.genericArity <> 0 Then
-			AddUnsupported("BMXC1168", "Generic imported Type '" + symbol.QualifiedName() + "' requires canonical specialization lowering", symbol.declaration)
+			AddUnsupported("BMXC1168", TBccMessages.IrLoweringGenericImportedTypeRequiresSpecialization(symbol.QualifiedName()), symbol.declaration)
 			Return Null
 		End If
 		If Not symbol.externalName.length Then
-			AddUnsupported("BMXC1169", "Imported Type '" + symbol.QualifiedName() + "' has no class ABI name", symbol.declaration)
+			AddUnsupported("BMXC1169", TBccMessages.IrLoweringImportedTypeClassAbiNameMissing(symbol.QualifiedName()), symbol.declaration)
 			Return Null
 		End If
 		If TCompilerAbiNamer.Sanitize(symbol.externalName) <> symbol.externalName Then
-			AddUnsupported("BMXC1170", "Imported Type ABI name '" + symbol.externalName + "' requires an explicit linker-name representation", symbol.declaration)
+			AddUnsupported("BMXC1170", TBccMessages.IrLoweringImportedTypeAbiNameRequiresLinkerRepresentation(symbol.externalName), symbol.declaration)
 			Return Null
 		End If
 		Local existing:TCompilerIrImportedClass = TCompilerIrImportedClass(importedClassesByAbiName.ValueForKey(symbol.externalName.ToLower()))

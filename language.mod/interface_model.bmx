@@ -3,6 +3,8 @@
 
 SuperStrict
 
+Import BlitzMax.Locale
+
 Import "syntax.bmx"
 Import "generic_template_model.bmx"
 Import "documentation_model.bmx"
@@ -100,6 +102,7 @@ End Type
 Type TInterfaceDiagnostic
 	Field code:String
 	Field message:String
+	Field localisedMessage:TLocalisedMessage
 	Field line:Int
 
 	Function Create:TInterfaceDiagnostic(code:String, message:String, line:Int)
@@ -110,10 +113,28 @@ Type TInterfaceDiagnostic
 		Return result
 	End Function
 
+	Function Create:TInterfaceDiagnostic(code:String, message:TLocalisedMessage, line:Int)
+		Local result:TInterfaceDiagnostic = New TInterfaceDiagnostic
+		result.code = code
+		result.localisedMessage = message
+		result.message = message.Render()
+		result.line = line
+		Return result
+	End Function
+
+	Method MessageFor:String(context:TLocaleContext)
+		If localisedMessage Then Return localisedMessage.Render(context)
+		Return message
+	End Method
+
 	Method Format:String(path:String)
+		Return FormatFor(path, Null)
+	End Method
+
+	Method FormatFor:String(path:String, context:TLocaleContext)
 		Local location:String
 		If path.length Then location = path + ":" + line + ": "
-		Return location + "error " + code + ": " + message
+		Return location + "error " + code + ": " + MessageFor(context)
 	End Method
 End Type
 

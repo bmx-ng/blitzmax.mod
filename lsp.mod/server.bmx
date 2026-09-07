@@ -5,6 +5,7 @@ SuperStrict
 
 Import BRL.FileSystem
 Import BRL.TextStream
+Import BlitzMax.Locale
 Import Text.Json
 Import "protocol.bmx"
 Import "message_queue.bmx"
@@ -185,6 +186,7 @@ Type TBlitzMaxLspServer
 		Select methodName
 			Case "initialize"
 				Local initializeParams:TJSONObject = TJSONObject(request.Get("params"))
+				ApplyLocale(initializeParams)
 				CaptureClientCapabilities(initializeParams)
 				ApplyInitializationOptions(initializeParams)
 				InitializeWorkspaces(initializeParams)
@@ -596,6 +598,12 @@ Type TBlitzMaxLspServer
 		Local defaults:TJSONObject = TJSONObject(options.Get("blitzmax"))
 		If Not defaults Then defaults = options
 		workspaces.ApplyDefaultConfiguration(defaults)
+	End Method
+
+	Method ApplyLocale(params:TJSONObject)
+		Local locale:String
+		If params Then locale = params.GetString("locale")
+		TLocale.ConfigureToolchain(["language", "bls"], locale)
 	End Method
 
 	Method CaptureClientCapabilities(params:TJSONObject)

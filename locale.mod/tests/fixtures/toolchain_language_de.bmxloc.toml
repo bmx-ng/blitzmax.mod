@@ -1,0 +1,9 @@
+format = 1
+domain = "language"
+locale = "de"
+
+[[message]]
+id = 1
+name = "test.catalogue_precedence"
+text = "base override"
+placeholders = []

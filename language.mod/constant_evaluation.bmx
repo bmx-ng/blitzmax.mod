@@ -7,6 +7,7 @@ Import BRL.LinkedList
 Import BRL.Map
 Import BRL.StringBuilder
 
+Import "language_messages.generated.bmx"
 Import "semantic_model.bmx"
 
 ' Evaluates the source-level constants that are useful to every later client:
@@ -77,7 +78,7 @@ Type TConstantEvaluator
 		If existing Then Return existing
 		If failed.Contains(symbol) Then Return Null
 		If visiting.Contains(symbol) Then
-			AddDiagnostic("BMX3600", "Constant definition cycle involving '" + symbol.name + "'.", SymbolSpan(symbol))
+			AddDiagnostic("BMX3600", TLanguageMessages.ConstantDefinitionCycle(symbol.name), SymbolSpan(symbol))
 			failed.Insert(symbol, symbol)
 			Return Null
 		End If
@@ -91,7 +92,7 @@ Type TConstantEvaluator
 				If declarator And declarator.initializer Then result = EvaluateExpression(declarator.initializer)
 			End If
 			If result And symbol.declaredType Then result = Convert(result, symbol.declaredType, SymbolSpan(symbol))
-			If Not result And Not failed.Contains(symbol) Then AddDiagnostic("BMX3601", "Const '" + symbol.name + "' requires a constant initializer.", SymbolSpan(symbol))
+			If Not result And Not failed.Contains(symbol) Then AddDiagnostic("BMX3601", TLanguageMessages.ConstantRequiresInitializer(symbol.name), SymbolSpan(symbol))
 		Else If symbol.kind = SYMBOL_ENUM_MEMBER Then
 			result = EvaluateEnumMember(symbol)
 		End If
@@ -117,7 +118,7 @@ Type TConstantEvaluator
 					Return importedValue
 				End If
 			End If
-			AddDiagnostic("BMX3602", "Imported enum value '" + symbol.name + "' has no usable integral constant.", SymbolSpan(symbol))
+			AddDiagnostic("BMX3602", TLanguageMessages.ConstantImportedEnumValueUnusable(symbol.name), SymbolSpan(symbol))
 			Return Null
 		End If
 		Local declaration:TEnumDeclarationSyntax = TEnumDeclarationSyntax(enumSymbol.declaration)
@@ -147,13 +148,13 @@ Type TConstantEvaluator
 			Local underlying:TSemanticType = model.BuiltinType("Int")
 			If declaration.underlyingType Then underlying = model.TypeOf(declaration.underlyingType)
 			If Not FitsIntegral(result.integerValue, underlying) Then
-				AddDiagnostic("BMX3603", "Enum value '" + symbol.name + "' is outside the range of '" + underlying.DisplayName() + "'.", valueSyntax.span)
+				AddDiagnostic("BMX3603", TLanguageMessages.ConstantEnumValueOutOfRange(symbol.name, underlying.DisplayName()), valueSyntax.span)
 				result = Null
 			Else
 				result.semanticType = enumSymbol.declaredType
 			End If
 		Else If Not failed.Contains(symbol) Then
-			AddDiagnostic("BMX3602", "Enum value '" + symbol.name + "' requires an integral constant expression.", valueSyntax.span)
+			AddDiagnostic("BMX3602", TLanguageMessages.ConstantEnumValueRequiresIntegralExpression(symbol.name), valueSyntax.span)
 		End If
 		If result And valueSyntax.value Then model.constantExpressionMap.Insert(valueSyntax.value, result)
 		Return result
@@ -319,7 +320,7 @@ Type TConstantEvaluator
 			Case "*" Return IntegerOperationValue(left * right, resultType)
 			Case "/", "mod"
 				If right = 0 Then
-					AddDiagnostic("BMX3604", "Division by zero in constant expression.", syntax.span)
+					AddDiagnostic("BMX3604", TLanguageMessages.ConstantDivisionByZero(), syntax.span)
 					Return Null
 				End If
 				If operation = "/" Then Return IntegerOperationValue(left / right, resultType)
@@ -350,7 +351,7 @@ Type TConstantEvaluator
 			Case "*" Return FloatValue(left * right, model.ExpressionType(syntax))
 			Case "/"
 				If right = 0.0 Then
-					AddDiagnostic("BMX3604", "Division by zero in constant expression.", syntax.span)
+					AddDiagnostic("BMX3604", TLanguageMessages.ConstantDivisionByZero(), syntax.span)
 					Return Null
 				End If
 				Return FloatValue(left / right, model.ExpressionType(syntax))
@@ -387,7 +388,7 @@ Type TConstantEvaluator
 		If namedTarget And namedTarget.symbol And namedTarget.symbol.kind = SYMBOL_ENUM And value.kind = CONSTANT_VALUE_INTEGER Then
 			Local underlying:TSemanticType = EnumUnderlyingType(namedTarget.symbol)
 			If underlying And Not FitsIntegral(value.integerValue, underlying) Then
-				AddDiagnostic("BMX3603", "Constant value is outside the range of '" + target.DisplayName() + "'.", span)
+				AddDiagnostic("BMX3603", TLanguageMessages.ConstantValueOutOfRange(target.DisplayName()), span)
 				Return Null
 			End If
 			Return IntegerValue(value.integerValue, target)
@@ -406,7 +407,7 @@ Type TConstantEvaluator
 				Return Null
 			End If
 			If Not FitsIntegral(integer, target) Then
-				AddDiagnostic("BMX3603", "Constant value is outside the range of '" + target.DisplayName() + "'.", span)
+				AddDiagnostic("BMX3603", TLanguageMessages.ConstantValueOutOfRange(target.DisplayName()), span)
 				Return Null
 			End If
 			Return IntegerValue(integer, target)
@@ -706,6 +707,10 @@ Type TConstantEvaluator
 	End Function
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, currentPath))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, currentPath))
 	End Method
 End Type

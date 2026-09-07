@@ -1,0 +1,1835 @@
+format = 1
+domain = "language"
+locale = "de-de"
+
+[[message]]
+id = 1
+name = "parser.expression_nesting_too_deep"
+text = "Die Verschachtelung des Ausdrucks ist zu tief, um ihn sicher zu analysieren."
+placeholders = []
+
+[[message]]
+id = 2
+name = "parser.expected_expression"
+text = "Ein Ausdruck wurde erwartet."
+placeholders = []
+
+[[message]]
+id = 3
+name = "parser.unexpected_token_in_expression"
+text = "Unerwartetes Token '{token}' im Ausdruck."
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 4
+name = "parser.expected_close_parenthesis"
+text = "Zum Abschlieﬂen des Ausdrucks wurde ')' erwartet."
+placeholders = []
+
+[[message]]
+id = 5
+name = "parser.expected_qualified_super_interface"
+text = "In einem qualifizierten Super-Ausdruck wurde ein Interface-Typ erwartet."
+placeholders = []
+
+[[message]]
+id = 6
+name = "parser.expected_expression_found_token"
+text = "Ein Ausdruck wurde erwartet, aber '{token}' wurde gefunden."
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 7
+name = "parser.expected_parenthesis_after_arguments"
+text = "Nach der Argumentliste wurde ')' erwartet."
+placeholders = []
+
+[[message]]
+id = 8
+name = "parser.expected_bracket_after_indexes"
+text = "Nach der Indexliste wurde ']' erwartet."
+placeholders = []
+
+[[message]]
+id = 9
+name = "constant.division_by_zero"
+text = "Division durch null in einem konstanten Ausdruck."
+placeholders = []
+
+[[message]]
+id = 10
+name = "type.expected_type_arguments"
+plural = "expected"
+forms = { one = "Der Typ '{typeName}' erwartet ein Typargument, aber {supplied} wurden angegeben.", other = "Der Typ '{typeName}' erwartet {expected} Typargumente, aber {supplied} wurden angegeben." }
+placeholders = [{ name = "typeName", type = "string" }, { name = "expected", type = "integer" }, { name = "supplied", type = "integer" }]
+
+[[message]]
+id = 11
+name = "conditional.expected_expression"
+translated = false
+text = "Expected a conditional-compilation expression."
+placeholders = []
+
+[[message]]
+id = 12
+name = "conditional.unexpected_token"
+translated = false
+text = "Unexpected token '{token}' in conditional-compilation expression."
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 13
+name = "conditional.expected_close_parenthesis"
+translated = false
+text = "Expected ')' in conditional-compilation expression."
+placeholders = []
+
+[[message]]
+id = 14
+name = "conditional.expected_operand"
+translated = false
+text = "Expected a target symbol, 'Not', or '('."
+placeholders = []
+
+[[message]]
+id = 15
+name = "parser.parenthesize_calculated_from_end_endpoint"
+translated = false
+text = "Parenthesize a calculated from-end Range endpoint as '^(expression)'."
+placeholders = []
+
+[[message]]
+id = 16
+name = "parser.from_end_endpoint_requires_range"
+translated = false
+text = "A from-end endpoint requires a Range expression."
+placeholders = []
+
+[[message]]
+id = 17
+name = "parser.expected_bracket_after_slice"
+translated = false
+text = "Expected ']' after slice."
+placeholders = []
+
+[[message]]
+id = 18
+name = "parser.postfix_type_requires_numeric_literal"
+translated = false
+text = "A postfix ':Type' is valid only on a numeric literal; use Type(expression) for an explicit conversion."
+placeholders = []
+
+[[message]]
+id = 19
+name = "parser.expected_type_after_new"
+translated = false
+text = "Expected a type after 'New'."
+placeholders = []
+
+[[message]]
+id = 20
+name = "parser.expected_parenthesis_after_constructor_arguments"
+translated = false
+text = "Expected ')' after constructor arguments."
+placeholders = []
+
+[[message]]
+id = 21
+name = "parser.expected_bracket_after_array_literal"
+translated = false
+text = "Expected ']' after array literal."
+placeholders = []
+
+[[message]]
+id = 22
+name = "parser.expected_parenthesis_after_cast"
+translated = false
+text = "Expected ')' after cast expression."
+placeholders = []
+
+[[message]]
+id = 23
+name = "parser.unexpected_token_after_source_mode"
+translated = false
+text = "Unexpected token '{token}' after '{mode}'."
+placeholders = [{ name = "token", type = "string" }, { name = "mode", type = "string" }]
+
+[[message]]
+id = 24
+name = "parser.visibility_only_inside_type"
+translated = false
+text = "'{visibility}' visibility is only valid inside a type."
+placeholders = [{ name = "visibility", type = "string" }]
+
+[[message]]
+id = 25
+name = "parser.visibility_not_valid_for_interface"
+translated = false
+text = "'{visibility}' visibility cannot be used with interfaces."
+placeholders = [{ name = "visibility", type = "string" }]
+
+[[message]]
+id = 26
+name = "parser.expected_enum_name"
+translated = false
+text = "Expected an enum name."
+placeholders = []
+
+[[message]]
+id = 27
+name = "parser.expected_enum_underlying_type"
+translated = false
+text = "Expected an enum underlying type after ':'."
+placeholders = []
+
+[[message]]
+id = 28
+name = "parser.expected_end_enum"
+translated = false
+text = "Expected 'End Enum' before end of file."
+placeholders = []
+
+[[message]]
+id = 29
+name = "parser.expected_enum_value_name"
+translated = false
+text = "Expected an enum value name."
+placeholders = []
+
+[[message]]
+id = 30
+name = "parser.expected_constant_expression_after_equals"
+translated = false
+text = "Expected a constant expression after '='."
+placeholders = []
+
+[[message]]
+id = 31
+name = "parser.expected_loop_label_name"
+translated = false
+text = "Expected a loop-label name after '#'."
+placeholders = []
+
+[[message]]
+id = 32
+name = "parser.unexpected_token_after_loop_label"
+translated = false
+text = "Unexpected token '{token}' after loop label."
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 33
+name = "parser.expected_end_if"
+translated = false
+text = "Expected 'End If' or 'EndIf'."
+placeholders = []
+
+[[message]]
+id = 34
+name = "parser.expected_end_while"
+translated = false
+text = "Expected 'Wend' or 'End While'."
+placeholders = []
+
+[[message]]
+id = 35
+name = "parser.expected_repeat_terminator"
+translated = false
+text = "Expected 'Until' or 'Forever'."
+placeholders = []
+
+[[message]]
+id = 36
+name = "parser.expected_next"
+translated = false
+text = "Expected 'Next'."
+placeholders = []
+
+[[message]]
+id = 37
+name = "parser.expected_for_loop_header"
+translated = false
+text = "Expected a For-loop header."
+placeholders = []
+
+[[message]]
+id = 38
+name = "parser.expected_equals_in_for_loop_header"
+translated = false
+text = "Expected '=' in For-loop header."
+placeholders = []
+
+[[message]]
+id = 39
+name = "parser.expected_local_loop_variable_before_equals"
+translated = false
+text = "Expected a local loop variable before '='."
+placeholders = []
+
+[[message]]
+id = 40
+name = "parser.expected_loop_target_before_equals"
+translated = false
+text = "Expected a loop target before '='."
+placeholders = []
+
+[[message]]
+id = 41
+name = "parser.expected_for_loop_clause"
+translated = false
+text = "Expected 'EachIn', 'To', or 'Until' in For-loop header."
+placeholders = []
+
+[[message]]
+id = 42
+name = "parser.each_in_must_follow_equals"
+translated = false
+text = "'EachIn' must immediately follow '='."
+placeholders = []
+
+[[message]]
+id = 43
+name = "parser.expected_collection_after_each_in"
+translated = false
+text = "Expected a collection after 'EachIn'."
+placeholders = []
+
+[[message]]
+id = 44
+name = "parser.multiple_for_bindings_require_each_in"
+translated = false
+text = "Multiple For-loop bindings are valid only with 'EachIn'."
+placeholders = []
+
+[[message]]
+id = 45
+name = "parser.expected_initial_value_before_range_clause"
+translated = false
+text = "Expected an initial value before '{clause}'."
+placeholders = [{ name = "clause", type = "string" }]
+
+[[message]]
+id = 46
+name = "parser.expected_range_limit_after_clause"
+translated = false
+text = "Expected a range limit after '{clause}'."
+placeholders = [{ name = "clause", type = "string" }]
+
+[[message]]
+id = 47
+name = "parser.expected_expression_after_step"
+translated = false
+text = "Expected an expression after 'Step'."
+placeholders = []
+
+[[message]]
+id = 48
+name = "parser.expected_local_loop_variable_between_commas"
+translated = false
+text = "Expected a local loop variable between commas."
+placeholders = []
+
+[[message]]
+id = 49
+name = "parser.case_cannot_follow_default"
+translated = false
+text = "A Case clause cannot follow Default."
+placeholders = []
+
+[[message]]
+id = 50
+name = "parser.select_allows_single_default"
+translated = false
+text = "A Select statement can contain only one Default clause."
+placeholders = []
+
+[[message]]
+id = 51
+name = "parser.expected_select_clause_or_end"
+translated = false
+text = "Expected 'Case', 'Default', or 'End Select'."
+placeholders = []
+
+[[message]]
+id = 52
+name = "parser.expected_end_select"
+translated = false
+text = "Expected 'End Select' or 'EndSelect'."
+placeholders = []
+
+[[message]]
+id = 53
+name = "parser.expected_conditional_select_clause"
+translated = false
+text = "Expected 'Case', 'Default', or a conditional directive inside Select."
+placeholders = []
+
+[[message]]
+id = 54
+name = "parser.expected_conditional_select_end"
+translated = false
+text = "Expected '?' to end conditional Select clauses."
+placeholders = []
+
+[[message]]
+id = 55
+name = "parser.try_rejects_header_expression"
+translated = false
+text = "Try does not accept a header expression."
+placeholders = []
+
+[[message]]
+id = 56
+name = "parser.catch_cannot_follow_finally"
+translated = false
+text = "A Catch clause cannot follow Finally."
+placeholders = []
+
+[[message]]
+id = 57
+name = "parser.try_allows_single_finally"
+translated = false
+text = "A Try statement can contain only one Finally clause."
+placeholders = []
+
+[[message]]
+id = 58
+name = "parser.try_requires_catch_or_finally"
+translated = false
+text = "A Try statement requires Catch or Finally."
+placeholders = []
+
+[[message]]
+id = 59
+name = "parser.expected_end_try"
+translated = false
+text = "Expected 'End Try' or 'EndTry'."
+placeholders = []
+
+[[message]]
+id = 60
+name = "parser.expected_caught_value_type"
+translated = false
+text = "Expected a caught value type."
+placeholders = []
+
+[[message]]
+id = 61
+name = "parser.expected_caught_value_name"
+translated = false
+text = "Expected a caught value name."
+placeholders = []
+
+[[message]]
+id = 62
+name = "parser.finally_rejects_header_expression"
+translated = false
+text = "Finally does not accept a header expression."
+placeholders = []
+
+[[message]]
+id = 63
+name = "parser.expected_local_resource_after_using"
+translated = false
+text = "Expected a Local resource declaration after Using."
+placeholders = []
+
+[[message]]
+id = 64
+name = "parser.using_requires_local_resources_before_do"
+translated = false
+text = "Using requires Local resource declarations before Do."
+placeholders = []
+
+[[message]]
+id = 65
+name = "parser.using_requires_local_resource"
+translated = false
+text = "Using requires at least one Local resource declaration."
+placeholders = []
+
+[[message]]
+id = 66
+name = "parser.expected_do_after_using_resources"
+translated = false
+text = "Expected 'Do' after Using resources."
+placeholders = []
+
+[[message]]
+id = 67
+name = "parser.expected_end_using"
+translated = false
+text = "Expected 'End Using' or 'EndUsing'."
+placeholders = []
+
+[[message]]
+id = 68
+name = "binding.yielding_routine_requires_iterator_return"
+translated = false
+text = "A routine containing Yield must return IIterator<T>, ICloseableIterator<T>, or a compatible iterator Interface."
+placeholders = []
+
+[[message]]
+id = 69
+name = "binding.array_dimension_requires_integral_type"
+translated = false
+text = "Type '{typeName}' is not valid for an array dimension; an integral type is required."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 70
+name = "binding.readonly_field_assignment_requires_constructor"
+translated = false
+text = "ReadOnly field '{fieldName}' can only be assigned in a constructor."
+placeholders = [{ name = "fieldName", type = "string" }]
+
+[[message]]
+id = 71
+name = "binding.yielding_routine_requires_bare_return"
+translated = false
+text = "A yielding routine can use only bare Return to complete the iterator."
+placeholders = []
+
+[[message]]
+id = 72
+name = "binding.void_routine_return_rejects_expression"
+translated = false
+text = "{routineKind} '{routineName}' does not return a value, so Return cannot include an expression."
+placeholders = [{ name = "routineKind", type = "string" }, { name = "routineName", type = "string" }]
+
+[[message]]
+id = 73
+name = "binding.module_entry_return_requires_value"
+translated = false
+text = "The module entry returns Int, so Return requires a value in SuperStrict code."
+placeholders = []
+
+[[message]]
+id = 74
+name = "binding.yield_requires_routine"
+translated = false
+text = "Yield is valid only inside a Function or Method."
+placeholders = []
+
+[[message]]
+id = 75
+name = "binding.release_requires_writable_integer"
+translated = false
+text = "Release requires a writable integer variable."
+placeholders = []
+
+[[message]]
+id = 76
+name = "binding.release_requires_integer"
+translated = false
+text = "Release requires an integer variable, not '{typeName}'."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 77
+name = "binding.select_allows_single_active_default"
+translated = false
+text = "A Select statement can contain only one active Default clause."
+placeholders = []
+
+[[message]]
+id = 78
+name = "binding.active_case_cannot_follow_default"
+translated = false
+text = "An active Case clause cannot follow Default."
+placeholders = []
+
+[[message]]
+id = 79
+name = "binding.cannot_infer_empty_array_local"
+translated = false
+text = "The type of local '{localName}' cannot be inferred from an empty array literal; write an explicit array type."
+placeholders = [{ name = "localName", type = "string" }]
+
+[[message]]
+id = 80
+name = "binding.cannot_infer_null_local"
+translated = false
+text = "The type of local '{localName}' cannot be inferred from Null; write an explicit reference type."
+placeholders = [{ name = "localName", type = "string" }]
+
+[[message]]
+id = 81
+name = "binding.inferred_local_initializer_has_no_value"
+translated = false
+text = "The initializer for inferred local '{localName}' does not produce a value."
+placeholders = [{ name = "localName", type = "string" }]
+
+[[message]]
+id = 82
+name = "binding.function_literal_requires_callable_target"
+translated = false
+text = "A Function literal requires an explicit callable target type."
+placeholders = []
+
+[[message]]
+id = 83
+name = "binding.qualified_super_requires_interface"
+translated = false
+text = "Qualified Super requires an Interface type."
+placeholders = []
+
+[[message]]
+id = 84
+name = "binding.interface_not_inherited_by_current_type"
+translated = false
+text = "Interface '{interfaceName}' is not inherited by the current type."
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 85
+name = "binding.bound_method_receiver_requires_reference_type"
+translated = false
+text = "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined."
+placeholders = []
+
+[[message]]
+id = 86
+name = "binding.name_not_resolved_as_value"
+translated = false
+text = "Name '{name}' could not be resolved as a value."
+placeholders = [{ name = "name", type = "string" }]
+
+[[message]]
+id = 87
+name = "binding.named_cast_requires_one_expression"
+translated = false
+text = "A named type cast requires exactly one expression."
+placeholders = []
+
+[[message]]
+id = 88
+name = "binding.explicit_conversion_not_available"
+translated = false
+text = "Type '{sourceType}' cannot be explicitly converted to '{targetType}'."
+placeholders = [{ name = "sourceType", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 89
+name = "binding.qualified_super_requires_default_interface_method"
+translated = false
+text = "Qualified Super can call only a Default Interface method body."
+placeholders = []
+
+[[message]]
+id = 90
+name = "binding.cannot_instantiate_abstract_type"
+translated = false
+text = "Cannot create an instance of abstract type '{typeName}'."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 91
+name = "binding.range_slicing_requires_one_dimensional_array"
+translated = false
+text = "Range slicing requires a one-dimensional heap Array."
+placeholders = []
+
+[[message]]
+id = 92
+name = "binding.range_slicing_rejects_static_array"
+translated = false
+text = "Range slicing requires a one-dimensional heap Array; StaticArray values are not supported."
+placeholders = []
+
+[[message]]
+id = 93
+name = "binding.type_has_no_applicable_indexing_operator"
+translated = false
+text = "Type '{typeName}' does not provide an applicable indexing operator."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 94
+name = "binding.index_expression_requires_uint_conversion"
+translated = false
+text = "Type '{typeName}' is not valid for an index expression; conversion to UInt is required."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 95
+name = "binding.slice_bound_requires_int_conversion"
+translated = false
+text = "Type '{typeName}' is not valid for a slice bound; conversion to Int is required."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 96
+name = "binding.type_does_not_support_slicing"
+translated = false
+text = "Type '{typeName}' does not support slicing."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 97
+name = "binding.range_requires_brl_range"
+translated = false
+text = "Range expression syntax requires Import BRL.Range."
+placeholders = []
+
+[[message]]
+id = 98
+name = "binding.range_endpoint_requires_int_conversion"
+translated = false
+text = "Type '{typeName}' is not valid for a Range endpoint; conversion to Int is required."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 99
+name = "binding.bound_method_reference_ambiguous_for_target"
+translated = false
+text = "Bound Method reference is ambiguous for target type '{targetType}'."
+placeholders = [{ name = "targetType", type = "string" }]
+
+[[message]]
+id = 100
+name = "binding.function_literal_requires_super_strict"
+translated = false
+text = "Function literals require SuperStrict mode."
+placeholders = []
+
+[[message]]
+id = 101
+name = "binding.function_literal_parameter_count_mismatch"
+translated = false
+text = "Function literal has {actualCount} parameters but target type '{targetType}' requires {requiredCount}."
+placeholders = [{ name = "actualCount", type = "integer" }, { name = "targetType", type = "string" }, { name = "requiredCount", type = "integer" }]
+
+[[message]]
+id = 102
+name = "binding.function_literal_parameter_type_mismatch"
+translated = false
+text = "Function literal parameter '{parameterName}' has type '{actualType}' but target requires '{targetType}'."
+placeholders = [{ name = "parameterName", type = "string" }, { name = "actualType", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 103
+name = "binding.function_literal_parameter_requires_var_mode"
+translated = false
+text = "Function literal parameter '{parameterName}' must match the target's Var passing mode."
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 104
+name = "binding.function_literal_parameters_reject_defaults"
+translated = false
+text = "Function literal parameters cannot declare default values."
+placeholders = []
+
+[[message]]
+id = 105
+name = "binding.function_literal_return_type_mismatch"
+translated = false
+text = "Function literal return type '{actualType}' does not match target return type '{targetType}'."
+placeholders = [{ name = "actualType", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 106
+name = "binding.thin_function_literal_cannot_capture"
+translated = false
+text = "Thin Function literal cannot capture '{name}'; captured lexical state requires managed Closure support."
+placeholders = [{ name = "name", type = "string" }]
+
+[[message]]
+id = 107
+name = "binding.managed_closure_cannot_capture"
+translated = false
+text = "Managed Closure cannot capture '{name}' in this phase: {reason}."
+placeholders = [{ name = "name", type = "string" }, { name = "reason", type = "string" }]
+
+[[message]]
+id = 108
+name = "binding.member_not_resolved"
+translated = false
+text = "Member '{memberName}' could not be resolved."
+placeholders = [{ name = "memberName", type = "string" }]
+
+[[message]]
+id = 109
+name = "binding.generic_routine_reference_has_no_specialization"
+translated = false
+text = "Generic routine reference '{referenceName}' has no specialization applicable to the supplied type arguments."
+placeholders = [{ name = "referenceName", type = "string" }]
+
+[[message]]
+id = 110
+name = "binding.generic_routine_reference_is_ambiguous"
+translated = false
+text = "Generic routine reference '{referenceName}' is ambiguous between matching overloads."
+placeholders = [{ name = "referenceName", type = "string" }]
+
+[[message]]
+id = 111
+name = "binding.default_constructor_inaccessible"
+translated = false
+text = "The default constructor for '{typeName}' is {visibility} and cannot be called from this scope."
+placeholders = [{ name = "typeName", type = "string" }, { name = "visibility", type = "string" }]
+
+[[message]]
+id = 112
+name = "binding.implicit_conversion_not_available"
+translated = false
+text = "Type '{sourceType}' cannot be implicitly converted to '{targetType}' in {context}."
+placeholders = [{ name = "sourceType", type = "string" }, { name = "targetType", type = "string" }, { name = "context", type = "string" }]
+
+[[message]]
+id = 113
+name = "binding.cannot_call_abstract_function"
+translated = false
+text = "Cannot call abstract Function {signature}."
+placeholders = [{ name = "signature", type = "string" }]
+
+[[message]]
+id = 114
+name = "binding.routine_used_as_value"
+translated = false
+text = "{routineKind} '{routineName}' is being used as a value rather than called.\nAdd parentheses to call it: {invocation}()"
+placeholders = [{ name = "routineKind", type = "string" }, { name = "routineName", type = "string" }, { name = "invocation", type = "string" }]
+
+[[message]]
+id = 115
+name = "binding.symbol_inaccessible_from_scope"
+translated = false
+text = "{category} '{qualifiedName}' is {visibility} and cannot be accessed from this scope."
+placeholders = [{ name = "category", type = "string" }, { name = "qualifiedName", type = "string" }, { name = "visibility", type = "string" }]
+
+[[message]]
+id = 116
+name = "binding.generic_type_qualifier_not_resolved"
+translated = false
+text = "Generic type qualifier '{qualifier}' could not be resolved as a type."
+placeholders = [{ name = "qualifier", type = "string" }]
+
+[[message]]
+id = 117
+name = "binding.generic_type_argument_count_mismatch"
+translated = false
+text = "Generic type '{typeName}' expects {expectedCount} type argument(s), but {suppliedCount} were supplied."
+placeholders = [{ name = "typeName", type = "string" }, { name = "expectedCount", type = "integer" }, { name = "suppliedCount", type = "integer" }]
+
+[[message]]
+id = 118
+name = "binding.asc_requires_string_conversion"
+translated = false
+text = "Type '{typeName}' cannot be converted to 'String' for Asc."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 119
+name = "binding.chr_requires_int_conversion"
+translated = false
+text = "Type '{typeName}' cannot be converted to 'Int' for Chr."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 120
+name = "binding.stack_alloc_requires_size_t_conversion"
+translated = false
+text = "Type '{typeName}' cannot be converted to 'Size_T' for StackAlloc."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 121
+name = "binding.var_ptr_requires_writable_storage"
+translated = false
+text = "VarPtr requires writable, addressable storage."
+placeholders = []
+
+[[message]]
+id = 122
+name = "binding.standard_range_missing_bound_resolution"
+translated = false
+text = "The standard Range type does not provide its required bound-resolution methods."
+placeholders = []
+
+[[message]]
+id = 123
+name = "binding.constructor_delegation_requires_new_syntax"
+translated = false
+text = "A constructor can only be delegated with New(...) or Super.New(...)."
+placeholders = []
+
+[[message]]
+id = 124
+name = "binding.constructor_delegation_requires_new_method"
+translated = false
+text = "Constructor delegation is only valid inside a New method."
+placeholders = []
+
+[[message]]
+id = 125
+name = "binding.constructor_delegation_must_be_first"
+translated = false
+text = "Constructor delegation must be the first statement in a New method."
+placeholders = []
+
+[[message]]
+id = 126
+name = "binding.constructor_cannot_delegate_to_itself"
+translated = false
+text = "A constructor cannot delegate directly to itself."
+placeholders = []
+
+[[message]]
+id = 127
+name = "binding.iteration_requires_supported_source"
+translated = false
+text = "{operationName} requires an Array, String, StaticArray, IIterable, IIterator, or suitable ObjectEnumerator method."
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 128
+name = "binding.iterator_factory_return_type_unusable"
+translated = false
+text = "{operationName} iterator factory does not return a usable iterator type."
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 129
+name = "binding.iterator_missing_required_methods"
+translated = false
+text = "{operationName} iterator does not provide the required advance and current-value methods."
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 130
+name = "binding.iterator_method_returns_invalid"
+translated = false
+text = "{operationName} iterator advance must return an integral value and its current-value method must return a value."
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 131
+name = "binding.each_in_deconstruction_requires_two_bindings"
+translated = false
+text = "EachIn deconstruction currently requires exactly two loop bindings for BRL.Blitz.IDeconstruct2<A, B>."
+placeholders = []
+
+[[message]]
+id = 132
+name = "binding.each_in_element_requires_deconstruct2"
+translated = false
+text = "EachIn element type '{elementType}' must implement BRL.Blitz.IDeconstruct2<A, B> for two loop bindings."
+placeholders = [{ name = "elementType", type = "string" }]
+
+[[message]]
+id = 133
+name = "binding.deconstruct2_requires_method_contract"
+translated = false
+text = "BRL.Blitz.IDeconstruct2<A, B> must provide Method Deconstruct(first:A Var, second:B Var)."
+placeholders = []
+
+[[message]]
+id = 134
+name = "binding.each_in_deconstruction_binding_type_mismatch"
+translated = false
+text = "EachIn binding '{bindingName}' has type '{bindingType}', but IDeconstruct2 component {componentIndex} has type '{componentType}'."
+placeholders = [{ name = "bindingName", type = "string" }, { name = "bindingType", type = "string" }, { name = "componentIndex", type = "integer" }, { name = "componentType", type = "string" }]
+
+[[message]]
+id = 135
+name = "binding.each_in_element_conversion_not_available"
+translated = false
+text = "EachIn element type '{elementType}' cannot be converted to {targetDescription} of type '{targetType}'."
+placeholders = [{ name = "elementType", type = "string" }, { name = "targetDescription", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 136
+name = "data.duplicate_label"
+translated = false
+text = "Duplicate data label '{labelName}'."
+placeholders = [{ name = "labelName", type = "string" }]
+
+[[message]]
+id = 137
+name = "data.item_requires_constant_numeric_or_string"
+translated = false
+text = "Data items must be constant numeric or string expressions."
+placeholders = []
+
+[[message]]
+id = 138
+name = "data.item_missing_between_separators"
+translated = false
+text = "A data item is missing between separators."
+placeholders = []
+
+[[message]]
+id = 139
+name = "data.restore_requires_label_name"
+translated = false
+text = "RestoreData requires a data-label name."
+placeholders = []
+
+[[message]]
+id = 140
+name = "data.label_not_found"
+translated = false
+text = "Data label '{labelName}' could not be found."
+placeholders = [{ name = "labelName", type = "string" }]
+
+[[message]]
+id = 141
+name = "data.read_target_requires_writable_storage"
+translated = false
+text = "ReadData target must be a writable variable, field, or indexed element."
+placeholders = []
+
+[[message]]
+id = 142
+name = "data.read_target_type_unsupported"
+translated = false
+text = "ReadData does not support target type '{typeName}'."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 143
+name = "data.read_target_missing_between_separators"
+translated = false
+text = "A ReadData target is missing between separators."
+placeholders = []
+
+[[message]]
+id = 144
+name = "constant.definition_cycle"
+translated = false
+text = "Constant definition cycle involving '{constantName}'."
+placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 145
+name = "constant.requires_initializer"
+translated = false
+text = "Const '{constantName}' requires a constant initializer."
+placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 146
+name = "constant.imported_enum_value_unusable"
+translated = false
+text = "Imported enum value '{valueName}' has no usable integral constant."
+placeholders = [{ name = "valueName", type = "string" }]
+
+[[message]]
+id = 147
+name = "constant.enum_value_out_of_range"
+translated = false
+text = "Enum value '{valueName}' is outside the range of '{underlyingType}'."
+placeholders = [{ name = "valueName", type = "string" }, { name = "underlyingType", type = "string" }]
+
+[[message]]
+id = 148
+name = "constant.enum_value_requires_integral_expression"
+translated = false
+text = "Enum value '{valueName}' requires an integral constant expression."
+placeholders = [{ name = "valueName", type = "string" }]
+
+[[message]]
+id = 149
+name = "constant.value_out_of_range"
+translated = false
+text = "Constant value is outside the range of '{targetType}'."
+placeholders = [{ name = "targetType", type = "string" }]
+
+[[message]]
+id = 150
+name = "compile_time.enum_constant_value_invalid"
+translated = false
+text = "The value {value} is not valid for Enum '{enumType}'."
+placeholders = [{ name = "value", type = "integer" }, { name = "enumType", type = "string" }]
+
+[[message]]
+id = 151
+name = "compile_time.static_array_element_type_unsupported"
+translated = false
+text = "StaticArray element type '{elementType}' must be numeric, an Enum, a Pointer, a managed reference, or a Struct."
+placeholders = [{ name = "elementType", type = "string" }]
+
+[[message]]
+id = 152
+name = "compile_time.static_array_length_requires_integral_constant"
+translated = false
+text = "StaticArray length must be an integral constant."
+placeholders = []
+
+[[message]]
+id = 153
+name = "compile_time.static_array_length_out_of_range"
+translated = false
+text = "StaticArray length must be between 1 and 2147483647."
+placeholders = []
+
+[[message]]
+id = 154
+name = "compile_time.parameter_default_requires_constant"
+translated = false
+text = "Default value for parameter '{parameterName}' must be constant."
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 155
+name = "compile_time.parameter_constant_default_incompatible"
+translated = false
+text = "Constant default for parameter '{parameterName}' is incompatible with '{parameterType}' in routine '{routineName}' at parameter {parameterIndex} (declared type '{declaredType}')."
+placeholders = [{ name = "parameterName", type = "string" }, { name = "parameterType", type = "string" }, { name = "routineName", type = "string" }, { name = "parameterIndex", type = "integer" }, { name = "declaredType", type = "string" }]
+
+[[message]]
+id = 156
+name = "compile_time.semantic_parameter_missing"
+translated = false
+text = "Internal semantic parameter mismatch in routine '{routineName}': syntax parameter {parameterIndex} ('{syntaxName}') has no semantic parameter."
+placeholders = [{ name = "routineName", type = "string" }, { name = "parameterIndex", type = "integer" }, { name = "syntaxName", type = "string" }]
+
+[[message]]
+id = 157
+name = "compile_time.semantic_parameter_identity_mismatch"
+translated = false
+text = "Internal semantic parameter mismatch in routine '{routineName}' at parameter {parameterIndex}: syntax '{syntaxName}' (declared type '{declaredType}'), semantic symbol '{semanticName}' (type '{semanticType}')."
+placeholders = [{ name = "routineName", type = "string" }, { name = "parameterIndex", type = "integer" }, { name = "syntaxName", type = "string" }, { name = "declaredType", type = "string" }, { name = "semanticName", type = "string" }, { name = "semanticType", type = "string" }]
+
+[[message]]
+id = 158
+name = "control_flow.implicit_default_return_reachable"
+translated = false
+text = "Routine '{routineName}' can reach its implicit default return."
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 159
+name = "control_flow.loop_control_requires_loop"
+translated = false
+text = "{operationName} can be used only inside a loop."
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 160
+name = "control_flow.loop_control_requires_label_name"
+translated = false
+text = "{operationName} requires a loop-label name."
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 161
+name = "control_flow.loop_label_not_found"
+translated = false
+text = "Loop label '{labelName}' could not be found for {operationName}."
+placeholders = [{ name = "labelName", type = "string" }, { name = "operationName", type = "string" }]
+
+[[message]]
+id = 162
+name = "control_flow.unreachable_statement"
+translated = false
+text = "Unreachable statement."
+placeholders = []
+
+[[message]]
+id = 163
+name = "inheritance.public_contract_exposes_hidden_type"
+translated = false
+text = "Public {publicKind} '{publicName}' exposes {visibility} {hiddenKind} '{hiddenName}' through its {role}."
+placeholders = [{ name = "publicKind", type = "string" }, { name = "publicName", type = "string" }, { name = "visibility", type = "string" }, { name = "hiddenKind", type = "string" }, { name = "hiddenName", type = "string" }, { name = "role", type = "string" }]
+
+[[message]]
+id = 164
+name = "inheritance.override_method_not_found"
+translated = false
+text = "Method '{methodName}' is marked Override but does not override a method from a base type."
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 165
+name = "inheritance.override_reduces_visibility"
+translated = false
+text = "Method '{methodName}' cannot reduce inherited visibility from '{inheritedVisibility}' to '{declaredVisibility}'."
+placeholders = [{ name = "methodName", type = "string" }, { name = "inheritedVisibility", type = "string" }, { name = "declaredVisibility", type = "string" }]
+
+[[message]]
+id = 166
+name = "inheritance.default_requires_interface_instance_method"
+translated = false
+text = "Default is valid only on an instance Method declared by an Interface."
+placeholders = []
+
+[[message]]
+id = 167
+name = "inheritance.interface_default_cannot_be_abstract"
+translated = false
+text = "Interface method '{methodName}' cannot be both Default and Abstract."
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 168
+name = "inheritance.generic_constraint_parameter_undeclared"
+translated = false
+text = "Generic constraint refers to undeclared type parameter '{parameterName}'."
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 169
+name = "inheritance.generic_constraint_duplicate_clause"
+translated = false
+text = "Type parameter '{parameterName}' has more than one constraint clause."
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 170
+name = "inheritance.generic_constraint_bound_invalid"
+translated = false
+text = "Generic constraint bound '{boundType}' is not a declared reference type or type parameter."
+placeholders = [{ name = "boundType", type = "string" }]
+
+[[message]]
+id = 171
+name = "inheritance.struct_cannot_inherit"
+translated = false
+text = "Struct '{structName}' cannot extend or implement another type."
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 172
+name = "inheritance.type_allows_single_base"
+translated = false
+text = "Type '{typeName}' can extend only one base type."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 173
+name = "inheritance.interface_base_requires_interface"
+translated = false
+text = "Interface '{interfaceName}' can extend only interfaces."
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 174
+name = "inheritance.external_managed_interface_mismatch"
+translated = false
+text = "External and managed interfaces cannot extend one another."
+placeholders = []
+
+[[message]]
+id = 175
+name = "inheritance.type_base_requires_reference_type"
+translated = false
+text = "Type '{typeName}' can extend only another reference type."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 176
+name = "inheritance.final_type_cannot_be_extended"
+translated = false
+text = "Type '{typeName}' is Final and cannot be extended."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 177
+name = "inheritance.interface_cannot_use_implements"
+translated = false
+text = "Interface '{interfaceName}' cannot use Implements; extend interfaces instead."
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 178
+name = "inheritance.implements_target_not_interface"
+translated = false
+text = "'{targetName}' is not an interface."
+placeholders = [{ name = "targetName", type = "string" }]
+
+[[message]]
+id = 179
+name = "inheritance.interface_selector_return_types_incompatible"
+translated = false
+text = "Type '{typeName}' inherits Interface method selector '{methodName}' with incompatible return types '{firstReturnType}' and '{secondReturnType}'."
+placeholders = [{ name = "typeName", type = "string" }, { name = "methodName", type = "string" }, { name = "firstReturnType", type = "string" }, { name = "secondReturnType", type = "string" }]
+
+[[message]]
+id = 180
+name = "inheritance.unrelated_interface_defaults"
+translated = false
+text = "Type '{typeName}' inherits unrelated default Interface methods {origins}; declare an overriding Method to resolve the conflict."
+placeholders = [{ name = "typeName", type = "string" }, { name = "origins", type = "string" }]
+
+[[message]]
+id = 181
+name = "inheritance.interface_listed_more_than_once"
+translated = false
+text = "Interface '{interfaceType}' is listed more than once."
+placeholders = [{ name = "interfaceType", type = "string" }]
+
+[[message]]
+id = 182
+name = "inheritance.cycle"
+translated = false
+text = "Inheritance cycle involving '{typeName}' and '{relatedTypeName}'."
+placeholders = [{ name = "typeName", type = "string" }, { name = "relatedTypeName", type = "string" }]
+
+[[message]]
+id = 183
+name = "inheritance.type_argument_constraint_unsatisfied"
+translated = false
+text = "Type argument '{argumentType}' does not satisfy constraint '{requiredType}' for '{parameterName}'."
+placeholders = [{ name = "argumentType", type = "string" }, { name = "requiredType", type = "string" }, { name = "parameterName", type = "string" }]
+
+[[message]]
+id = 184
+name = "type_resolution.symbol_requires_explicit_type"
+translated = false
+text = "{symbolKind} '{symbolName}' requires an explicit type in SuperStrict code."
+placeholders = [{ name = "symbolKind", type = "string" }, { name = "symbolName", type = "string" }]
+
+[[message]]
+id = 185
+name = "type_resolution.calling_convention_unrecognized"
+translated = false
+text = "Unrecognized calling convention '{callingConvention}'."
+placeholders = [{ name = "callingConvention", type = "string" }]
+
+[[message]]
+id = 186
+name = "type_resolution.callable_parameter_requires_explicit_type"
+translated = false
+text = "Callable parameter '{parameterName}' requires an explicit type in SuperStrict code."
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 187
+name = "type_resolution.routine_constraint_parameter_undeclared"
+translated = false
+text = "Generic constraint refers to undeclared routine type parameter '{parameterName}'."
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 188
+name = "type_resolution.closure_requires_superstrict"
+translated = false
+text = "Closure types require SuperStrict mode."
+placeholders = []
+
+[[message]]
+id = 189
+name = "type_resolution.closure_requires_explicit_signature"
+translated = false
+text = "The compiler-intrinsic Closure type requires an explicit signature, for example Closure<Int(value:Int)> or Closure<()>."
+placeholders = []
+
+[[message]]
+id = 190
+name = "type_resolution.closure_parameter_requires_name_and_type"
+translated = false
+text = "Closure parameters require an explicit name and type."
+placeholders = []
+
+[[message]]
+id = 191
+name = "type_resolution.closure_signature_rejects_default"
+translated = false
+text = "Closure signatures cannot declare default parameter values."
+placeholders = []
+
+[[message]]
+id = 192
+name = "type_resolution.closure_signature_rejects_native_calling_convention"
+translated = false
+text = "Closure signatures cannot specify a native calling convention."
+placeholders = []
+
+[[message]]
+id = 193
+name = "type_resolution.ambiguous_type_name"
+translated = false
+text = "Type name '{typeName}' is ambiguous. Candidates:{candidates}"
+placeholders = [{ name = "typeName", type = "string" }, { name = "candidates", type = "string" }]
+
+[[message]]
+id = 194
+name = "type_resolution.type_parameter_rejects_type_arguments"
+translated = false
+text = "Type parameter '{parameterName}' cannot have type arguments."
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 195
+name = "type_resolution.type_not_resolved"
+translated = false
+text = "Type '{typeName}' could not be resolved in the available scopes."
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 196
+name = "snapshot.dependencies_unresolved"
+translated = false
+text = "The compiler could not resolve source and module dependencies."
+placeholders = []
+
+[[message]]
+id = 197
+name = "snapshot.implicit_runtime_interface_unavailable"
+translated = false
+text = "Compiler interface for implicit runtime module 'brl.blitz' is unavailable."
+placeholders = []
+
+[[message]]
+id = 198
+name = "snapshot.implicit_application_interface_unavailable"
+translated = false
+text = "Compiler interface for implicit application module '{moduleName}' is unavailable."
+placeholders = [{ name = "moduleName", type = "string" }]
+
+[[message]]
+id = 199
+name = "snapshot.core_interface_missing"
+translated = false
+text = "The core class interface is missing for target '{targetPlatform}'."
+placeholders = [{ name = "targetPlatform", type = "string" }]
+
+[[message]]
+id = 200
+name = "snapshot.include_cycle"
+translated = false
+text = "Include cycle reaches '{includedPath}'."
+placeholders = [{ name = "includedPath", type = "string" }]
+
+[[message]]
+id = 201
+name = "snapshot.included_source_not_found"
+translated = false
+text = "Included source '{sourcePath}' could not be found."
+placeholders = [{ name = "sourcePath", type = "string" }]
+
+[[message]]
+id = 202
+name = "snapshot.compiler_interface_unavailable"
+translated = false
+text = "Compiler interface for '{targetName}' is unavailable."
+placeholders = [{ name = "targetName", type = "string" }]
+
+[[message]]
+id = 203
+name = "snapshot.generic_template_format_unsupported"
+translated = false
+text = "Generic template reference for '{recordName}' uses unsupported format {formatVersion}."
+placeholders = [{ name = "recordName", type = "string" }, { name = "formatVersion", type = "integer" }]
+
+[[message]]
+id = 204
+name = "snapshot.generic_template_artifact_unavailable"
+translated = false
+text = "Generic template artifact '{artifactReference}' for '{recordName}' is unavailable from the compiler interface."
+placeholders = [{ name = "artifactReference", type = "string" }, { name = "recordName", type = "string" }]
+
+[[message]]
+id = 205
+name = "snapshot.generic_template_artifact_invalid"
+translated = false
+text = "Generic template artifact '{artifactPath}' for '{recordName}' is invalid.{detail}"
+placeholders = [{ name = "artifactPath", type = "string" }, { name = "recordName", type = "string" }, { name = "detail", type = "string" }]
+
+[[message]]
+id = 206
+name = "snapshot.generic_template_identity_mismatch"
+translated = false
+text = "Generic template artifact identity '{artifactIdentity}' does not match interface identity '{interfaceIdentity}'."
+placeholders = [{ name = "artifactIdentity", type = "string" }, { name = "interfaceIdentity", type = "string" }]
+
+[[message]]
+id = 207
+name = "snapshot.generic_template_language_revision_mismatch"
+translated = false
+text = "Generic template artifact language revision does not match its interface reference."
+placeholders = []
+
+[[message]]
+id = 208
+name = "lexer.numeric_exponent_requires_digit"
+translated = false
+text = "A numeric exponent requires at least one digit."
+placeholders = []
+
+[[message]]
+id = 209
+name = "lexer.unterminated_multiline_string"
+translated = false
+text = "Unterminated multiline string literal."
+placeholders = []
+
+[[message]]
+id = 210
+name = "lexer.unterminated_string"
+translated = false
+text = "Unterminated string literal."
+placeholders = []
+
+[[message]]
+id = 211
+name = "lexer.bad_string_escape"
+translated = false
+text = "Bad escape sequence in string literal."
+placeholders = []
+
+[[message]]
+id = 212
+name = "lexer.unterminated_rem_comment"
+translated = false
+text = "Unterminated Rem comment."
+placeholders = []
+
+[[message]]
+id = 213
+name = "parser.expected_conditional_region_end"
+translated = false
+text = "Expected '?' to end conditional region."
+placeholders = []
+
+[[message]]
+id = 214
+name = "parser.inferred_local_syntax_required"
+translated = false
+text = "The ':=' syntax is only valid in an inferred Local declaration; use '=' for assignment."
+placeholders = []
+
+[[message]]
+id = 215
+name = "parser.expected_routine_name"
+translated = false
+text = "Expected a routine name."
+placeholders = []
+
+[[message]]
+id = 216
+name = "parser.interface_method_rejects_body"
+translated = false
+text = "Interface method declarations cannot contain a body."
+placeholders = []
+
+[[message]]
+id = 217
+name = "parser.expected_type_name"
+translated = false
+text = "Expected a type name."
+placeholders = []
+
+[[message]]
+id = 218
+name = "parser.expected_block_end_before_eof"
+translated = false
+text = "Expected 'End {blockKind}' before end of file."
+placeholders = [{ name = "blockKind", type = "string" }]
+
+[[message]]
+id = 219
+name = "parser.mismatched_block_end"
+translated = false
+text = "Expected 'End {expectedKind}' but found '{terminator}'."
+placeholders = [{ name = "expectedKind", type = "string" }, { name = "terminator", type = "string" }]
+
+[[message]]
+id = 220
+name = "parser.expected_import_target"
+translated = false
+text = "Expected a module name or file path after '{keyword}'."
+placeholders = [{ name = "keyword", type = "string" }]
+
+[[message]]
+id = 221
+name = "parser.unexpected_token_after_import_path"
+translated = false
+text = "Unexpected token '{token}' after import file path."
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 222
+name = "parser.expected_include_path"
+translated = false
+text = "Expected a quoted source path after 'Include'."
+placeholders = []
+
+[[message]]
+id = 223
+name = "parser.unexpected_token_after_include_path"
+translated = false
+text = "Unexpected token '{token}' after include path."
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 224
+name = "parser.expected_expression_after_yield_from"
+translated = false
+text = "Expected an expression after 'Yield From'."
+placeholders = []
+
+[[message]]
+id = 225
+name = "parser.expected_expression_after_yield"
+translated = false
+text = "Expected an expression after 'Yield'."
+placeholders = []
+
+[[message]]
+id = 226
+name = "parser.expected_expression_after_throw"
+translated = false
+text = "Expected an expression after 'Throw'."
+placeholders = []
+
+[[message]]
+id = 227
+name = "parser.expected_integer_variable_after_release"
+translated = false
+text = "Expected an integer variable after 'Release'."
+placeholders = []
+
+[[message]]
+id = 228
+name = "parser.defdata_requires_value"
+translated = false
+text = "DefData requires at least one value."
+placeholders = []
+
+[[message]]
+id = 229
+name = "parser.restoredata_requires_label"
+translated = false
+text = "RestoreData requires a data label."
+placeholders = []
+
+[[message]]
+id = 230
+name = "parser.expected_condition_after_assert"
+translated = false
+text = "Expected a condition after 'Assert'."
+placeholders = []
+
+[[message]]
+id = 231
+name = "parser.expected_assert_message"
+translated = false
+text = "Expected a message after '{separator}'."
+placeholders = [{ name = "separator", type = "string" }]
+
+[[message]]
+id = 232
+name = "parser.inference_requires_local"
+translated = false
+text = "Type inference with ':=' is only valid for Local declarations."
+placeholders = []
+
+[[message]]
+id = 233
+name = "parser.inferred_local_requires_single_declarator"
+translated = false
+text = "An inferred Local declaration must contain exactly one declarator."
+placeholders = []
+
+[[message]]
+id = 234
+name = "parser.expected_variable_name"
+translated = false
+text = "Expected a variable name."
+placeholders = []
+
+[[message]]
+id = 235
+name = "parser.inferred_local_requires_initializer"
+translated = false
+text = "An inferred Local declaration requires an initializer after ':='."
+placeholders = []
+
+[[message]]
+id = 236
+name = "parser.static_array_requires_bracketed_length"
+translated = false
+text = "StaticArray declaration requires a fixed length in brackets."
+placeholders = []
+
+[[message]]
+id = 237
+name = "parser.static_array_requires_length_expression"
+translated = false
+text = "StaticArray declaration requires a fixed length expression."
+placeholders = []
+
+[[message]]
+id = 238
+name = "parser.expected_case_value_after_comma"
+translated = false
+text = "Expected a Case value after ','."
+placeholders = []
+
+[[message]]
+id = 239
+name = "parser.expected_case_value"
+translated = false
+text = "Expected a Case value."
+placeholders = []
+
+[[message]]
+id = 240
+name = "parser.expected_parenthesis_in_function_literal"
+translated = false
+text = "Expected '(' in Function literal."
+placeholders = []
+
+[[message]]
+id = 241
+name = "parser.expected_close_parenthesis_in_function_literal"
+translated = false
+text = "Expected ')' in Function literal."
+placeholders = []
+
+[[message]]
+id = 242
+name = "parser.unexpected_token_after_function_literal_parameters"
+translated = false
+text = "Unexpected token '{token}' after Function literal parameters."
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 243
+name = "signature.expected_generic_parameter_end"
+translated = false
+text = "Expected '>' after routine generic parameters."
+placeholders = []
+
+[[message]]
+id = 244
+name = "signature.expected_routine_parenthesis"
+translated = false
+text = "Expected '(' in routine declaration."
+placeholders = []
+
+[[message]]
+id = 245
+name = "signature.expected_routine_close_parenthesis"
+translated = false
+text = "Expected ')' in routine declaration."
+placeholders = []
+
+[[message]]
+id = 246
+name = "signature.expected_parameter_name"
+translated = false
+text = "Expected a parameter name."
+placeholders = []
+
+[[message]]
+id = 247
+name = "signature.static_array_parameter_requires_bracketed_length"
+translated = false
+text = "StaticArray parameter requires a fixed length in brackets."
+placeholders = []
+
+[[message]]
+id = 248
+name = "signature.static_array_parameter_requires_length_expression"
+translated = false
+text = "StaticArray parameter requires a fixed length expression."
+placeholders = []
+
+[[message]]
+id = 249
+name = "signature.expected_callable_close_parenthesis"
+translated = false
+text = "Expected ')' in callable type."
+placeholders = []
+
+[[message]]
+id = 250
+name = "declaration.duplicate"
+translated = false
+text = "Duplicate {symbolKind} declaration '{symbolName}'."
+placeholders = [{ name = "symbolKind", type = "string" }, { name = "symbolName", type = "string" }]
+
+[[message]]
+id = 251
+name = "declaration.nomangle_requires_function"
+translated = false
+text = "Only functions can specify NoMangle."
+placeholders = []
+
+[[message]]
+id = 252
+name = "declaration.nomangle_overload_conflict"
+translated = false
+text = "NoMangle routine '{routineName}' conflicts with another overload."
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 253
+name = "metadata.expected_key"
+translated = false
+text = "Expected a metadata key."
+placeholders = []
+
+[[message]]
+id = 254
+name = "metadata.expected_literal_value"
+translated = false
+text = "Expected a literal metadata value after '='."
+placeholders = []
+
+[[message]]
+id = 255
+name = "metadata.duplicate_key"
+translated = false
+text = "Duplicate metadata key '{key}'."
+placeholders = [{ name = "key", type = "string" }]
+
+[[message]]
+id = 256
+name = "metadata.expected_close_brace"
+translated = false
+text = "Expected '}}' after declaration metadata."
+placeholders = []
+
+[[message]]
+id = 257
+name = "interface.unterminated_record"
+translated = false
+text = "Unterminated {recordKind} record '{recordName}'."
+placeholders = [{ name = "recordKind", type = "string" }, { name = "recordName", type = "string" }]
+
+[[message]]
+id = 258
+name = "interface.generic_template_requires_declaration"
+translated = false
+text = "Generic template reference does not follow a Type, Function, or Method record."
+placeholders = []
+
+[[message]]
+id = 259
+name = "interface.generic_template_reference_invalid"
+translated = false
+text = "Generic template reference requires format, identity, revision, artifact and language revision."
+placeholders = []
+
+[[message]]
+id = 260
+name = "binding.dynamic_new_instance_deprecated"
+translated = false
+text = "Use of New <Object instance> is deprecated, and support will be removed in a future update."
+placeholders = []
+
+[[message]]
+id = 261
+name = "binding.call_ambiguous"
+translated = false
+text = "Call '{callName}' is ambiguous between applicable overloads.{candidates}"
+placeholders = [{ name = "callName", type = "string" }, { name = "candidates", type = "string" }]
+
+[[message]]
+id = 262
+name = "binding.no_applicable_overload"
+translated = false
+text = "No applicable overload was found for call '{callName}'.~nArgument types: ({argumentTypes}){candidates}"
+placeholders = [{ name = "callName", type = "string" }, { name = "argumentTypes", type = "string" }, { name = "candidates", type = "string" }]
+
+[[message]]
+id = 263
+name = "binding.variable_assigned_to_itself"
+translated = false
+text = "Variable '{variableName}' is assigned to itself.{suggestion}"
+placeholders = [{ name = "variableName", type = "string" }, { name = "suggestion", type = "string" }]

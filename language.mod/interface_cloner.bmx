@@ -45,6 +45,7 @@ Type TInterfaceFileCloner
 
 	Function CloneDiagnostic:TInterfaceDiagnostic(source:TInterfaceDiagnostic)
 		If Not source Then Return Null
+		If source.localisedMessage Then Return TInterfaceDiagnostic.Create(source.code, source.localisedMessage, source.line)
 		Return TInterfaceDiagnostic.Create(source.code, source.message, source.line)
 	End Function
 

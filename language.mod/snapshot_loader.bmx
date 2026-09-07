@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.Map
 Import BRL.FileSystem
 
+Import "language_messages.generated.bmx"
 Import "blitzmax_parser.bmx"
 Import "conditional_evaluator.bmx"
 Import "interface_documentation.bmx"
@@ -44,7 +45,7 @@ Type TCompilationSnapshotBuilder
 		builder.result.options = builder.options
 
 		If Not resolver Then
-			builder.AddDiagnostic("BMX4000", "The compiler could not resolve source and module dependencies.", rootPath)
+			builder.AddDiagnostic("BMX4000", TLanguageMessages.SnapshotDependenciesUnresolved(), rootPath)
 			builder.result.succeeded = False
 			Return builder.result
 		End If
@@ -66,7 +67,7 @@ Type TCompilationSnapshotBuilder
 		If RootImportsLogicalName("brl.blitz") Then Return
 		Local resolved:TSnapshotText = resolver.ResolveInterface(rootPath, "brl.blitz", False, False)
 		If Not resolved Then
-			AddDiagnostic("BMX4003", "Compiler interface for implicit runtime module 'brl.blitz' is unavailable.", rootPath)
+			AddDiagnostic("BMX4003", TLanguageMessages.SnapshotImplicitRuntimeInterfaceUnavailable(), rootPath)
 			Return
 		End If
 		Local edge:TImportEdge = New TImportEdge
@@ -81,7 +82,7 @@ Type TCompilationSnapshotBuilder
 			If Not moduleName.length Or RootImportsLogicalName(moduleName) Then Continue
 			Local resolved:TSnapshotText = resolver.ResolveInterface(rootPath, moduleName, False, True)
 			If Not resolved Then
-				AddDiagnostic("BMX4003", "Compiler interface for implicit application module '" + moduleName + "' is unavailable.", rootPath)
+				AddDiagnostic("BMX4003", TLanguageMessages.SnapshotImplicitApplicationInterfaceUnavailable(moduleName), rootPath)
 				Continue
 			End If
 			Local edge:TImportEdge = New TImportEdge
@@ -108,7 +109,7 @@ Type TCompilationSnapshotBuilder
 	Method LoadCore()
 		Local resolved:TSnapshotText = resolver.ResolveCoreInterface(options.targetPlatform)
 		If Not resolved Then
-			AddDiagnostic("BMX4001", "The core class interface is missing for target '" + options.targetPlatform + "'.", "")
+			AddDiagnostic("BMX4001", TLanguageMessages.SnapshotCoreInterfaceMissing(options.targetPlatform), "")
 			Return
 		End If
 		result.coreInterface = LoadInterface(resolved, "brl.classes", True)
@@ -140,7 +141,7 @@ Type TCompilationSnapshotBuilder
 			Local span:TSourceSpan
 			If including Then path = including.path
 			If includeSyntax Then span = includeSyntax.span
-			AddDiagnostic("BMX4004", "Include cycle reaches '" + resolved.path + "'.", path, span)
+			AddDiagnostic("BMX4004", TLanguageMessages.SnapshotIncludeCycle(resolved.path), path, span)
 			Return existing
 		End If
 		If existing Then Return existing
@@ -156,7 +157,11 @@ Type TCompilationSnapshotBuilder
 		document.effectiveSourceMode = document.tree.root.sourceMode
 		If including Then document.effectiveSourceMode = including.effectiveSourceMode
 		For Local diagnostic:TDiagnostic = EachIn document.tree.diagnostics
-			AddDiagnostic(diagnostic.code, diagnostic.message, resolved.path, diagnostic.span)
+			If diagnostic.localisedMessage Then
+				AddDiagnostic(diagnostic.code, diagnostic.localisedMessage, resolved.path, diagnostic.span)
+			Else
+				AddDiagnostic(diagnostic.code, diagnostic.message, resolved.path, diagnostic.span)
+			End If
 		Next
 		documentsByPath.Insert(key, document)
 		documentStates.Insert(key, "loading")
@@ -195,7 +200,7 @@ Type TCompilationSnapshotBuilder
 		If Not syntax.pathToken Then Return
 		Local resolved:TSnapshotText = resolver.ResolveInclude(document.path, syntax.pathText)
 		If Not resolved Then
-			AddDiagnostic("BMX4002", "Included source '" + syntax.pathText + "' could not be found.", document.path, syntax.span)
+			AddDiagnostic("BMX4002", TLanguageMessages.SnapshotIncludedSourceNotFound(syntax.pathText), document.path, syntax.span)
 			Return
 		End If
 		Local edge:TIncludeEdge = New TIncludeEdge
@@ -209,7 +214,7 @@ Type TCompilationSnapshotBuilder
 		If syntax.isNativeImport Then Return
 		Local resolved:TSnapshotText = resolver.ResolveInterface(document.path, syntax.targetText, syntax.isFileImport, syntax.isFramework)
 		If Not resolved Then
-			AddDiagnostic("BMX4003", "Compiler interface for '" + syntax.targetText + "' is unavailable.", document.path, syntax.span)
+			AddDiagnostic("BMX4003", TLanguageMessages.SnapshotCompilerInterfaceUnavailable(syntax.targetText), document.path, syntax.span)
 			Return
 		End If
 		Local edge:TImportEdge = New TImportEdge
@@ -244,7 +249,11 @@ Type TCompilationSnapshotBuilder
 		End If
 
 		For Local diagnostic:TInterfaceDiagnostic = EachIn dependency.interfaceFile.diagnostics
-			AddDiagnostic(diagnostic.code, diagnostic.message, resolved.path)
+			If diagnostic.localisedMessage Then
+				AddDiagnostic(diagnostic.code, diagnostic.localisedMessage, resolved.path)
+			Else
+				AddDiagnostic(diagnostic.code, diagnostic.message, resolved.path)
+			End If
 		Next
 		LoadGenericTemplates(dependency, dependency.interfaceFile.declarations, resolved.path)
 
@@ -254,7 +263,7 @@ Type TCompilationSnapshotBuilder
 			If item.originPath.length Then importingPath = item.originPath
 			Local imported:TSnapshotText = resolver.ResolveInterface(importingPath, item.name, item.isFileImport, False)
 			If Not imported Then
-				AddDiagnostic("BMX4003", "Compiler interface for '" + item.name + "' is unavailable.", resolved.path)
+				AddDiagnostic("BMX4003", TLanguageMessages.SnapshotCompilerInterfaceUnavailable(item.name), resolved.path)
 				Continue
 			End If
 			dependency.AddImport(LoadInterface(imported, item.name, False))
@@ -266,11 +275,11 @@ Type TCompilationSnapshotBuilder
 		For Local record:TInterfaceRecord = EachIn records
 			If record.genericTemplateReference.length Then
 				If record.genericTemplateFormat < GENERIC_TEMPLATE_MIN_READ_VERSION Or record.genericTemplateFormat > GENERIC_TEMPLATE_FORMAT_VERSION Then
-					AddDiagnostic("BMX4010", "Generic template reference for '" + record.name + "' uses unsupported format " + record.genericTemplateFormat + ".", interfacePath)
+					AddDiagnostic("BMX4010", TLanguageMessages.SnapshotGenericTemplateFormatUnsupported(record.name, record.genericTemplateFormat), interfacePath)
 				Else
 					Local resolved:TSnapshotText = resolver.ResolveGenericTemplate(interfacePath, record.genericTemplateReference)
 					If Not resolved Then
-						AddDiagnostic("BMX4011", "Generic template artifact '" + record.genericTemplateReference + "' for '" + record.name + "' is unavailable from the compiler interface.", interfacePath)
+						AddDiagnostic("BMX4011", TLanguageMessages.SnapshotGenericTemplateArtifactUnavailable(record.genericTemplateReference, record.name), interfacePath)
 					Else
 						Local decoded:TGenericTemplateArtifactDecodeResult
 						If resolved.genericTemplateArtifact Or resolved.genericTemplateDiagnostics.length Then
@@ -285,13 +294,13 @@ Type TCompilationSnapshotBuilder
 							decoded = TGenericTemplateArtifactCodec.Decode(resolved.text, record.genericTemplateRevision)
 						End If
 						If Not decoded.Succeeded() Then
-							Local message:String = "Generic template artifact '" + resolved.path + "' for '" + record.name + "' is invalid."
-							If decoded.diagnostics.length Then message :+ " " + decoded.diagnostics[0]
-							AddDiagnostic("BMX4012", message, resolved.path)
+							Local detail:String
+							If decoded.diagnostics.length Then detail = " " + decoded.diagnostics[0]
+							AddDiagnostic("BMX4012", TLanguageMessages.SnapshotGenericTemplateArtifactInvalid(resolved.path, record.name, detail), resolved.path)
 						Else If decoded.artifact.identity.StableName() <> record.genericTemplateIdentity.ToLower() Then
-							AddDiagnostic("BMX4013", "Generic template artifact identity '" + decoded.artifact.identity.StableName() + "' does not match interface identity '" + record.genericTemplateIdentity + "'.", resolved.path)
+							AddDiagnostic("BMX4013", TLanguageMessages.SnapshotGenericTemplateIdentityMismatch(decoded.artifact.identity.StableName(), record.genericTemplateIdentity), resolved.path)
 						Else If decoded.artifact.languageLinkageRevision.ToLower() <> record.genericTemplateLanguageRevision.ToLower() Then
-							AddDiagnostic("BMX4014", "Generic template artifact language revision does not match its interface reference.", resolved.path)
+							AddDiagnostic("BMX4014", TLanguageMessages.SnapshotGenericTemplateLanguageRevisionMismatch(), resolved.path)
 						Else
 							record.genericTemplateArtifact = decoded.artifact
 							dependency.AddGenericTemplate(decoded.artifact)
@@ -324,6 +333,10 @@ Type TCompilationSnapshotBuilder
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, path:String, span:TSourceSpan = Null)
+		result.AddDiagnostic(TSnapshotDiagnostic.Create(code, message, path, span))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, path:String, span:TSourceSpan = Null)
 		result.AddDiagnostic(TSnapshotDiagnostic.Create(code, message, path, span))
 	End Method
 

@@ -1,0 +1,8 @@
+format = 1
+domain = "bls"
+next_id = 4
+
+[ids]
+"1" = "installed_modules.ambiguous_module"
+"2" = "protocol.missing_content_length_header"
+"3" = "startup.standard_io_configuration_failed"

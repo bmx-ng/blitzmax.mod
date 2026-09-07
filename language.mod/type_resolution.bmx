@@ -5,6 +5,7 @@ SuperStrict
 
 Import BRL.LinkedList
 
+Import "language_messages.generated.bmx"
 Import "declaration_collector.bmx"
 Import "symbol_accessibility.bmx"
 
@@ -222,7 +223,7 @@ Type TTypeResolver
 
 	Method ReportMissingSuperStrictType(symbol:TSymbol)
 		If Not symbol Or symbol.isImported Or SourceModeForSymbol(symbol) <> SOURCE_MODE_SUPERSTRICT Then Return
-		AddDiagnostic("BMX3103", symbol.KindName() + " '" + symbol.name + "' requires an explicit type in SuperStrict code.", symbol.nameToken.span)
+		AddDiagnostic("BMX3103", TLanguageMessages.TypeResolutionSymbolRequiresExplicitType(symbol.KindName(), symbol.name), symbol.nameToken.span)
 	End Method
 
 	Method SourceModeForSymbol:Int(symbol:TSymbol)
@@ -255,7 +256,7 @@ Type TTypeResolver
 	Method ResolveCallable:TSemanticType(syntax:TCallableTypeSyntax, scope:TScope, reportMissingParameterTypes:Int = True)
 		If Not syntax Then Return Null
 		If Not TCallingConventionResolver.IsRecognized(syntax.callingConventionToken) Then
-			AddDiagnostic("BMX3119", "Unrecognized calling convention '" + TCallingConventionResolver.WrittenName(syntax.callingConventionToken) + "'.", syntax.callingConventionToken.span)
+			AddDiagnostic("BMX3119", TLanguageMessages.TypeResolutionCallingConventionUnrecognized(TCallingConventionResolver.WrittenName(syntax.callingConventionToken)), syntax.callingConventionToken.span)
 		End If
 		Local callable:TCallableSemanticType = New TCallableSemanticType
 		callable.kind = SEMANTIC_TYPE_CALLABLE
@@ -288,7 +289,7 @@ Type TTypeResolver
 						parameterSpan = syntax.parameters[index].nameToken.span
 					End If
 					callable.parameterTypes[index] = ErrorType(parameterName)
-					If reportMissingParameterTypes Then AddDiagnostic("BMX3103", "Callable parameter '" + parameterName + "' requires an explicit type in SuperStrict code.", parameterSpan)
+					If reportMissingParameterTypes Then AddDiagnostic("BMX3103", TLanguageMessages.TypeResolutionCallableParameterRequiresExplicitType(parameterName), parameterSpan)
 				Else
 					callable.parameterTypes[index] = model.BuiltinType("Int")
 				End If
@@ -349,7 +350,7 @@ Type TTypeResolver
 					Exit
 				End If
 			Next
-			If Not info.parameterSymbol Then AddDiagnostic("BMX3110", "Generic constraint refers to undeclared routine type parameter '" + syntax.parameterNameToken.text + "'.", syntax.parameterNameToken.span)
+			If Not info.parameterSymbol Then AddDiagnostic("BMX3110", TLanguageMessages.TypeResolutionRoutineConstraintParameterUndeclared(syntax.parameterNameToken.text), syntax.parameterNameToken.span)
 			info.bounds = New TSemanticType[syntax.constraintTypes.length]
 			For Local index:Int = 0 Until syntax.constraintTypes.length
 				info.bounds[index] = Resolve(syntax.constraintTypes[index], scope)
@@ -562,7 +563,7 @@ Type TTypeResolver
 			For Local argument:TTypeReferenceSyntax = EachIn syntax.genericArguments
 				Resolve(argument, scope)
 			Next
-			AddDiagnostic("BMX3102", "Type '" + result.DisplayName() + "' expects 0 type argument(s), but " + syntax.genericArguments.length + " were supplied.", syntax.span)
+			AddDiagnostic("BMX3102", TLanguageMessages.TypeExpectedTypeArguments(result.DisplayName(), 0, syntax.genericArguments.length), syntax.span)
 		End If
 
 		If syntax.suffixes.length Then
@@ -601,18 +602,18 @@ Type TTypeResolver
 	End Method
 
 	Method ResolveClosure:TSemanticType(syntax:TTypeReferenceSyntax, scope:TScope)
-		If SourceModeForPath(currentPath) <> SOURCE_MODE_SUPERSTRICT Then AddDiagnostic("BMX3120", "Closure types require SuperStrict mode.", syntax.span)
+		If SourceModeForPath(currentPath) <> SOURCE_MODE_SUPERSTRICT Then AddDiagnostic("BMX3120", TLanguageMessages.TypeResolutionClosureRequiresSuperstrict(), syntax.span)
 		If Not syntax.closureSignature Then
-			AddDiagnostic("BMX3121", "The compiler-intrinsic Closure type requires an explicit signature, for example Closure<Int(value:Int)> or Closure<()>.", syntax.span)
+			AddDiagnostic("BMX3121", TLanguageMessages.TypeResolutionClosureRequiresExplicitSignature(), syntax.span)
 			Return ErrorType("Closure")
 		End If
 		For Local parameter:TParameterSyntax = EachIn syntax.closureSignature.parameters
-			If Not parameter.declaredType And Not parameter.callableType Then AddDiagnostic("BMX3122", "Closure parameters require an explicit name and type.", parameter.span)
-			If parameter.defaultValue Then AddDiagnostic("BMX3123", "Closure signatures cannot declare default parameter values.", parameter.defaultValue.span)
+			If Not parameter.declaredType And Not parameter.callableType Then AddDiagnostic("BMX3122", TLanguageMessages.TypeResolutionClosureParameterRequiresNameAndType(), parameter.span)
+			If parameter.defaultValue Then AddDiagnostic("BMX3123", TLanguageMessages.TypeResolutionClosureSignatureRejectsDefault(), parameter.defaultValue.span)
 		Next
 		Local signature:TCallableSemanticType = TCallableSemanticType(ResolveCallable(syntax.closureSignature, scope, False))
 		If Not signature Then Return ErrorType("Closure")
-		If signature.callingConvention <> CALLING_CONVENTION_C Then AddDiagnostic("BMX3124", "Closure signatures cannot specify a native calling convention.", syntax.span)
+		If signature.callingConvention <> CALLING_CONVENTION_C Then AddDiagnostic("BMX3124", TLanguageMessages.TypeResolutionClosureSignatureRejectsNativeCallingConvention(), syntax.span)
 		Local closure:TClosureSemanticType = New TClosureSemanticType
 		closure.kind = SEMANTIC_TYPE_CLOSURE
 		closure.signature = signature
@@ -670,7 +671,7 @@ Type TTypeResolver
 			symbol = candidates[0]
 		Next
 		If symbol.kind = SYMBOL_TYPE_PARAMETER Then
-			If syntax.genericArguments.length Then AddDiagnostic("BMX3102", "Type parameter '" + symbol.name + "' cannot have type arguments.", syntax.span)
+			If syntax.genericArguments.length Then AddDiagnostic("BMX3102", TLanguageMessages.TypeResolutionTypeParameterRejectsTypeArguments(symbol.name), syntax.span)
 			Return symbol.declaredType
 		End If
 		Local result:TNamedSemanticType = New TNamedSemanticType
@@ -682,7 +683,7 @@ Type TTypeResolver
 		Next
 		Local expectedArity:Int = GenericArity(symbol)
 		If expectedArity >= 0 And syntax.genericArguments.length And syntax.genericArguments.length <> expectedArity Then
-			AddDiagnostic("BMX3102", "Type '" + symbol.name + "' expects " + expectedArity + " type argument(s), but " + syntax.genericArguments.length + " were supplied.", syntax.span)
+			AddDiagnostic("BMX3102", TLanguageMessages.TypeExpectedTypeArguments(symbol.name, expectedArity, syntax.genericArguments.length), syntax.span)
 		End If
 		Return result
 	End Method
@@ -785,19 +786,19 @@ Type TTypeResolver
 		Return Not (symbol.interfaceRecord And symbol.interfaceRecord.externalName.ToLower().Contains("|gimpl_"))
 	End Function
 
-	Function AmbiguousTypeMessage:String(name:String, candidates:TSymbol[])
-		Local message:String = "Type name '" + name + "' is ambiguous. Candidates:"
+	Function AmbiguousTypeMessage:TLocalisedMessage(name:String, candidates:TSymbol[])
+		Local candidateText:String
 		For Local symbol:TSymbol = EachIn candidates
-			message :+ "~n  "
-			If symbol.originModule.length Then message :+ symbol.originModule + "."
-			message :+ symbol.name
+			candidateText :+ "~n  "
+			If symbol.originModule.length Then candidateText :+ symbol.originModule + "."
+			candidateText :+ symbol.name
 			If symbol.originPath.length Then
-				message :+ " (" + symbol.originPath
-				If symbol.originLine >= 0 Then message :+ ":" + (symbol.originLine + 1)
-				message :+ ")"
+				candidateText :+ " (" + symbol.originPath
+				If symbol.originLine >= 0 Then candidateText :+ ":" + (symbol.originLine + 1)
+				candidateText :+ ")"
 			End If
 		Next
-		Return message
+		Return TLanguageMessages.TypeResolutionAmbiguousTypeName(name, candidateText)
 	End Function
 
 	Method ReportUnresolved(syntax:TTypeReferenceSyntax, name:String)
@@ -810,10 +811,14 @@ Type TTypeResolver
 			Local last:TSyntaxToken = syntax.nameTokens[syntax.nameTokens.length - 1]
 			diagnosticSpan = TSourceSpan.Create(first.span.start, last.span.EndOffset() - first.span.start)
 		End If
-		AddDiagnostic("BMX3100", "Type '" + diagnosticName + "' could not be resolved in the available scopes.", diagnosticSpan)
+		AddDiagnostic("BMX3100", TLanguageMessages.TypeResolutionTypeNotResolved(diagnosticName), diagnosticSpan)
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, currentPath))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, currentPath))
 	End Method
 

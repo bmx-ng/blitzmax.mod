@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.LinkedList
 Import BRL.Map
 
+Import "language_messages.generated.bmx"
 Import "diagnostic.bmx"
 Import "token.bmx"
 
@@ -59,7 +60,7 @@ Type TDeclarationMetadata
 			Local token:TSyntaxToken = values[cursor]
 			If token.text = "}" Then closed = True; Exit
 			If token.kind <> TOKEN_IDENTIFIER And token.kind <> TOKEN_KEYWORD Then
-				AddDiagnostic(diagnostics, "BMX3010", "Expected a metadata key.", token.span, path)
+				AddDiagnostic(diagnostics, "BMX3010", TLanguageMessages.MetadataExpectedKey(), token.span, path)
 				cursor :+ 1
 				Continue
 			End If
@@ -72,9 +73,9 @@ Type TDeclarationMetadata
 			If cursor < values.length And values[cursor].text = "=" Then
 				cursor :+ 1
 				If cursor >= values.length Or values[cursor].text = "}" Then
-					AddDiagnostic(diagnostics, "BMX3011", "Expected a literal metadata value after '='.", token.span, path)
+					AddDiagnostic(diagnostics, "BMX3011", TLanguageMessages.MetadataExpectedLiteralValue(), token.span, path)
 				Else If Not IsLiteralValue(values[cursor]) Then
-					AddDiagnostic(diagnostics, "BMX3011", "Expected a literal metadata value after '='.", values[cursor].span, path)
+					AddDiagnostic(diagnostics, "BMX3011", TLanguageMessages.MetadataExpectedLiteralValue(), values[cursor].span, path)
 					cursor :+ 1
 				Else
 					entry.writtenValue = values[cursor].text
@@ -83,12 +84,12 @@ Type TDeclarationMetadata
 				End If
 			End If
 			If result.Has(entry.key) Then
-				AddDiagnostic(diagnostics, "BMX3012", "Duplicate metadata key '" + entry.key + "'.", entry.span, path)
+				AddDiagnostic(diagnostics, "BMX3012", TLanguageMessages.MetadataDuplicateKey(entry.key), entry.span, path)
 			Else
 				result.Add(entry)
 			End If
 		Wend
-		If Not closed Then AddDiagnostic(diagnostics, "BMX3013", "Expected '}' after declaration metadata.", values[openIndex].span, path)
+		If Not closed Then AddDiagnostic(diagnostics, "BMX3013", TLanguageMessages.MetadataExpectedCloseBrace(), values[openIndex].span, path)
 		Return result
 	End Function
 
@@ -103,6 +104,10 @@ Type TDeclarationMetadata
 	End Function
 
 	Function AddDiagnostic(diagnostics:TList, code:String, message:String, span:TSourceSpan, path:String)
+		If diagnostics Then diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, path))
+	End Function
+
+	Function AddDiagnostic(diagnostics:TList, code:String, message:TLocalisedMessage, span:TSourceSpan, path:String)
 		If diagnostics Then diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, path))
 	End Function
 End Type

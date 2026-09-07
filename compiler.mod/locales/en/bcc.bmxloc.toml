@@ -1,0 +1,3443 @@
+format = 1
+domain = "bcc"
+locale = "en"
+next_id = 431
+
+[[message]]
+id = 1
+name = "source.file_not_found"
+text = "Source file was not found"
+diagnostic_codes = ["BMXC0001"]
+placeholders = []
+
+[[message]]
+id = 2
+name = "compiler.module_declaration_mismatch"
+text = "Module declaration '{declaredName}' does not match path-derived module name '{expectedName}'"
+description = "Reported when a source Module declaration disagrees with the module name derived from its path."
+diagnostic_codes = ["BMXC0003"]
+placeholders = [{ name = "declaredName", type = "string" }, { name = "expectedName", type = "string" }]
+
+[[message]]
+id = 3
+name = "compiler.conditional_directives_remained"
+text = "Conditional directives remained after source configuration was applied"
+description = "Reported when configured source still contains a conditional-compilation directive before lowering."
+diagnostic_codes = ["BMXC0002"]
+placeholders = []
+
+[[message]]
+id = 4
+name = "emission.c_requires_successful_ir"
+text = "Successful compiler IR is required before C emission"
+description = "Reported when standalone C emission is requested without a successful compiler result."
+diagnostic_codes = ["BMXC2000"]
+placeholders = []
+
+[[message]]
+id = 5
+name = "emission.runtime_c_requires_successful_ir"
+text = "Successful compiler IR is required before runtime-compatible C emission"
+description = "Reported when BlitzMax runtime-compatible C emission is requested without successful compiler IR."
+diagnostic_codes = ["BMXC2040"]
+placeholders = []
+
+[[message]]
+id = 6
+name = "emission.runtime_header_requires_successful_ir"
+text = "Successful compiler IR is required before runtime header emission"
+description = "Reported when runtime-header emission is requested without successful compiler IR."
+diagnostic_codes = ["BMXC2041"]
+placeholders = []
+
+[[message]]
+id = 7
+name = "emission.interface_requires_successful_ir"
+text = "Successful compiler IR is required before compact interface emission"
+description = "Reported when compact compiler-interface emission is requested without successful compiler IR."
+diagnostic_codes = ["BMXC2060"]
+placeholders = []
+
+[[message]]
+id = 8
+name = "generic.template_artifacts_require_plan"
+text = "Compiler generic application plan is required before template artifact emission"
+description = "Reported when generic-template artifacts are requested without a generic application plan."
+diagnostic_codes = ["BMXC3051"]
+placeholders = []
+
+[[message]]
+id = 9
+name = "generic.manifest_requires_plan"
+text = "Compiler generic application plan is required before manifest emission"
+description = "Reported when the generic-specialization manifest is requested without a generic application plan."
+diagnostic_codes = ["BMXC3050"]
+placeholders = []
+
+[[message]]
+id = 10
+name = "build_output.requires_successful_ir"
+text = "Successful compiler IR is required before build-output planning"
+description = "Reported when build-output planning is requested without successful compiler IR and analysis."
+diagnostic_codes = ["BMXC3062"]
+placeholders = []
+
+[[message]]
+id = 11
+name = "build_output.path_must_be_bounded_relative"
+text = "Generated output path must be a bounded relative path: '{path}'"
+description = "Reported when a planned generated file has an empty, absolute, traversing, or otherwise unsafe path."
+diagnostic_codes = ["BMXC3060"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 12
+name = "build_output.path_collision"
+text = "Generated output path collision for '{path}'"
+description = "Reported when different generated outputs claim the same case-insensitive relative path."
+diagnostic_codes = ["BMXC3061"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 13
+name = "build_output.generic_link_path_unsafe"
+text = "Generic link input contains an unsafe generated path"
+description = "Reported when a generic-specialization source or object path is not a bounded relative path."
+diagnostic_codes = ["BMXC3063"]
+placeholders = []
+
+[[message]]
+id = 14
+name = "build_manifest.version_unsupported_or_missing"
+text = "Unsupported or missing compiler build manifest version"
+description = "Reported when a compiler build manifest has no recognized header and format version."
+diagnostic_codes = ["BMXC3072"]
+placeholders = []
+
+[[message]]
+id = 15
+name = "build_manifest.file_record_malformed"
+text = "Malformed file record in compiler build manifest"
+description = "Reported when a build-manifest file record has invalid fields, role, or digests."
+diagnostic_codes = ["BMXC3073"]
+placeholders = []
+
+[[message]]
+id = 16
+name = "build_manifest.file_path_unsafe"
+text = "Unsafe file path in compiler build manifest"
+description = "Reported when a decoded build-manifest file path is not a bounded relative path."
+diagnostic_codes = ["BMXC3074"]
+placeholders = []
+
+[[message]]
+id = 17
+name = "build_manifest.file_path_duplicate"
+text = "Duplicate file path in compiler build manifest"
+description = "Reported when a build manifest contains the same case-insensitive output path more than once."
+diagnostic_codes = ["BMXC3075"]
+placeholders = []
+
+[[message]]
+id = 18
+name = "build_manifest.link_identity_malformed"
+text = "Malformed link identity in compiler build manifest"
+description = "Reported when a generic link record has an invalid cache key or specialization identity."
+diagnostic_codes = ["BMXC3076"]
+placeholders = []
+
+[[message]]
+id = 19
+name = "build_manifest.link_path_unsafe"
+text = "Unsafe link path in compiler build manifest"
+description = "Reported when a decoded specialization source or object path is unsafe."
+diagnostic_codes = ["BMXC3077"]
+placeholders = []
+
+[[message]]
+id = 20
+name = "build_manifest.link_input_duplicate"
+text = "Duplicate specialization link input in compiler build manifest"
+description = "Reported when a manifest repeats a specialization identity or object output path."
+diagnostic_codes = ["BMXC3078"]
+placeholders = []
+
+[[message]]
+id = 21
+name = "build_manifest.record_unknown_or_malformed"
+text = "Unknown or malformed compiler build manifest record"
+description = "Reported when a build-manifest line is neither a valid file nor link record."
+diagnostic_codes = ["BMXC3079"]
+placeholders = []
+
+[[message]]
+id = 22
+name = "build_manifest.encoded_field_malformed"
+text = "Malformed encoded field in compiler build manifest"
+description = "Reported when a Base64-encoded manifest field cannot be decoded."
+diagnostic_codes = ["BMXC3080"]
+placeholders = []
+
+[[message]]
+id = 23
+name = "build_materialization.plan_required"
+text = "A valid build-output plan is required before materialization"
+description = "Reported when output materialization is requested without a populated build plan and manifest."
+diagnostic_codes = ["BMXC3064"]
+placeholders = []
+
+[[message]]
+id = 24
+name = "build_materialization.root_required"
+text = "Build-output root must not be empty"
+description = "Reported when output materialization is requested without a destination root."
+diagnostic_codes = ["BMXC3065"]
+placeholders = []
+
+[[message]]
+id = 25
+name = "build_materialization.manifest_path_must_be_bounded_relative"
+text = "Build manifest path must be a bounded relative path"
+description = "Reported when the materialized manifest destination is empty, absolute, traversing, or otherwise unsafe."
+diagnostic_codes = ["BMXC3066"]
+placeholders = []
+
+[[message]]
+id = 26
+name = "build_materialization.root_creation_failed"
+text = "Unable to create build-output root '{path}'"
+description = "Reported when the requested build-output root directory cannot be created."
+diagnostic_codes = ["BMXC3067"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 27
+name = "build_materialization.root_not_directory"
+text = "Build-output root is not a directory: '{path}'"
+description = "Reported when the requested build-output root exists but is not a directory."
+diagnostic_codes = ["BMXC3068"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 28
+name = "build_materialization.output_path_unsafe"
+text = "Refusing to materialize unsafe output path '{path}'"
+description = "Reported when a generated output would escape or otherwise violate the bounded output root."
+diagnostic_codes = ["BMXC3069"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 29
+name = "build_materialization.directory_creation_failed"
+text = "Unable to create generated-output directory '{path}'"
+description = "Reported when the parent directory for a generated output cannot be created."
+diagnostic_codes = ["BMXC3070"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 30
+name = "build_materialization.output_write_failed"
+text = "Unable to write generated output '{path}'"
+description = "Reported when a generated output cannot be written to its temporary publication path."
+diagnostic_codes = ["BMXC3071"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 31
+name = "build_materialization.output_publish_failed"
+text = "Unable to publish generated output '{path}'"
+description = "Reported when a generated output cannot be atomically moved into its published path."
+diagnostic_codes = ["BMXC3072"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 32
+name = "generic.routine_reference_type_arguments_incomplete"
+text = "Generic routine reference has no complete canonical type-argument binding"
+description = "Reported when a generic routine value reference does not retain every required closed type argument."
+diagnostic_codes = ["BMXC3046"]
+placeholders = []
+
+[[message]]
+id = 33
+name = "generic.routine_reference_arguments_unsupported"
+text = "Generic routine-reference specialization arguments are outside the supported canonical value/reference slice"
+description = "Reported when a generic routine reference contains a type argument without a supported canonical identity."
+diagnostic_codes = ["BMXC3040"]
+placeholders = []
+
+[[message]]
+id = 34
+name = "generic.routine_reference_containing_type_arguments_incomplete"
+text = "Generic routine reference has no complete containing-Type argument binding"
+description = "Reported when a generic method reference does not retain the closed arguments of its containing generic Type."
+diagnostic_codes = ["BMXC3046"]
+placeholders = []
+
+[[message]]
+id = 35
+name = "generic.routine_reference_containing_type_arguments_unsupported"
+text = "Generic routine-reference containing-Type arguments are outside the supported canonical value/reference slice"
+description = "Reported when a generic method reference's containing-Type arguments lack supported canonical identities."
+diagnostic_codes = ["BMXC3040"]
+placeholders = []
+
+[[message]]
+id = 36
+name = "generic.routine_call_type_arguments_incomplete"
+text = "Generic routine call has no complete canonical type-argument binding"
+description = "Reported when a generic routine call does not retain every required closed type argument."
+diagnostic_codes = ["BMXC3046"]
+placeholders = []
+
+[[message]]
+id = 37
+name = "generic.routine_specialization_arguments_unsupported"
+text = "Generic routine specialization arguments are outside the supported canonical value/reference slice"
+description = "Reported when a generic routine call contains a type argument without a supported canonical identity."
+diagnostic_codes = ["BMXC3040"]
+placeholders = []
+
+[[message]]
+id = 38
+name = "generic.method_containing_type_arguments_incomplete"
+text = "Generic method call has no complete containing-Type argument binding"
+description = "Reported when a generic method call does not retain the closed arguments of its containing generic Type."
+diagnostic_codes = ["BMXC3046"]
+placeholders = []
+
+[[message]]
+id = 39
+name = "generic.method_containing_type_arguments_unsupported"
+text = "Generic method containing-Type arguments are outside the supported canonical value/reference slice"
+description = "Reported when a generic method call's containing-Type arguments lack supported canonical identities."
+diagnostic_codes = ["BMXC3040"]
+placeholders = []
+
+[[message]]
+id = 40
+name = "generic.specialization_argument_identity_unsupported"
+text = "Generic specialization argument '{typeName}' has no supported canonical value or published reference identity"
+description = "Reported when a closed generic Type argument cannot be represented by a stable compiler identity."
+diagnostic_codes = ["BMXC3040"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 41
+name = "generic.imported_type_template_missing"
+text = "Imported generic Type '{typeName}' has no canonical template artifact; rebuild its defining module"
+description = "Reported when an imported generic Type was built without its required canonical template artifact."
+diagnostic_codes = ["BMXC3041"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 42
+name = "generic.imported_type_language_revision_incompatible"
+text = "Imported generic Type '{typeName}' uses incompatible language/linkage revision '{revision}'"
+description = "Reported when an imported generic template artifact uses a different language-linkage revision."
+diagnostic_codes = ["BMXC3042"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "revision", type = "string" }]
+
+[[message]]
+id = 43
+name = "interface_emission.module_compilation_required"
+text = "Compact interface emission requires a module compilation"
+description = "Reported when compact interface emission is requested for a non-module compilation unit."
+diagnostic_codes = ["BMXC2060"]
+placeholders = []
+
+[[message]]
+id = 44
+name = "interface_emission.global_type_unsupported"
+text = "Public Global type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published Global uses a type that cannot be encoded in the compact interface."
+diagnostic_codes = ["BMXC2065"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 45
+name = "interface_emission.callable_array_global_unsupported"
+text = "Callable-array Global '{globalName}' is outside the compact interface slice"
+description = "Reported when a published callable-array Global has an unsupported signature or rank."
+diagnostic_codes = ["BMXC2065"]
+placeholders = [{ name = "globalName", type = "string" }]
+
+[[message]]
+id = 46
+name = "interface_emission.callable_global_return_type_unsupported"
+text = "Callable Global return type '{typeName}' is outside the compact interface slice"
+description = "Reported when a callable Global's return type cannot be encoded in the compact interface."
+diagnostic_codes = ["BMXC2065"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 47
+name = "interface_emission.callable_global_parameters_unsupported"
+text = "Callable Global '{globalName}' has parameters outside the compact interface slice"
+description = "Reported when a callable Global has an unsupported parameter type or passing mode."
+diagnostic_codes = ["BMXC2065"]
+placeholders = [{ name = "globalName", type = "string" }]
+
+[[message]]
+id = 48
+name = "interface_emission.quoted_source_boundaries_invalid"
+text = "Quoted-source interface '{path}' has invalid declaration boundaries"
+description = "Reported when declaration line boundaries from a quoted-source interface cannot be applied safely."
+diagnostic_codes = ["BMXC2072"]
+placeholders = [{ name = "path", type = "string" }]
+
+[[message]]
+id = 49
+name = "interface_emission.generic_routine_signature_invalid"
+text = "Generic routine template '{routineName}' has an invalid canonical signature"
+description = "Reported when a generic routine template does not contain its required single canonical routine record."
+diagnostic_codes = ["BMXC2070"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 50
+name = "interface_emission.generic_base_unpublishable"
+text = "Generic template '{templateName}' has a base outside canonical interface publication"
+description = "Reported when a generic template's base type has no publishable canonical interface name."
+diagnostic_codes = ["BMXC2070"]
+placeholders = [{ name = "templateName", type = "string" }]
+
+[[message]]
+id = 51
+name = "interface_emission.generic_interface_unpublishable"
+text = "Generic template '{templateName}' has an Interface outside canonical interface publication"
+description = "Reported when an implemented generic Interface has no publishable canonical interface name."
+diagnostic_codes = ["BMXC2070"]
+placeholders = [{ name = "templateName", type = "string" }]
+
+[[message]]
+id = 52
+name = "interface_emission.generic_member_type_unpublishable"
+text = "Generic template member '{memberName}' has a type outside canonical interface publication"
+description = "Reported when a generic template member type cannot be represented in its published interface."
+diagnostic_codes = ["BMXC2070"]
+placeholders = [{ name = "memberName", type = "string" }]
+
+[[message]]
+id = 53
+name = "interface_emission.generic_parameter_type_unpublishable"
+text = "Generic template parameter '{parameterName}' has a type outside canonical interface publication"
+description = "Reported when a generic template routine parameter type cannot be represented in its published interface."
+diagnostic_codes = ["BMXC2070"]
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 54
+name = "interface_emission.generic_method_signature_invalid"
+text = "Generic method template '{methodName}' has an invalid canonical signature"
+description = "Reported when a generic method template does not contain its required single canonical method record."
+diagnostic_codes = ["BMXC2070"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 55
+name = "interface_emission.enum_abi_identity_missing"
+text = "Public Enum has no canonical ABI identity"
+description = "Reported when a published Enum has no stable ABI name."
+diagnostic_codes = ["BMXC2075"]
+placeholders = []
+
+[[message]]
+id = 56
+name = "interface_emission.enum_underlying_type_unsupported"
+text = "Public Enum '{enumName}' has unsupported underlying type '{typeName}'"
+description = "Reported when a published Enum uses an underlying type unsupported by compact interfaces."
+diagnostic_codes = ["BMXC2075"]
+placeholders = [{ name = "enumName", type = "string" }, { name = "typeName", type = "string" }]
+
+[[message]]
+id = 57
+name = "interface_emission.interface_inheritance_cycle"
+text = "Public Interface inheritance cycle reaches '{interfaceName}'"
+description = "Reported when interface publication encounters a cycle in the retained inheritance graph."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 58
+name = "interface_emission.interface_base_layout_missing"
+text = "Public Interface '{interfaceName}' has no retained base Interface layout"
+description = "Reported when an Interface's base layout is absent from compiler IR during publication."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 59
+name = "interface_emission.interface_base_not_public"
+text = "Public Interface '{interfaceName}' has a non-public base Interface"
+description = "Reported when a public Interface would expose a source base Interface that is not public."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 60
+name = "interface_emission.interface_abi_identity_missing"
+text = "Public Interface has no canonical ABI identity"
+description = "Reported when a published Interface has no stable ABI name."
+diagnostic_codes = ["BMXC2062"]
+placeholders = []
+
+[[message]]
+id = 61
+name = "interface_emission.interface_base_identity_missing"
+text = "Public Interface '{interfaceName}' has no retained base Interface identity"
+description = "Reported when a published Interface's primary base cannot be resolved from compiler IR."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 62
+name = "interface_emission.interface_additional_base_identity_missing"
+text = "Public Interface '{interfaceName}' has no retained additional base Interface identity"
+description = "Reported when one of a published Interface's additional bases cannot be resolved from compiler IR."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 63
+name = "interface_emission.interface_method_callable_return_type_unsupported"
+text = "Public Interface method callable return type '{typeName}' is outside the compact interface slice"
+description = "Reported when an Interface method returns a callable whose result type cannot be published."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 64
+name = "interface_emission.interface_method_callable_signature_unsupported"
+text = "Public Interface method '{methodName}' has a callable return signature outside the compact interface slice"
+description = "Reported when an Interface method's callable return has unsupported parameters."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 65
+name = "interface_emission.interface_method_return_type_unsupported"
+text = "Public Interface method return type '{typeName}' is outside the compact interface slice"
+description = "Reported when an Interface method return type cannot be published."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 66
+name = "interface_emission.interface_method_abi_identity_missing"
+text = "Public Interface method '{methodName}' has no canonical ABI identity"
+description = "Reported when a published Interface method has no stable ABI name."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 67
+name = "interface_emission.interface_method_parameters_unsupported"
+text = "Public Interface method '{methodName}' has parameters outside the compact interface slice"
+description = "Reported when an Interface method has an unsupported parameter type or passing mode."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 68
+name = "interface_emission.struct_layout_cycle"
+text = "Public Struct layout cycle reaches '{structName}'"
+description = "Reported when compact interface publication encounters a recursive by-value Struct layout."
+diagnostic_codes = ["BMXC2066"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 69
+name = "interface_emission.struct_abi_identity_missing"
+text = "Public Struct has no canonical ABI identity"
+description = "Reported when a published Struct has no stable ABI name."
+diagnostic_codes = ["BMXC2066"]
+placeholders = []
+
+[[message]]
+id = 70
+name = "interface_emission.struct_static_array_element_type_unsupported"
+text = "Public Struct StaticArray field element type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published Struct's StaticArray field element type cannot be encoded."
+diagnostic_codes = ["BMXC2066"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 71
+name = "interface_emission.struct_callable_field_type_unsupported"
+text = "Public Struct callable field type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published Struct callable field has an unsupported signature."
+diagnostic_codes = ["BMXC2066"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 72
+name = "interface_emission.struct_callable_array_field_type_unsupported"
+text = "Public Struct callable-array field type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published Struct callable-array field has an unsupported signature or rank."
+diagnostic_codes = ["BMXC2066"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 73
+name = "interface_emission.struct_field_type_unsupported"
+text = "Public Struct field type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published Struct field type cannot be encoded in the compact interface."
+diagnostic_codes = ["BMXC2066"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 74
+name = "interface_emission.type_abi_identity_missing"
+text = "Public Type has no canonical ABI identity"
+description = "Reported when a published Type has no stable ABI name."
+diagnostic_codes = ["BMXC2061"]
+placeholders = []
+
+[[message]]
+id = 75
+name = "interface_emission.type_base_unpublishable"
+text = "Public Type '{typeName}' has a base outside the compact interface slice"
+description = "Reported when a public Type's source base cannot be published in its compact interface."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 76
+name = "interface_emission.type_imported_base_record_missing"
+text = "Public Type '{typeName}' has no imported base ABI record"
+description = "Reported when a public Type's imported base has no retained ABI record."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 77
+name = "interface_emission.type_implemented_interface_identity_missing"
+text = "Public Type '{typeName}' has no retained implemented Interface identity"
+description = "Reported when a public Type's implemented Interface cannot be resolved from compiler IR."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 78
+name = "interface_emission.type_static_array_field_element_type_unsupported"
+text = "Public Type StaticArray field element type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published Type's StaticArray field element type cannot be encoded."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 79
+name = "interface_emission.type_field_type_unsupported"
+text = "Public Type field type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published Type field cannot be encoded in the compact interface."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 80
+name = "interface_emission.type_routine_callable_return_type_unsupported"
+text = "Public Type routine callable return type '{typeName}' is outside the compact interface slice"
+description = "Reported when a Type routine returns a callable whose result type cannot be published."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 81
+name = "interface_emission.type_routine_callable_signature_unsupported"
+text = "Type routine '{routineName}' has a callable return signature outside the compact interface slice"
+description = "Reported when a Type routine's callable return has unsupported parameters."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 82
+name = "interface_emission.type_routine_return_type_unsupported"
+text = "Public Type routine return type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published Type routine return type cannot be encoded."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 83
+name = "interface_emission.type_routine_default_argument_unsupported"
+text = "Type routine '{routineName}' has a default argument outside the compact interface slice"
+description = "Reported when a Type routine has a default argument that cannot be encoded."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 84
+name = "interface_emission.type_routine_parameters_unsupported"
+text = "Type routine '{routineName}' has parameters outside the compact interface slice"
+description = "Reported when a Type routine has an unsupported parameter type or passing mode."
+diagnostic_codes = ["BMXC2061"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 85
+name = "interface_emission.constant_type_unsupported"
+text = "Public constant type '{typeName}' is outside the compact interface slice"
+description = "Reported when a published constant uses a type that cannot be encoded."
+diagnostic_codes = ["BMXC2064"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 86
+name = "interface_emission.constant_literal_not_normalized"
+text = "Public constant '{constantName}' is not represented by a normalized literal"
+description = "Reported when a published constant has no normalized literal compiler-IR value."
+diagnostic_codes = ["BMXC2064"]
+placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 87
+name = "interface_emission.string_constant_literal_missing"
+text = "Public String constant '{constantName}' has no retained literal value"
+description = "Reported when a published String constant's literal is absent from the compiler string table."
+diagnostic_codes = ["BMXC2064"]
+placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 88
+name = "interface_emission.routine_callable_return_type_unsupported"
+text = "Public routine callable return type '{typeName}' is outside the compact interface slice"
+description = "Reported when a public module routine returns a callable whose result type cannot be published."
+diagnostic_codes = ["BMXC2063"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 89
+name = "interface_emission.routine_callable_signature_unsupported"
+text = "Public routine '{routineName}' has a callable return signature outside the compact interface slice"
+description = "Reported when a public module routine's callable return has unsupported parameters."
+diagnostic_codes = ["BMXC2063"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 90
+name = "interface_emission.routine_return_type_unsupported"
+text = "Public routine return type '{typeName}' is outside the compact interface slice"
+description = "Reported when a public module routine return type cannot be encoded."
+diagnostic_codes = ["BMXC2063"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 91
+name = "interface_emission.routine_default_argument_unsupported"
+text = "Public routine '{routineName}' has a default argument outside the compact interface slice"
+description = "Reported when a public module routine has a default argument that cannot be encoded."
+diagnostic_codes = ["BMXC2063"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 92
+name = "interface_emission.routine_parameters_unsupported"
+text = "Public routine '{routineName}' has parameters outside the compact interface slice"
+description = "Reported when a public module routine has an unsupported parameter type or passing mode."
+diagnostic_codes = ["BMXC2063"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 93
+name = "ir_lowering.recursive_struct_constructor_delegation"
+text = "Recursive Struct constructor delegation involving '{routineName}'"
+description = "Reported when a Struct constructor delegation chain returns to a constructor already being validated."
+diagnostic_codes = ["BMXC1201"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 94
+name = "ir_lowering.throw_requires_managed_expression"
+text = "Throw requires a managed Object, String, or Array expression"
+description = "Reported when IR lowering encounters a Throw operand that is not a supported managed reference type."
+diagnostic_codes = ["BMXC1215"]
+placeholders = []
+
+[[message]]
+id = 95
+name = "ir_lowering.data_item_type_has_no_runtime_representation"
+text = "Data item type '{typeName}' has no runtime representation"
+description = "Reported when a Data item uses a semantic type that cannot be represented in compiler IR."
+diagnostic_codes = ["BMXC1221"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 96
+name = "ir_lowering.incbin_requires_quoted_resource_path"
+text = "Incbin requires a quoted resource path"
+description = "Reported when an Incbin declaration does not retain a quoted resource path."
+diagnostic_codes = ["BMXC1220"]
+placeholders = []
+
+[[message]]
+id = 97
+name = "ir_lowering.enum_underlying_type_outside_integral_scalar_slice"
+text = "Enum underlying type '{typeName}' is outside the integral scalar slice"
+description = "Reported when a source Enum has an underlying type unsupported by IR lowering."
+diagnostic_codes = ["BMXC1101"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 98
+name = "ir_lowering.enum_member_has_no_integral_constant_value"
+text = "Enum member '{memberName}' has no integral constant value"
+description = "Reported when a source Enum member lacks the integral constant required for lowering."
+diagnostic_codes = ["BMXC1101"]
+placeholders = [{ name = "memberName", type = "string" }]
+
+[[message]]
+id = 99
+name = "ir_lowering.imported_enum_has_no_resolved_semantic_type"
+text = "Imported Enum '{enumName}' has no resolved semantic type"
+description = "Reported when an imported Enum has no resolved semantic type."
+diagnostic_codes = ["BMXC1102"]
+placeholders = [{ name = "enumName", type = "string" }]
+
+[[message]]
+id = 100
+name = "ir_lowering.imported_enum_underlying_type_unsupported"
+text = "Imported Enum '{enumName}' has an unsupported underlying type"
+description = "Reported when an imported Enum uses an underlying type unsupported by IR lowering."
+diagnostic_codes = ["BMXC1102"]
+placeholders = [{ name = "enumName", type = "string" }]
+
+[[message]]
+id = 101
+name = "ir_lowering.imported_enum_interface_abi_identity_missing"
+text = "Imported Enum '{enumName}' has no interface ABI identity"
+description = "Reported when an imported Enum has no published ABI identity."
+diagnostic_codes = ["BMXC1102"]
+placeholders = [{ name = "enumName", type = "string" }]
+
+[[message]]
+id = 102
+name = "ir_lowering.imported_enum_member_has_no_integral_constant_value"
+text = "Imported Enum member '{memberName}' has no integral constant value"
+description = "Reported when an imported Enum member lacks its published integral constant."
+diagnostic_codes = ["BMXC1102"]
+placeholders = [{ name = "memberName", type = "string" }]
+
+[[message]]
+id = 103
+name = "ir_lowering.generic_struct_requires_canonical_specialization"
+text = "Generic Structs require canonical specialization lowering"
+description = "Reported when ordinary IR lowering encounters a generic Struct declaration that has not been specialized."
+diagnostic_codes = ["BMXC1190"]
+placeholders = []
+
+[[message]]
+id = 104
+name = "ir_lowering.struct_value_layout_cycle"
+text = "Struct value layout cycle involving '{structName}'"
+description = "Reported when source Struct fields form a recursive by-value layout."
+diagnostic_codes = ["BMXC1192"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 105
+name = "ir_lowering.struct_field_type_outside_layout_slice"
+text = "Struct field type '{typeName}' is outside the scalar, StaticArray, and nested-Struct layout slice"
+description = "Reported when a source Struct field type cannot be represented by the current IR layout."
+diagnostic_codes = ["BMXC1193"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 106
+name = "ir_lowering.imported_struct_static_array_element_helper_missing"
+text = "Imported Struct StaticArray field element type '{typeName}' has no published zero-argument value helper"
+description = "Reported when an imported Struct StaticArray element type lacks its published default-value helper."
+diagnostic_codes = ["BMXC1021"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 107
+name = "ir_lowering.generic_interface_inheritance_requires_ordinary_abi"
+text = "Generic Interface inheritance requires ordinary Interface ABI '{abiName}'"
+description = "Reported when a specialized Interface inherits an ordinary Interface without a usable runtime ABI."
+diagnostic_codes = ["BMXC1161"]
+placeholders = [{ name = "abiName", type = "string" }]
+
+[[message]]
+id = 108
+name = "ir_lowering.generic_interface_requires_canonical_specialization"
+text = "Generic Interfaces require canonical specialization lowering"
+description = "Reported when ordinary IR lowering encounters a generic Interface declaration that has not been specialized."
+diagnostic_codes = ["BMXC1160"]
+placeholders = []
+
+[[message]]
+id = 109
+name = "ir_lowering.imported_interface_abi_name_missing"
+text = "Imported Interface '{interfaceName}' has no interface ABI name"
+description = "Reported when an imported Interface has no published ABI name."
+diagnostic_codes = ["BMXC1166"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 110
+name = "ir_lowering.imported_interface_abi_name_requires_linker_representation"
+text = "Imported Interface ABI name '{abiName}' requires an explicit linker-name representation"
+description = "Reported when an imported Interface ABI name cannot be used as a C identifier without an explicit linker name."
+diagnostic_codes = ["BMXC1167"]
+placeholders = [{ name = "abiName", type = "string" }]
+
+[[message]]
+id = 111
+name = "ir_lowering.interface_inheritance_requires_published_abi"
+text = "Interface inheritance requires a non-generic source or imported Interface with a published ABI"
+description = "Reported when an Interface parent has no ordinary source or imported ABI available to IR lowering."
+diagnostic_codes = ["BMXC1161"]
+placeholders = []
+
+[[message]]
+id = 112
+name = "ir_lowering.interface_method_return_type_outside_abi_slice"
+text = "Interface method return type '{typeName}' is outside the current ABI slice"
+description = "Reported when an Interface method return type cannot be represented by the current ordinary-C ABI."
+diagnostic_codes = ["BMXC1163"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 113
+name = "ir_lowering.interface_method_parameters_require_supported_abi_types"
+text = "Interface method parameters require supported ordinary-C ABI value types"
+description = "Reported when an Interface method parameter cannot be represented by the current ordinary-C ABI."
+diagnostic_codes = ["BMXC1163"]
+placeholders = []
+
+[[message]]
+id = 114
+name = "ir_lowering.type_field_type_outside_object_layout_slice"
+text = "Field type '{typeName}' is outside the simple object layout slice"
+description = "Reported when a Type field cannot be represented by the current object layout."
+diagnostic_codes = ["BMXC1144"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 115
+name = "ir_lowering.imported_struct_static_array_type_field_element_helper_missing"
+text = "Imported Struct StaticArray Type field element type '{typeName}' has no published zero-argument value helper"
+description = "Reported when a Type field contains imported Struct elements without a published default-value helper."
+diagnostic_codes = ["BMXC1021"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 116
+name = "ir_lowering.generic_type_requires_canonical_specialization"
+text = "Generic Types require canonical specialization lowering"
+description = "Reported when ordinary IR lowering encounters a generic Type declaration that has not been specialized."
+diagnostic_codes = ["BMXC1140"]
+placeholders = []
+
+[[message]]
+id = 117
+name = "ir_lowering.interface_implementation_requires_published_abi"
+text = "Interface implementation requires a source or canonical imported Interface with a published ABI"
+description = "Reported when a Type implements an Interface whose ABI is unavailable to IR lowering."
+diagnostic_codes = ["BMXC1141"]
+placeholders = []
+
+[[message]]
+id = 118
+name = "ir_lowering.type_inheritance_requires_resolved_base"
+text = "Type inheritance requires a resolved Type base"
+description = "Reported when a Type's base declaration cannot be resolved as a Type."
+diagnostic_codes = ["BMXC1141"]
+placeholders = []
+
+[[message]]
+id = 119
+name = "ir_lowering.imported_type_inheritance_requires_published_abi_record"
+text = "Imported Type inheritance requires a complete published ABI record"
+description = "Reported when an imported base Type lacks the complete ABI record required for inheritance."
+diagnostic_codes = ["BMXC1141"]
+placeholders = []
+
+[[message]]
+id = 120
+name = "ir_lowering.interface_method_implementation_missing"
+text = "Interface method '{interfaceName}.{methodName}' has no lowered implementation"
+description = "Reported when a Type's Interface table cannot find a lowered implementation for a required method."
+diagnostic_codes = ["BMXC1164"]
+placeholders = [{ name = "interfaceName", type = "string" }, { name = "methodName", type = "string" }]
+
+[[message]]
+id = 121
+name = "ir_lowering.capturing_closure_in_generic_routine_unsupported"
+text = "capturing Closure literals in generic routines require canonical environment specialization support"
+description = "Reported when ordinary lowering encounters a capturing Closure inside a generic routine."
+diagnostic_codes = ["BMXC1247"]
+placeholders = []
+
+[[message]]
+id = 122
+name = "ir_lowering.sibling_closures_captured_self_type_mismatch"
+text = "sibling Closure literals disagree about their captured Self type"
+description = "Reported when sibling Closure literals require incompatible captured Self field types."
+diagnostic_codes = ["BMXC1248"]
+placeholders = []
+
+[[message]]
+id = 123
+name = "ir_lowering.captured_value_environment_type_unsupported"
+text = "captured value '{valueName}' has unsupported environment type '{typeName}'"
+description = "Reported when a captured value cannot be represented in a synthesized Closure environment."
+diagnostic_codes = ["BMXC1248"]
+placeholders = [{ name = "valueName", type = "string" }, { name = "typeName", type = "string" }]
+
+[[message]]
+id = 124
+name = "ir_lowering.nested_closure_enclosing_environment_plan_missing"
+text = "nested Closure capture has no enclosing environment plan"
+description = "Reported when a nested Closure capture cannot be connected to an enclosing capture plan."
+diagnostic_codes = ["BMXC1248"]
+placeholders = []
+
+[[message]]
+id = 125
+name = "ir_lowering.nested_closure_parent_environment_layout_missing"
+text = "nested Closure parent environment has no lowered layout"
+description = "Reported when the parent of a nested Closure environment has not been lowered to a class layout."
+diagnostic_codes = ["BMXC1248"]
+placeholders = []
+
+[[message]]
+id = 126
+name = "ir_lowering.captured_self_environment_type_unsupported"
+text = "captured Self has an unsupported environment type"
+description = "Reported when captured Self cannot be represented in a synthesized Closure environment."
+diagnostic_codes = ["BMXC1248"]
+placeholders = []
+
+[[message]]
+id = 127
+name = "ir_lowering.using_resource_does_not_expose_closeable_contract"
+text = "Using resource '{resourceName}' does not expose an ICloseable Interface contract"
+description = "Reported when a Using resource's type does not implement the required ICloseable contract."
+diagnostic_codes = ["BMXC1214"]
+placeholders = [{ name = "resourceName", type = "string" }]
+
+[[message]]
+id = 128
+name = "ir_lowering.using_resource_interface_close_method_missing"
+text = "Using resource Interface has no parameterless Close method"
+description = "Reported when the ICloseable contract available to a Using resource lacks a parameterless Close method."
+diagnostic_codes = ["BMXC1214"]
+placeholders = []
+
+[[message]]
+id = 129
+name = "ir_lowering.nested_closure_active_parent_environment_missing"
+text = "nested Closure environment has no active parent environment"
+description = "Reported while lowering a nested Closure allocation without its enclosing runtime environment."
+diagnostic_codes = ["BMXC1249"]
+placeholders = []
+
+[[message]]
+id = 130
+name = "ir_lowering.capturing_closure_active_instance_receiver_missing"
+text = "capturing Closure has no active instance receiver"
+description = "Reported when a Closure capturing Self is lowered outside an active instance receiver."
+diagnostic_codes = ["BMXC1249"]
+placeholders = []
+
+[[message]]
+id = 131
+name = "ir_lowering.using_requires_lowered_resource_per_declaration"
+text = "Using requires one lowered managed resource per declaration"
+description = "Reported when a Using statement's bound declarations and lowered resources do not correspond."
+diagnostic_codes = ["BMXC1214"]
+placeholders = []
+
+[[message]]
+id = 132
+name = "ir_lowering.closure_unary_operation_unsupported"
+text = "Closure unary operation '{operatorText}' is not implemented"
+description = "Reported when IR lowering encounters an unsupported unary operator on a managed Closure."
+diagnostic_codes = ["BMXC1243"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 133
+name = "ir_lowering.closure_binary_operation_unsupported"
+text = "Closure operation '{operatorText}' is not implemented"
+description = "Reported when IR lowering encounters an unsupported binary operator on a managed Closure."
+diagnostic_codes = ["BMXC1243"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 134
+name = "ir_lowering.bound_method_reference_requires_closure_signature_and_object_receiver"
+text = "Bound Method reference requires a supported managed Closure signature and object receiver"
+description = "Reported when a bound Method reference lacks a representable Closure signature or managed receiver."
+diagnostic_codes = ["BMXC1250"]
+placeholders = []
+
+[[message]]
+id = 135
+name = "ir_lowering.bound_method_reference_struct_receiver_unsupported"
+text = "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined"
+description = "Reported when a bound Method reference attempts to capture a Struct receiver."
+diagnostic_codes = ["BMXC1250"]
+placeholders = []
+
+[[message]]
+id = 136
+name = "ir_lowering.capturing_closure_synthesized_environment_missing"
+text = "capturing Closure literal has no active synthesized environment"
+description = "Reported when a capturing Closure literal is lowered without its synthesized runtime environment."
+diagnostic_codes = ["BMXC1249"]
+placeholders = []
+
+[[message]]
+id = 137
+name = "ir_lowering.closure_native_abi_representation_missing"
+text = "Closure values have no native ABI representation"
+description = "Reported when a managed Closure crosses a native ABI boundary."
+diagnostic_codes = ["BMXC1244"]
+placeholders = []
+
+[[message]]
+id = 138
+name = "ir_lowering.struct_cannot_declare_delete_method"
+text = "Structs have C value lifetime and cannot declare a Delete method"
+description = "Reported when a Struct declares an object-lifetime Delete method."
+diagnostic_codes = ["BMXC1195"]
+placeholders = []
+
+[[message]]
+id = 139
+name = "ir_lowering.enum_declaration_could_not_be_lowered"
+text = "Enum declaration could not be lowered"
+description = "Reported when a collected Enum has no usable compiler-IR declaration."
+diagnostic_codes = ["BMXC1101"]
+placeholders = []
+
+[[message]]
+id = 140
+name = "ir_lowering.generic_routine_requires_canonical_specialization"
+text = "Generic routines require canonical specialization lowering"
+description = "Reported when ordinary IR lowering encounters an unspecialized generic routine."
+diagnostic_codes = ["BMXC1105"]
+placeholders = []
+
+[[message]]
+id = 141
+name = "ir_lowering.routine_return_type_outside_scalar_slice"
+text = "Routine return type '{typeName}' is outside the scalar IR slice"
+description = "Reported when an ordinary routine return type cannot be represented in compiler IR."
+diagnostic_codes = ["BMXC1106"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 142
+name = "ir_lowering.callable_parameters_require_value_passing"
+text = "Callable parameters require value passing in the ordinary-C ABI IR slice"
+description = "Reported when a callable parameter uses an unsupported passing mode."
+diagnostic_codes = ["BMXC1107"]
+placeholders = []
+
+[[message]]
+id = 143
+name = "ir_lowering.callable_destructor_parameters_outside_lifecycle_abi"
+text = "Callable destructor parameters are outside the lifecycle ABI"
+description = "Reported when a destructor callable declares parameters unsupported by the lifecycle ABI."
+diagnostic_codes = ["BMXC1107"]
+placeholders = []
+
+[[message]]
+id = 144
+name = "ir_lowering.parameter_type_outside_ordinary_c_abi_slice"
+text = "Parameter type '{typeName}' is outside the ordinary-C ABI IR slice"
+description = "Reported when a routine parameter type cannot be represented by the ordinary-C ABI."
+diagnostic_codes = ["BMXC1107"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 145
+name = "ir_lowering.var_parameter_requires_addressable_abi_type"
+text = "Var parameters require a directly addressable value ABI type"
+description = "Reported when a Var parameter type has no directly addressable ABI representation."
+diagnostic_codes = ["BMXC1107"]
+placeholders = []
+
+[[message]]
+id = 146
+name = "ir_lowering.extern_routine_requires_native_abi_binding"
+text = "Extern routines require a native ABI binding"
+description = "Reported when an Extern routine has no native linker identity."
+diagnostic_codes = ["BMXC1102"]
+placeholders = []
+
+[[message]]
+id = 147
+name = "ir_lowering.extern_variable_requires_global_native_abi_binding"
+text = "Extern variables must be Global declarations with a native ABI binding"
+description = "Reported when an Extern variable is not a Global with a native linker identity."
+diagnostic_codes = ["BMXC1102"]
+placeholders = []
+
+[[message]]
+id = 148
+name = "ir_lowering.extern_type_requires_struct_abi_declaration"
+text = "Only Struct ABI declarations are implemented as Extern types"
+description = "Reported when an Extern type is not a supported Struct ABI declaration."
+diagnostic_codes = ["BMXC1102"]
+placeholders = []
+
+[[message]]
+id = 149
+name = "ir_lowering.extern_block_declaration_unsupported"
+text = "Only routine and Global declarations are implemented in Extern blocks"
+description = "Reported when an Extern block contains an unsupported declaration kind."
+diagnostic_codes = ["BMXC1102"]
+placeholders = []
+
+[[message]]
+id = 150
+name = "ir_lowering.yielding_routine_cannot_retain_var_parameters"
+text = "yielding routines cannot retain Var parameters beyond the creating call"
+description = "Reported when an iterator routine declares a Var parameter whose reference cannot outlive its creating call."
+diagnostic_codes = ["BMXC1250"]
+placeholders = []
+
+[[message]]
+id = 151
+name = "ir_lowering.yield_inside_finally_unsupported"
+text = "Yield inside Finally is not supported; Yield from the protected Try or Catch body instead"
+description = "Reported when an iterator attempts to suspend execution from a Finally body."
+diagnostic_codes = ["BMXC1252"]
+placeholders = []
+
+[[message]]
+id = 152
+name = "ir_lowering.iterator_interface_method_implementation_missing"
+text = "iterator Interface method '{methodName}' has no generated implementation"
+description = "Reported when a generated iterator class lacks an implementation for a required Interface method."
+diagnostic_codes = ["BMXC1253"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 153
+name = "ir_lowering.object_iterator_each_in_loop_variable_unsupported"
+text = "Object iterator EachIn requires a matching supported loop variable, or an object-reference target for a legacy Object result"
+description = "Reported when an object iteration result cannot be assigned to the EachIn loop variable."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 154
+name = "ir_lowering.object_iterator_each_in_receiver_unsupported"
+text = "Object iterator EachIn currently requires source or imported Type, or non-generic Interface receivers"
+description = "Reported when an object iterator receiver has no supported runtime dispatch representation."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 155
+name = "ir_lowering.object_iterator_each_in_target_not_addressable"
+text = "Object iterator EachIn requires an addressable Local, Var parameter, Field, Global, or array element target"
+description = "Reported when an object iterator EachIn target is not addressable."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 156
+name = "ir_lowering.legacy_object_enumerator_cast_identity_missing"
+text = "Legacy ObjectEnumerator target has no runtime cast identity"
+description = "Reported when a legacy ObjectEnumerator result cannot be cast to the loop target type."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 157
+name = "ir_lowering.static_array_each_in_element_type_unsupported"
+text = "StaticArray EachIn element type is not implemented"
+description = "Reported when StaticArray iteration encounters an unsupported element type."
+diagnostic_codes = ["BMXC1019"]
+placeholders = []
+
+[[message]]
+id = 158
+name = "ir_lowering.static_array_each_in_loop_variable_type_unsupported"
+text = "StaticArray EachIn loop variable type is not implemented for this element type"
+description = "Reported when a StaticArray element cannot be converted to its EachIn loop variable type."
+diagnostic_codes = ["BMXC1019"]
+placeholders = []
+
+[[message]]
+id = 159
+name = "ir_lowering.static_array_each_in_target_not_addressable"
+text = "StaticArray EachIn requires an addressable Local, Var parameter, Field, Global, or array element target"
+description = "Reported when a StaticArray EachIn target is not addressable."
+diagnostic_codes = ["BMXC1019"]
+placeholders = []
+
+[[message]]
+id = 160
+name = "ir_lowering.string_each_in_requires_numeric_loop_variable"
+text = "String EachIn requires a numeric loop variable for UTF-16 code units"
+description = "Reported when String iteration uses a loop variable that cannot receive a UTF-16 code unit."
+diagnostic_codes = ["BMXC1018"]
+placeholders = []
+
+[[message]]
+id = 161
+name = "ir_lowering.string_each_in_target_not_addressable"
+text = "String EachIn requires an addressable Local, Var parameter, Field, Global, or array element target"
+description = "Reported when a String EachIn target is not addressable."
+diagnostic_codes = ["BMXC1018"]
+placeholders = []
+
+[[message]]
+id = 162
+name = "ir_lowering.each_in_requires_supported_managed_array"
+text = "EachIn requires a supported managed Array"
+description = "Reported when EachIn reaches an unsupported managed Array representation."
+diagnostic_codes = ["BMXC1008"]
+placeholders = []
+
+[[message]]
+id = 163
+name = "ir_lowering.array_each_in_element_type_mismatch"
+text = "Array EachIn element type '{elementType}' cannot be assigned to loop variable type '{variableType}'"
+description = "Reported when a managed Array element cannot be assigned to the EachIn loop variable."
+diagnostic_codes = ["BMXC1017"]
+placeholders = [{ name = "elementType", type = "string" }, { name = "variableType", type = "string" }]
+
+[[message]]
+id = 164
+name = "ir_lowering.array_each_in_target_not_addressable"
+text = "Array EachIn requires an addressable Local, Var parameter, Field, Global, or array element target"
+description = "Reported when a managed Array EachIn target is not addressable."
+diagnostic_codes = ["BMXC1017"]
+placeholders = []
+
+[[message]]
+id = 165
+name = "ir_lowering.object_array_each_in_cast_identity_missing"
+text = "Object Array EachIn target has no runtime cast identity"
+description = "Reported when an Object Array element cannot be cast to the loop target type."
+diagnostic_codes = ["BMXC1016"]
+placeholders = []
+
+[[message]]
+id = 166
+name = "ir_lowering.range_for_requires_numeric_types"
+text = "Range For loops require numeric variable, initializer, limit, and step types"
+description = "Reported when a range For loop contains a non-numeric component."
+diagnostic_codes = ["BMXC1009"]
+placeholders = []
+
+[[message]]
+id = 167
+name = "ir_lowering.range_for_target_not_addressable"
+text = "Range For requires an addressable Local, Var parameter, Field, Global, or array element target"
+description = "Reported when a range For target is not addressable."
+diagnostic_codes = ["BMXC1009"]
+placeholders = []
+
+[[message]]
+id = 168
+name = "ir_lowering.extern_const_compile_time_value_missing"
+text = "Extern Const '{constantName}' has no compile-time value"
+description = "Reported when an Extern Const lacks its required compile-time value."
+diagnostic_codes = ["BMXC1102"]
+placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 169
+name = "ir_lowering.static_array_type_field_requires_default_initialization"
+text = "StaticArray Type fields currently require default initialization"
+description = "Reported when a StaticArray Type field has an explicit initializer."
+diagnostic_codes = ["BMXC1019"]
+placeholders = []
+
+[[message]]
+id = 170
+name = "ir_lowering.type_field_initializer_expression_missing"
+text = "Field initializer did not have a bound expression"
+description = "Reported when a Type field initializer has no bound expression."
+diagnostic_codes = ["BMXC1145"]
+placeholders = []
+
+[[message]]
+id = 171
+name = "ir_lowering.static_array_struct_field_requires_default_initialization"
+text = "StaticArray Struct fields currently require default initialization"
+description = "Reported when a StaticArray Struct field has an explicit initializer."
+diagnostic_codes = ["BMXC1019"]
+placeholders = []
+
+[[message]]
+id = 172
+name = "ir_lowering.struct_field_initializer_expression_missing"
+text = "Struct field initializer did not have a bound expression"
+description = "Reported when a Struct field initializer has no bound expression."
+diagnostic_codes = ["BMXC1194"]
+placeholders = []
+
+[[message]]
+id = 173
+name = "ir_lowering.struct_constructor_cannot_delegate_to_imported_type"
+text = "Struct constructors cannot delegate to an imported Type constructor"
+description = "Reported when a Struct constructor delegates to a constructor owned by an imported Type."
+diagnostic_codes = ["BMXC1200"]
+placeholders = []
+
+[[message]]
+id = 174
+name = "ir_lowering.struct_constructor_delegation_requires_same_struct"
+text = "Struct constructors may only delegate to another constructor on the same Struct"
+description = "Reported when Struct constructor delegation targets another owner."
+diagnostic_codes = ["BMXC1200"]
+placeholders = []
+
+[[message]]
+id = 175
+name = "ir_lowering.multiple_declarators_unsupported"
+text = "Multiple declarators in one statement are not yet lowered"
+description = "Reported when one variable statement contains multiple declarators."
+diagnostic_codes = ["BMXC1001"]
+placeholders = []
+
+[[message]]
+id = 176
+name = "ir_lowering.variable_declaration_semantic_symbol_missing"
+text = "Variable declaration has no semantic symbol"
+description = "Reported when a variable declaration has no bound semantic symbol."
+diagnostic_codes = ["BMXC1002"]
+placeholders = []
+
+[[message]]
+id = 177
+name = "ir_lowering.callable_storage_requires_compatible_declaration"
+text = "Callable storage currently requires an ordinary-C-compatible Local or Global declaration"
+description = "Reported when callable storage is declared outside a compatible Local or Global."
+diagnostic_codes = ["BMXC1185"]
+placeholders = []
+
+[[message]]
+id = 178
+name = "ir_lowering.variable_type_outside_scalar_slice"
+text = "Variable type '{typeName}' is outside the scalar IR slice"
+description = "Reported when a variable type cannot be represented in scalar compiler IR."
+diagnostic_codes = ["BMXC1003"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 179
+name = "ir_lowering.static_array_declaration_requires_default_initialization"
+text = "StaticArray declarations currently require default initialization"
+description = "Reported when a StaticArray declaration has an explicit initializer."
+diagnostic_codes = ["BMXC1019"]
+placeholders = []
+
+[[message]]
+id = 180
+name = "ir_lowering.imported_struct_static_array_declaration_element_helper_missing"
+text = "Imported Struct StaticArray element type '{typeName}' has no published zero-argument value helper"
+description = "Reported when a StaticArray of imported Struct values lacks a default-value helper."
+diagnostic_codes = ["BMXC1021"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 181
+name = "ir_lowering.assignment_target_unsupported"
+text = "Only symbol, field, heap-array and StaticArray element assignment is implemented"
+description = "Reported when an assignment target has no supported IR address form."
+diagnostic_codes = ["BMXC1005"]
+placeholders = []
+
+[[message]]
+id = 182
+name = "ir_lowering.compound_assignment_target_unsupported"
+text = "Compound assignment requires a supported scalar or Enum target, or a stable String/heap-array target with :+"
+description = "Reported when a compound assignment target or operator is unsupported."
+diagnostic_codes = ["BMXC1005"]
+placeholders = []
+
+[[message]]
+id = 183
+name = "ir_lowering.assert_condition_type_not_convertible_to_truth"
+text = "Assert condition type '{typeName}' cannot be converted to BlitzMax truth"
+description = "Reported when an Assert condition has no supported truth conversion."
+diagnostic_codes = ["BMXC1204"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 184
+name = "ir_lowering.assert_message_type_not_convertible_to_string"
+text = "Assert message type '{typeName}' cannot be converted to String by the current IR"
+description = "Reported when an Assert message has no supported String conversion."
+diagnostic_codes = ["BMXC1205"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 185
+name = "ir_lowering.release_requires_integer_handle"
+text = "Release requires an integer handle expression"
+description = "Reported when Release receives a non-integer handle expression."
+diagnostic_codes = ["BMXC1216"]
+placeholders = []
+
+[[message]]
+id = 186
+name = "ir_lowering.select_selector_type_unsupported"
+text = "Select selector type '{typeName}' requires String, managed Object/Array identity, Enum, pointer, or scalar numeric comparison IR"
+description = "Reported when a Select selector has no supported comparison representation."
+diagnostic_codes = ["BMXC1212"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 187
+name = "ir_lowering.try_requires_catch_or_finally"
+text = "Try requires Catch or Finally"
+description = "Reported when a lowered Try statement has neither Catch nor Finally routing."
+diagnostic_codes = ["BMXC1213"]
+placeholders = []
+
+[[message]]
+id = 188
+name = "ir_lowering.catch_type_downcast_identity_missing"
+text = "Catch type '{typeName}' has no runtime downcast identity"
+description = "Reported when a Catch type has no runtime identity for exception matching."
+diagnostic_codes = ["BMXC1213"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 189
+name = "ir_lowering.read_data_operation_missing"
+text = "ReadData has no analyzed data operation"
+description = "Reported when ReadData has no retained semantic data operation."
+diagnostic_codes = ["BMXC1222"]
+placeholders = []
+
+[[message]]
+id = 190
+name = "ir_lowering.read_data_target_not_addressable"
+text = "ReadData target is not addressable in typed IR"
+description = "Reported when a ReadData target cannot be represented as an IR address."
+diagnostic_codes = ["BMXC1222"]
+placeholders = []
+
+[[message]]
+id = 191
+name = "ir_lowering.restore_data_label_missing"
+text = "RestoreData has no resolved data label"
+description = "Reported when RestoreData has no resolved label identity."
+diagnostic_codes = ["BMXC1223"]
+placeholders = []
+
+[[message]]
+id = 192
+name = "ir_lowering.loop_control_target_missing"
+text = "Loop control target was not retained by semantic analysis"
+description = "Reported when Exit or Continue has no retained loop target."
+diagnostic_codes = ["BMXC1007"]
+placeholders = []
+
+[[message]]
+id = 193
+name = "ir_lowering.bound_statement_kind_unsupported"
+text = "Bound statement kind '{statementKind}' is not implemented"
+description = "Reported when IR lowering encounters an unsupported bound statement kind."
+diagnostic_codes = ["BMXC1006"]
+placeholders = [{ name = "statementKind", type = "integer" }]
+
+[[message]]
+id = 194
+name = "ir_lowering.heap_array_allocation_rank_mismatch"
+text = "Heap-array declaration allocation requires one dimension per declared rank"
+description = "Reported when a managed Array allocation dimension count differs from its declared rank."
+diagnostic_codes = ["BMXC1134"]
+placeholders = []
+
+[[message]]
+id = 195
+name = "ir_lowering.array_element_type_unsupported"
+text = "Array element type '{typeName}' is not implemented"
+description = "Reported when a managed Array element type has no supported IR representation."
+diagnostic_codes = ["BMXC1132"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 196
+name = "ir_lowering.expression_type_outside_scalar_slice"
+text = "Expression type '{typeName}' is outside the scalar IR slice"
+description = "Reported when an expression type has no supported scalar IR representation."
+diagnostic_codes = ["BMXC1010"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 197
+name = "ir_lowering.array_literal_requires_one_dimension"
+text = "Only one-dimensional array literals are implemented"
+description = "Reported when an Array literal has more than one dimension."
+diagnostic_codes = ["BMXC1135"]
+placeholders = []
+
+[[message]]
+id = 198
+name = "ir_lowering.self_requires_instance_method"
+text = "Self is only available while lowering an instance method"
+description = "Reported when Self reaches IR lowering outside an instance method."
+diagnostic_codes = ["BMXC1151"]
+placeholders = []
+
+[[message]]
+id = 199
+name = "ir_lowering.static_array_member_unsupported"
+text = "StaticArray member lowering currently supports only length"
+description = "Reported when StaticArray member access targets a member other than length."
+diagnostic_codes = ["BMXC1134"]
+placeholders = []
+
+[[message]]
+id = 200
+name = "ir_lowering.array_member_unsupported"
+text = "Array member lowering currently supports only length"
+description = "Reported when managed Array member access targets a member other than length."
+diagnostic_codes = ["BMXC1130"]
+placeholders = []
+
+[[message]]
+id = 201
+name = "ir_lowering.string_index_requires_integral_index"
+text = "String indexing requires one integral index"
+description = "Reported when String indexing does not contain exactly one integral index."
+diagnostic_codes = ["BMXC1123"]
+placeholders = []
+
+[[message]]
+id = 202
+name = "ir_lowering.pointer_index_unsupported"
+text = "Raw pointer indexing requires one integral index and a supported non-Void element type"
+description = "Reported when raw-pointer indexing lacks a valid index or element type."
+diagnostic_codes = ["BMXC1206"]
+placeholders = []
+
+[[message]]
+id = 203
+name = "ir_lowering.static_array_index_unsupported"
+text = "Only one-dimensional supported StaticArray indexing is implemented"
+description = "Reported when StaticArray indexing has unsupported rank or element type."
+diagnostic_codes = ["BMXC1135"]
+placeholders = []
+
+[[message]]
+id = 204
+name = "ir_lowering.heap_array_index_rank_mismatch"
+text = "Heap-array indexing requires one index per declared rank"
+description = "Reported when managed Array index count differs from its rank."
+diagnostic_codes = ["BMXC1131"]
+placeholders = []
+
+[[message]]
+id = 205
+name = "ir_lowering.slice_receiver_type_unsupported"
+text = "Slice receiver type '{typeName}' is outside the String and one-dimensional heap Array slice"
+description = "Reported when a slice receiver is neither String nor a supported managed Array."
+diagnostic_codes = ["BMXC1210"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 206
+name = "ir_lowering.var_ptr_operand_not_addressable"
+text = "VarPtr operand is not addressable in typed compiler IR"
+description = "Reported when VarPtr receives an expression with no IR address."
+diagnostic_codes = ["BMXC1120"]
+placeholders = []
+
+[[message]]
+id = 207
+name = "ir_lowering.callable_unary_operation_unsupported"
+text = "Callable unary operation '{operatorText}' is not implemented"
+description = "Reported for an unsupported unary operation on a callable value."
+diagnostic_codes = ["BMXC1186"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 208
+name = "ir_lowering.object_unary_operation_unsupported"
+text = "Object unary operation '{operatorText}' is not implemented"
+description = "Reported for an unsupported unary operation on an Object value."
+diagnostic_codes = ["BMXC1147"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 209
+name = "ir_lowering.array_unary_operation_unsupported"
+text = "Array unary operation '{operatorText}' is not implemented"
+description = "Reported for an unsupported unary operation on an Array value."
+diagnostic_codes = ["BMXC1133"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 210
+name = "ir_lowering.string_unary_operation_unsupported"
+text = "String unary operation '{operatorText}' is not implemented"
+description = "Reported for an unsupported unary operation on a String value."
+diagnostic_codes = ["BMXC1123"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 211
+name = "ir_lowering.pointer_unary_operation_requires_explicit_ir"
+text = "Pointer unary operations require explicit pointer IR operations"
+description = "Reported when a raw-pointer unary operation lacks dedicated IR support."
+diagnostic_codes = ["BMXC1120"]
+placeholders = []
+
+[[message]]
+id = 212
+name = "ir_lowering.struct_unary_operation_requires_resolved_operator"
+text = "Struct unary operation '{operatorText}' requires a resolved operator"
+description = "Reported when a Struct unary operation has no resolved overload."
+diagnostic_codes = ["BMXC1217"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 213
+name = "ir_lowering.object_binary_operation_unsupported"
+text = "Object operation '{operatorText}' is not implemented"
+description = "Reported for an unsupported binary operation on Object values."
+diagnostic_codes = ["BMXC1147"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 214
+name = "ir_lowering.array_binary_operation_unsupported"
+text = "Array operation '{operatorText}' is not implemented"
+description = "Reported for an unsupported binary operation on Array values."
+diagnostic_codes = ["BMXC1133"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 215
+name = "ir_lowering.string_binary_operation_unsupported"
+text = "String binary operation '{operatorText}' is not implemented"
+description = "Reported for an unsupported binary operation on String values."
+diagnostic_codes = ["BMXC1123"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 216
+name = "ir_lowering.pointer_binary_operation_unsupported"
+text = "Pointer operation '{operatorText}' is not implemented"
+description = "Reported for an unsupported binary operation on pointer values."
+diagnostic_codes = ["BMXC1120"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 217
+name = "ir_lowering.null_default_conversion_unsupported"
+text = "Null default conversion to '{typeName}' has no typed IR representation"
+description = "Reported when Null cannot provide the default value of the target type."
+diagnostic_codes = ["BMXC1216"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 218
+name = "ir_lowering.enum_to_string_requires_descriptor"
+text = "Enum-to-String conversion requires a retained Enum descriptor"
+description = "Reported when Enum-to-String conversion lacks its runtime descriptor."
+diagnostic_codes = ["BMXC1103"]
+placeholders = []
+
+[[message]]
+id = 219
+name = "ir_lowering.bound_expression_kind_unsupported"
+text = "Bound expression kind '{expressionKind}' is not implemented"
+description = "Reported when IR lowering encounters an unsupported bound expression kind."
+diagnostic_codes = ["BMXC1015"]
+placeholders = [{ name = "expressionKind", type = "integer" }]
+
+[[message]]
+id = 220
+name = "ir_lowering.range_struct_abi_missing"
+text = "The standard Range value has no published Struct ABI"
+description = "Reported when standard Range slicing lacks the Range Struct ABI."
+diagnostic_codes = ["BMXC1211"]
+placeholders = []
+
+[[message]]
+id = 221
+name = "ir_lowering.range_bound_resolution_abi_missing"
+text = "The standard Range value has no published bound-resolution ABI"
+description = "Reported when standard Range slicing lacks bound-resolution methods."
+diagnostic_codes = ["BMXC1211"]
+placeholders = []
+
+[[message]]
+id = 222
+name = "ir_lowering.range_slicing_receiver_unsupported"
+text = "Range slicing supports String and one-dimensional heap Array values"
+description = "Reported when Range slicing receives an unsupported value."
+diagnostic_codes = ["BMXC1210"]
+placeholders = []
+
+[[message]]
+id = 223
+name = "ir_lowering.super_method_requires_source_base_implementation"
+text = "Super method dispatch currently requires a lowered source base implementation"
+description = "Reported when Super dispatch cannot find a lowered implementation in the source base class."
+diagnostic_codes = ["BMXC1152"]
+placeholders = []
+
+[[message]]
+id = 224
+name = "ir_lowering.call_target_unsupported"
+text = "Call target '{callName}' on receiver type '{receiverType}' is not implemented"
+description = "Reported when a resolved call target and receiver cannot be represented by compiler IR."
+diagnostic_codes = ["BMXC1012"]
+placeholders = [{ name = "callName", type = "string" }, { name = "receiverType", type = "string" }]
+
+[[message]]
+id = 225
+name = "ir_lowering.lifecycle_call_requires_dedicated_operation"
+text = "Constructor delegation and direct destructor calls require dedicated lifecycle operations"
+description = "Reported when a lifecycle routine is reached through ordinary call lowering."
+diagnostic_codes = ["BMXC1153"]
+placeholders = []
+
+[[message]]
+id = 226
+name = "ir_lowering.object_qualified_type_function_source_slot_missing"
+text = "Object-qualified Type Function call has no source class-table slot"
+description = "Reported when an object-qualified source Type Function has no class-table dispatch slot."
+diagnostic_codes = ["BMXC1150"]
+placeholders = []
+
+[[message]]
+id = 227
+name = "ir_lowering.super_dispatch_requires_instance_method"
+text = "Super dispatch requires an instance method"
+description = "Reported when Super dispatch resolves to a routine that is not an instance method."
+diagnostic_codes = ["BMXC1152"]
+placeholders = []
+
+[[message]]
+id = 228
+name = "ir_lowering.super_dispatch_source_base_layout_missing"
+text = "Super dispatch class does not have a lowered source base layout"
+description = "Reported when a source class used for Super dispatch has no lowered base-class layout."
+diagnostic_codes = ["BMXC1152"]
+placeholders = []
+
+[[message]]
+id = 229
+name = "ir_lowering.method_call_receiver_missing"
+text = "Method call did not retain its bound receiver"
+description = "Reported when a source method call reaches IR lowering without its bound receiver."
+diagnostic_codes = ["BMXC1150"]
+placeholders = []
+
+[[message]]
+id = 230
+name = "ir_lowering.imported_struct_constructor_requires_struct_new"
+text = "Imported Struct constructors require a struct-new operation"
+description = "Reported when an imported Struct constructor is reached through ordinary call lowering."
+diagnostic_codes = ["BMXC1153"]
+placeholders = []
+
+[[message]]
+id = 231
+name = "ir_lowering.imported_struct_method_receiver_missing"
+text = "Imported Struct method call did not retain its receiver"
+description = "Reported when an imported Struct method call reaches IR lowering without its receiver."
+diagnostic_codes = ["BMXC1150"]
+placeholders = []
+
+[[message]]
+id = 232
+name = "ir_lowering.imported_virtual_method_receiver_missing"
+text = "Imported virtual method call did not retain its bound receiver"
+description = "Reported when an imported virtual method call reaches IR lowering without its receiver."
+diagnostic_codes = ["BMXC1173"]
+placeholders = []
+
+[[message]]
+id = 233
+name = "ir_lowering.imported_virtual_method_receiver_abi_missing"
+text = "Imported virtual method receiver type has no published class ABI"
+description = "Reported when an imported virtual method receiver has no source or published class layout."
+diagnostic_codes = ["BMXC1173"]
+placeholders = []
+
+[[message]]
+id = 234
+name = "ir_lowering.imported_method_inherited_slot_missing"
+text = "Imported method '{methodName}' has no inherited slot in source receiver type '{receiverType}' (declaring imported class '{declaringClass}', source imported base '{sourceBase}')"
+description = "Reported when a source receiver class does not expose the inherited slot required by an imported method."
+diagnostic_codes = ["BMXC1173"]
+placeholders = [{ name = "methodName", type = "string" }, { name = "receiverType", type = "string" }, { name = "declaringClass", type = "string" }, { name = "sourceBase", type = "string" }]
+
+[[message]]
+id = 235
+name = "ir_lowering.imported_super_dispatch_implementation_missing"
+text = "Imported Super dispatch requires an exact imported base implementation"
+description = "Reported when imported Super dispatch cannot find the exact base implementation."
+diagnostic_codes = ["BMXC1152"]
+placeholders = []
+
+[[message]]
+id = 236
+name = "ir_lowering.object_qualified_imported_type_function_slot_missing"
+text = "Object-qualified imported Type Function call has no class-table slot"
+description = "Reported when an object-qualified imported Type Function has no class-table dispatch slot."
+diagnostic_codes = ["BMXC1150"]
+placeholders = []
+
+[[message]]
+id = 237
+name = "ir_lowering.direct_or_generic_method_receiver_missing"
+text = "Direct or generic method call did not retain its bound receiver"
+description = "Reported when a direct or generic method call reaches IR lowering without its receiver."
+diagnostic_codes = ["BMXC1150"]
+placeholders = []
+
+[[message]]
+id = 238
+name = "ir_lowering.imported_struct_construction_requires_constructor_helper"
+text = "Imported Struct construction arguments require a published constructor helper"
+description = "Reported when imported Struct construction has arguments but no published constructor helper."
+diagnostic_codes = ["BMXC1196"]
+placeholders = []
+
+[[message]]
+id = 239
+name = "ir_lowering.struct_construction_requires_lowered_constructor"
+text = "Struct construction arguments require a lowered constructor"
+description = "Reported when source Struct construction has arguments but no lowered constructor."
+diagnostic_codes = ["BMXC1196"]
+placeholders = []
+
+[[message]]
+id = 240
+name = "ir_lowering.imported_type_allocation_requires_constructor_abi"
+text = "Imported Type allocation requires a selected constructor with a published object-construction ABI"
+description = "Reported when imported Type allocation has no selected constructor with a published ABI."
+diagnostic_codes = ["BMXC1171"]
+placeholders = []
+
+[[message]]
+id = 241
+name = "ir_lowering.object_allocation_requires_constructor"
+text = "Object allocation requires an implicit default or lowered source constructor"
+description = "Reported when source Object allocation has neither an implicit default nor a lowered constructor."
+diagnostic_codes = ["BMXC1148"]
+placeholders = []
+
+[[message]]
+id = 242
+name = "ir_lowering.heap_array_allocation_dimension_mismatch"
+text = "Heap-array allocation requires one dimension per declared rank"
+description = "Reported when a managed Array allocation dimension count differs from its declared rank."
+diagnostic_codes = ["BMXC1134"]
+placeholders = []
+
+[[message]]
+id = 243
+name = "ir_lowering.indirect_call_signature_missing"
+text = "Indirect call is missing its resolved callable signature"
+description = "Reported when an indirect call reaches IR lowering without its resolved signature."
+diagnostic_codes = ["BMXC1184"]
+placeholders = []
+
+[[message]]
+id = 244
+name = "ir_lowering.indirect_call_target_type_unsupported"
+text = "Indirect call target type '{callableType}' is not supported by the runtime ABI"
+description = "Reported when an indirect call target has no supported callable ABI representation."
+diagnostic_codes = ["BMXC1184"]
+placeholders = [{ name = "callableType", type = "string" }]
+
+[[message]]
+id = 245
+name = "ir_lowering.indirect_call_argument_count_mismatch"
+text = "Indirect call requires {requiredCount} arguments but received {actualCount}"
+description = "Reported when an indirect invocation argument count differs from its callable signature."
+diagnostic_codes = ["BMXC1184"]
+placeholders = [{ name = "requiredCount", type = "integer" }, { name = "actualCount", type = "integer" }]
+
+[[message]]
+id = 246
+name = "ir_lowering.indirect_call_omitted_arguments_unsupported"
+text = "Indirect callable invocation does not accept omitted arguments"
+description = "Reported when an indirect invocation contains an omitted argument."
+diagnostic_codes = ["BMXC1184"]
+placeholders = []
+
+[[message]]
+id = 247
+name = "ir_lowering.callable_static_array_argument_mismatch"
+text = "StaticArray argument {argumentIndex} does not match callable parameter extent and element type '{parameterType}'"
+description = "Reported when an indirect-call StaticArray argument differs from its parameter type."
+diagnostic_codes = ["BMXC1022"]
+placeholders = [{ name = "argumentIndex", type = "integer" }, { name = "parameterType", type = "string" }]
+
+[[message]]
+id = 248
+name = "ir_lowering.callable_truth_requires_compatible_signature"
+text = "Callable truth test requires an ordinary-C-compatible signature"
+description = "Reported when a callable truth test uses a signature outside the supported ABI."
+diagnostic_codes = ["BMXC1186"]
+placeholders = []
+
+[[message]]
+id = 249
+name = "ir_lowering.interface_call_receiver_missing"
+text = "Interface call did not retain a source Interface receiver"
+description = "Reported when an Interface call reaches IR lowering without its source receiver."
+diagnostic_codes = ["BMXC1165"]
+placeholders = []
+
+[[message]]
+id = 250
+name = "ir_lowering.interface_super_call_requires_default_method"
+text = "Qualified Interface Super call must select a Default method body"
+description = "Reported when a qualified Interface Super call does not resolve to a Default method."
+diagnostic_codes = ["BMXC1168"]
+placeholders = []
+
+[[message]]
+id = 251
+name = "ir_lowering.interface_super_call_implementation_missing"
+text = "Qualified Interface Super call has no published default implementation"
+description = "Reported when a qualified Interface Super call has no lowered or published Default body."
+diagnostic_codes = ["BMXC1168"]
+placeholders = []
+
+[[message]]
+id = 252
+name = "ir_lowering.field_access_outside_object_layout"
+text = "Field access is outside the lowered object layout ({layoutDetail})"
+description = "Reported when a field cannot be found in the receiver's lowered object layout."
+diagnostic_codes = ["BMXC1146"]
+placeholders = [{ name = "layoutDetail", type = "string" }]
+
+[[message]]
+id = 253
+name = "ir_lowering.imported_field_type_outside_value_abi"
+text = "Imported field type '{typeName}' is outside the current value ABI slice"
+description = "Reported when an imported field type has no supported value ABI representation."
+diagnostic_codes = ["BMXC1182"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 254
+name = "ir_lowering.resolved_call_routine_missing"
+text = "Resolved call did not retain its selected routine while lowering arguments"
+description = "Reported when resolved-call argument lowering cannot find the selected routine."
+diagnostic_codes = ["BMXC1180"]
+placeholders = []
+
+[[message]]
+id = 255
+name = "ir_lowering.static_array_argument_mismatch"
+text = "StaticArray argument {argumentIndex} does not match parameter extent and element type '{parameterType}'"
+description = "Reported when a resolved-call StaticArray argument differs from its parameter type."
+diagnostic_codes = ["BMXC1022"]
+placeholders = [{ name = "argumentIndex", type = "integer" }, { name = "parameterType", type = "string" }]
+
+[[message]]
+id = 256
+name = "ir_lowering.omitted_argument_default_missing"
+text = "Omitted argument for parameter {parameterIndex} has no semantic default"
+description = "Reported when an omitted argument's selected parameter has no semantic default value."
+diagnostic_codes = ["BMXC1180"]
+placeholders = [{ name = "parameterIndex", type = "integer" }]
+
+[[message]]
+id = 257
+name = "ir_lowering.callable_default_outside_function_pointer_slice"
+text = "Callable default argument is outside the ordinary-C function-pointer IR slice"
+description = "Reported when a callable default has no supported thin function-pointer representation."
+diagnostic_codes = ["BMXC1181"]
+placeholders = []
+
+[[message]]
+id = 258
+name = "ir_lowering.callable_default_target_unsupported"
+text = "Callable default target must be a lowered source or imported ordinary-C free routine"
+description = "Reported when a callable default target has no supported source or imported routine identity."
+diagnostic_codes = ["BMXC1181"]
+placeholders = []
+
+[[message]]
+id = 259
+name = "ir_lowering.callable_reference_routine_missing"
+text = "Callable reference has no resolved routine"
+description = "Reported when a callable reference reaches IR lowering without its resolved routine."
+diagnostic_codes = ["BMXC1183"]
+placeholders = []
+
+[[message]]
+id = 260
+name = "ir_lowering.callable_reference_requires_compatible_free_routine"
+text = "Callable reference requires an ordinary-C-compatible free routine"
+description = "Reported when a thin callable reference targets an incompatible routine or instance method."
+diagnostic_codes = ["BMXC1183"]
+placeholders = []
+
+[[message]]
+id = 261
+name = "ir_lowering.callable_reference_target_identity_missing"
+text = "Callable reference target has no lowered source or imported ABI identity"
+description = "Reported when a callable reference target has no available source or imported ABI identity."
+diagnostic_codes = ["BMXC1183"]
+placeholders = []
+
+[[message]]
+id = 262
+name = "ir_lowering.bound_generic_method_reference_requires_adapter"
+text = "Bound generic Method references require specialization-owned adapter support"
+description = "Reported when a bound generic Method reference has no specialization-owned adapter."
+diagnostic_codes = ["BMXC1250"]
+placeholders = []
+
+[[message]]
+id = 263
+name = "ir_lowering.function_literal_routine_missing"
+text = "Function literal has no synthesized routine"
+description = "Reported when a function literal reaches IR lowering without its synthesized routine."
+diagnostic_codes = ["BMXC1241"]
+placeholders = []
+
+[[message]]
+id = 264
+name = "ir_lowering.function_literal_target_unsupported"
+text = "Function literal target is not an ordinary-C-compatible thin callable"
+description = "Reported when a function literal's signature has no supported thin-callable ABI."
+diagnostic_codes = ["BMXC1242"]
+placeholders = []
+
+[[message]]
+id = 265
+name = "ir_lowering.function_literal_target_identity_missing"
+text = "Function literal synthesized routine has no lowered ABI identity"
+description = "Reported when a function literal's synthesized routine has no lowered function identity."
+diagnostic_codes = ["BMXC1241"]
+placeholders = []
+
+[[message]]
+id = 266
+name = "ir_lowering.generic_static_member_specialization_owner_missing"
+text = "Generic static member '{memberName}' has no requested canonical specialization owner"
+description = "Reported when generic static-member lowering cannot identify its requested canonical specialization."
+diagnostic_codes = ["BMXC1230"]
+placeholders = [{ name = "memberName", type = "string" }]
+
+[[message]]
+id = 267
+name = "ir_lowering.symbol_not_owned_by_lowered_unit"
+text = "Symbol '{symbolName}' is not owned by the lowered unit"
+description = "Reported when a symbol reference cannot be associated with the compilation unit being lowered."
+diagnostic_codes = ["BMXC1011"]
+placeholders = [{ name = "symbolName", type = "string" }]
+
+[[message]]
+id = 268
+name = "ir_lowering.imported_struct_default_constructor_missing"
+text = "Imported Struct type '{typeName}' has no published zero-argument constructor for default initialization"
+description = "Reported when default initialization of an imported Struct lacks a published zero-argument helper."
+diagnostic_codes = ["BMXC1202"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 269
+name = "ir_lowering.imported_member_callable_return_slot_unsupported"
+text = "Imported member callable returns require a supported Type-function slot ABI"
+description = "Reported when an imported member returning a callable lacks a supported Type-function slot ABI."
+diagnostic_codes = ["BMXC1112"]
+placeholders = []
+
+[[message]]
+id = 270
+name = "ir_lowering.imported_routine_abi_name_missing"
+text = "Imported routine '{routineName}' has no interface ABI name"
+description = "Reported when an imported routine has no ABI name in its published interface."
+diagnostic_codes = ["BMXC1111"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 271
+name = "ir_lowering.imported_native_abi_name_requires_linker_representation"
+text = "Imported/native ABI name '{abiName}' requires an explicit linker-name representation"
+description = "Reported when an imported or native symbol's ABI name cannot be represented without an explicit linker name."
+diagnostic_codes = ["BMXC1115"]
+placeholders = [{ name = "abiName", type = "string" }]
+
+[[message]]
+id = 272
+name = "ir_lowering.imported_routine_return_outside_scalar_abi"
+text = "Imported routine return type '{typeName}' is outside the scalar ABI slice"
+description = "Reported when an imported routine return type has no supported scalar ABI representation."
+diagnostic_codes = ["BMXC1112"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 273
+name = "ir_lowering.imported_routine_parameter_outside_ordinary_c_abi"
+text = "Imported routine '{routineName}' parameter type '{parameterType}' is outside the supported ordinary-C ABI slice"
+description = "Reported when an imported routine parameter type has no supported ordinary-C ABI representation."
+diagnostic_codes = ["BMXC1112"]
+placeholders = [{ name = "routineName", type = "string" }, { name = "parameterType", type = "string" }]
+
+[[message]]
+id = 274
+name = "ir_lowering.imported_routine_var_parameter_type_unsupported"
+text = "Imported routine Var parameters require a directly addressable value ABI type"
+description = "Reported when an imported routine Var parameter does not use a directly addressable ABI value type."
+diagnostic_codes = ["BMXC1112"]
+placeholders = []
+
+[[message]]
+id = 275
+name = "ir_lowering.direct_imported_method_abi_identity_missing"
+text = "Direct imported method '{methodName}' has no usable function ABI identity"
+description = "Reported when a directly called imported method has no usable function ABI identity."
+diagnostic_codes = ["BMXC1172"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 276
+name = "ir_lowering.direct_imported_method_type_unsupported"
+text = "Direct imported method '{methodName}' has an unsupported receiver or return type"
+description = "Reported when a directly called imported method has an unsupported receiver or return ABI type."
+diagnostic_codes = ["BMXC1175"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 277
+name = "ir_lowering.direct_imported_method_parameter_type_unsupported"
+text = "Direct imported method parameters require supported ordinary-C ABI value types"
+description = "Reported when a directly called imported method has an unsupported parameter ABI type."
+diagnostic_codes = ["BMXC1175"]
+placeholders = []
+
+[[message]]
+id = 278
+name = "ir_lowering.generic_imported_method_requires_specialization"
+text = "Generic imported method '{methodName}' requires canonical specialization lowering"
+description = "Reported when a generic imported method is used without a canonical specialization."
+diagnostic_codes = ["BMXC1174"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 279
+name = "ir_lowering.imported_method_return_type_unsupported"
+text = "Imported method return type '{typeName}' is outside the current value ABI slice"
+description = "Reported when an imported method return type has no supported value ABI representation."
+diagnostic_codes = ["BMXC1175"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 280
+name = "ir_lowering.imported_method_parameter_type_unsupported"
+text = "Imported method parameters require supported ordinary-C ABI value types"
+description = "Reported when an imported method has an unsupported parameter ABI type."
+diagnostic_codes = ["BMXC1175"]
+placeholders = []
+
+[[message]]
+id = 281
+name = "ir_lowering.imported_method_class_slot_abi_name_missing"
+text = "Imported method '{methodName}' has no class-slot ABI name derived from '{abiName}'"
+description = "Reported when an imported method's external name cannot provide a class-table slot name."
+diagnostic_codes = ["BMXC1172"]
+placeholders = [{ name = "methodName", type = "string" }, { name = "abiName", type = "string" }]
+
+[[message]]
+id = 282
+name = "ir_lowering.generic_imported_constructor_requires_specialization"
+text = "Generic imported constructor requires canonical specialization lowering"
+description = "Reported when a generic imported constructor is used without a canonical specialization."
+diagnostic_codes = ["BMXC1177"]
+placeholders = []
+
+[[message]]
+id = 283
+name = "ir_lowering.imported_constructor_parameter_type_unsupported"
+text = "Imported constructor parameters require supported value ABI types"
+description = "Reported when an imported constructor has an unsupported parameter ABI type."
+diagnostic_codes = ["BMXC1178"]
+placeholders = []
+
+[[message]]
+id = 284
+name = "ir_lowering.imported_constructor_abi_name_missing"
+text = "Imported constructor has no published ABI name"
+description = "Reported when an imported constructor has no ABI name in its published interface."
+diagnostic_codes = ["BMXC1179"]
+placeholders = []
+
+[[message]]
+id = 285
+name = "ir_lowering.imported_constructor_allocation_abi_name_requires_linker_representation"
+text = "Imported constructor object-allocation ABI name requires an explicit linker-name representation"
+description = "Reported when an imported constructor allocation name cannot be represented without an explicit linker name."
+diagnostic_codes = ["BMXC1179"]
+placeholders = []
+
+[[message]]
+id = 286
+name = "ir_lowering.imported_global_abi_name_missing"
+text = "Imported/native Global '{globalName}' has no ABI name"
+description = "Reported when an imported or native Global has no published ABI name."
+diagnostic_codes = ["BMXC1121"]
+placeholders = [{ name = "globalName", type = "string" }]
+
+[[message]]
+id = 287
+name = "ir_lowering.imported_global_type_outside_abi_slice"
+text = "Imported/native Global type '{typeName}' is outside the scalar, pointer, and callable ABI slice"
+description = "Reported when an imported or native Global type has no supported ABI representation."
+diagnostic_codes = ["BMXC1122"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 288
+name = "ir_lowering.imported_struct_value_layout_cycle"
+text = "Imported Struct value layout cycle involving '{structName}'"
+description = "Reported when an imported Struct's by-value field layout recursively contains itself."
+diagnostic_codes = ["BMXC1192"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 289
+name = "ir_lowering.generic_imported_struct_requires_specialization"
+text = "Generic imported Struct '{structName}' requires canonical specialization lowering"
+description = "Reported when a generic imported Struct is used without a canonical specialization."
+diagnostic_codes = ["BMXC1197"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 290
+name = "ir_lowering.imported_struct_abi_name_missing"
+text = "Imported Struct '{structName}' has no usable C ABI name"
+description = "Reported when an imported Struct has no usable published C ABI name."
+diagnostic_codes = ["BMXC1198"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 291
+name = "ir_lowering.imported_struct_field_type_outside_layout"
+text = "Imported Struct field type '{typeName}' is outside the current layout slice"
+description = "Reported when an imported Struct field type has no supported by-value layout."
+diagnostic_codes = ["BMXC1199"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 292
+name = "ir_lowering.imported_struct_routine_abi_identity_missing"
+text = "Imported Struct routine '{routineName}' has no supported ABI identity"
+description = "Reported when an imported Struct routine has no usable published ABI identity."
+diagnostic_codes = ["BMXC1199"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 293
+name = "ir_lowering.imported_struct_routine_return_type_unsupported"
+text = "Imported Struct routine return type '{typeName}' is outside the current value slice"
+description = "Reported when an imported Struct routine return type has no supported value representation."
+diagnostic_codes = ["BMXC1199"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 294
+name = "ir_lowering.imported_struct_routine_parameter_type_unsupported"
+text = "Imported Struct routine parameters require supported value ABI types"
+description = "Reported when an imported Struct routine has an unsupported parameter ABI type."
+diagnostic_codes = ["BMXC1199"]
+placeholders = []
+
+[[message]]
+id = 295
+name = "ir_lowering.imported_struct_routine_parameter_mode_unsupported"
+text = "Imported Struct routine parameters require supported value or Var ABI modes"
+description = "Reported when an imported Struct routine parameter uses an unsupported passing mode."
+diagnostic_codes = ["BMXC1199"]
+placeholders = []
+
+[[message]]
+id = 296
+name = "ir_lowering.generic_imported_type_requires_specialization"
+text = "Generic imported Type '{typeName}' requires canonical specialization lowering"
+description = "Reported when a generic imported Type is used without a canonical specialization."
+diagnostic_codes = ["BMXC1168"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 297
+name = "ir_lowering.imported_type_class_abi_name_missing"
+text = "Imported Type '{typeName}' has no class ABI name"
+description = "Reported when an imported Type has no class ABI name in its published interface."
+diagnostic_codes = ["BMXC1169"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 298
+name = "ir_lowering.imported_type_abi_name_requires_linker_representation"
+text = "Imported Type ABI name '{abiName}' requires an explicit linker-name representation"
+description = "Reported when an imported Type ABI name cannot be represented without an explicit linker name."
+diagnostic_codes = ["BMXC1170"]
+placeholders = [{ name = "abiName", type = "string" }]
+
+[[message]]
+id = 299
+name = "ir_lowering.enum_instance_intrinsic_receiver_missing"
+text = "Enum instance intrinsic '{routineName}' has no receiver"
+description = "Reported when an Enum instance intrinsic reaches IR lowering without its receiver."
+diagnostic_codes = ["BMXC1103"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 300
+name = "ir_lowering.quoted_source_path_escapes_root"
+text = "Quoted source path escapes its module or application source root"
+description = "Reported when a quoted source-file path resolves outside its permitted source root."
+diagnostic_codes = ["BMXC1110"]
+placeholders = []
+
+[[message]]
+id = 301
+name = "ir_lowering.object_enumerator_each_in_protocol_operation_missing"
+text = "ObjectEnumerator EachIn is missing a resolved protocol operation"
+description = "Reported when ObjectEnumerator EachIn lowering lacks one of its resolved protocol operations."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 302
+name = "ir_lowering.each_in_protocol_method_requires_non_default_argument"
+text = "EachIn protocol method '{methodName}' requires a non-default argument"
+description = "Reported when an EachIn protocol method cannot be invoked solely with its selected default arguments."
+diagnostic_codes = ["BMXC1020"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 303
+name = "ir_lowering.interface_instance_method_dispatch_slot_missing"
+text = "Interface instance method has no emitted dispatch slot"
+description = "Reported when an Interface method used by an instance protocol operation has no emitted slot."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 304
+name = "ir_lowering.imported_type_instance_method_class_slot_missing"
+text = "Imported Type instance method has no published class-slot ABI"
+description = "Reported when an imported Type method used by an instance protocol operation has no published class slot."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 305
+name = "ir_lowering.inherited_imported_instance_method_source_slot_missing"
+text = "Inherited imported instance method has no source-class slot"
+description = "Reported when an inherited imported protocol method has no slot in the source receiver class."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 306
+name = "ir_lowering.instance_operation_requires_lowered_source_method"
+text = "Instance operation must resolve to a lowered source method"
+description = "Reported when an instance protocol operation does not resolve to a lowered source method."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 307
+name = "ir_lowering.instance_method_receiver_source_class_missing"
+text = "Instance method receiver has no lowered source class"
+description = "Reported when an instance protocol method receiver has no lowered source-class layout."
+diagnostic_codes = ["BMXC1020"]
+placeholders = []
+
+[[message]]
+id = 308
+name = "c_backend.runtime_header_initialization_plan_required"
+text = "Runtime header emission requires an initialization plan"
+description = "Internal consistency diagnostic reported when runtime-header emission receives IR without an initialization plan."
+diagnostic_codes = ["BMXC2041"]
+placeholders = []
+
+[[message]]
+id = 309
+name = "c_backend.compiler_ir_module_unavailable"
+text = "Compiler IR module was not available"
+description = "Internal consistency diagnostic reported when C emission is requested without a compiler IR module."
+diagnostic_codes = ["BMXC2000"]
+placeholders = []
+
+[[message]]
+id = 310
+name = "c_backend.pico_callable_return_virtual_method_unsupported"
+text = "Callable-return virtual methods are not available in the current Pico dispatch tier"
+description = "Reported when a Pico target uses a virtual method returning a callable value unsupported by its dispatch profile."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 311
+name = "c_backend.runtime_emission_initialization_plan_required"
+text = "Runtime-compatible C emission requires an initialization plan"
+description = "Internal consistency diagnostic reported when runtime C emission receives IR without an initialization plan."
+diagnostic_codes = ["BMXC2040"]
+placeholders = []
+
+[[message]]
+id = 312
+name = "c_backend.pico_imported_type_field_unsupported"
+text = "Imported Type field '{typeName}.{fieldName}' is outside the current Pico object-layout slice"
+description = "Reported when an imported Type field cannot be represented by the selected Pico object-layout profile."
+diagnostic_codes = ["BMXC2029"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "fieldName", type = "string" }]
+
+[[message]]
+id = 313
+name = "c_backend.pico_imported_type_descriptor_abi_missing"
+text = "Imported Type '{typeName}' has no Pico descriptor ABI"
+description = "Reported when an imported Type required by a Pico build has no published descriptor ABI."
+diagnostic_codes = ["BMXC2029"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 314
+name = "c_backend.pico_interface_descriptor_abi_missing"
+text = "Imported or native Interface '{interfaceName}' has no Pico descriptor ABI"
+description = "Reported when an imported or native Interface required by a Pico build has no published descriptor ABI."
+diagnostic_codes = ["BMXC2029"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 315
+name = "c_backend.pico_static_array_type_field_unsupported"
+text = "Type field '{typeName}.{fieldName}' is not supported by the Pico StaticArray profile"
+description = "Reported when a source Type's StaticArray field cannot be represented by the selected Pico profile."
+diagnostic_codes = ["BMXC2029"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "fieldName", type = "string" }]
+
+[[message]]
+id = 316
+name = "c_backend.pico_type_field_scalar_unsupported"
+text = "Type field '{typeName}.{fieldName}' is not a supported scalar in the initial Pico Object profile"
+description = "Reported when a source Type field is outside the scalar storage supported by the Pico Object profile."
+diagnostic_codes = ["BMXC2029"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "fieldName", type = "string" }]
+
+[[message]]
+id = 317
+name = "c_backend.debug_instrumentation_requires_runtime_backend"
+text = "Debug instrumentation requires the BlitzMax runtime C backend"
+description = "Reported when debug instrumentation is requested for a target using the scalar C backend."
+diagnostic_codes = ["BMXC2030"]
+placeholders = []
+
+[[message]]
+id = 318
+name = "c_backend.coverage_instrumentation_requires_runtime_backend"
+text = "Coverage instrumentation requires the BlitzMax runtime C backend"
+description = "Reported when coverage instrumentation is requested for a target using the scalar C backend."
+diagnostic_codes = ["BMXC2031"]
+placeholders = []
+
+[[message]]
+id = 319
+name = "c_backend.pico_struct_fields_unsupported"
+text = "Struct '{structName}' contains callable, imported-managed, or otherwise unsupported Pico fields"
+description = "Reported when a Struct layout contains fields unsupported by the selected Pico profile."
+diagnostic_codes = ["BMXC2091"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 320
+name = "c_backend.struct_layout_cycle"
+text = "Struct layout cycle reaches '{structName}'"
+description = "Internal consistency diagnostic reported when source Struct C-layout emission detects a recursive value cycle."
+diagnostic_codes = ["BMXC2067"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 321
+name = "c_backend.imported_struct_layout_cycle"
+text = "Imported Struct layout cycle reaches '{structName}'"
+description = "Reported when an imported Struct's published by-value layout contains a recursive cycle."
+diagnostic_codes = ["BMXC2067"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 322
+name = "c_backend.static_array_struct_field_default_helper_missing"
+text = "StaticArray Struct field '{fieldName}' has no element default construction helper"
+description = "Internal consistency diagnostic reported when a StaticArray Struct field lacks its element initializer helper."
+diagnostic_codes = ["BMXC2073"]
+placeholders = [{ name = "fieldName", type = "string" }]
+
+[[message]]
+id = 323
+name = "c_backend.nested_struct_field_default_helper_missing"
+text = "Nested Struct field '{fieldName}' has no default construction helper"
+description = "Internal consistency diagnostic reported when a nested Struct field lacks its initializer helper."
+diagnostic_codes = ["BMXC2068"]
+placeholders = [{ name = "fieldName", type = "string" }]
+
+[[message]]
+id = 324
+name = "c_backend.static_array_struct_element_default_helper_missing"
+text = "StaticArray Struct element type '{typeName}' has no default construction helper"
+description = "Internal consistency diagnostic reported when a StaticArray Struct element type lacks its initializer helper."
+diagnostic_codes = ["BMXC2072"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 325
+name = "c_backend.iterator_factory_state_class_missing"
+text = "iterator factory has no generated state class"
+description = "Internal consistency diagnostic reported when iterator lowering did not generate its state class."
+diagnostic_codes = ["BMXC2095"]
+placeholders = []
+
+[[message]]
+id = 326
+name = "c_backend.iterator_move_next_factory_state_missing"
+text = "iterator MoveNext has no generated factory state"
+description = "Internal consistency diagnostic reported when iterator MoveNext emission cannot find its generated factory state."
+diagnostic_codes = ["BMXC2095"]
+placeholders = []
+
+[[message]]
+id = 327
+name = "c_backend.debug_variable_typetag_incomplete"
+text = "Debug variable '{variableName}' has no complete typetag for semantic type '{typeName}'"
+description = "Internal consistency diagnostic reported when debug metadata cannot encode a variable's complete type."
+diagnostic_codes = ["BMXC2084"]
+placeholders = [{ name = "variableName", type = "string" }, { name = "typeName", type = "string" }]
+
+[[message]]
+id = 328
+name = "c_backend.struct_constructor_chain_target_outside_layout"
+text = "Struct constructor chain target is outside the receiver layout"
+description = "Internal consistency diagnostic reported when a Struct constructor chain targets a different receiver layout."
+diagnostic_codes = ["BMXC2069"]
+placeholders = []
+
+[[message]]
+id = 329
+name = "c_backend.imported_constructor_chain_implementation_missing"
+text = "Imported constructor chain has no direct implementation ABI"
+description = "Reported when an imported constructor chain lacks a published direct implementation."
+diagnostic_codes = ["BMXC2069"]
+placeholders = []
+
+[[message]]
+id = 330
+name = "c_backend.static_array_type_field_default_helper_missing"
+text = "StaticArray Type field '{fieldName}' has no element default construction helper"
+description = "Internal consistency diagnostic reported when a StaticArray Type field lacks its element initializer helper."
+diagnostic_codes = ["BMXC2074"]
+placeholders = [{ name = "fieldName", type = "string" }]
+
+[[message]]
+id = 331
+name = "c_backend.struct_field_default_helper_missing"
+text = "Struct field '{fieldName}' has no default construction helper"
+description = "Internal consistency diagnostic reported when a Struct-valued Type field lacks its initializer helper."
+diagnostic_codes = ["BMXC2070"]
+placeholders = [{ name = "fieldName", type = "string" }]
+
+[[message]]
+id = 332
+name = "c_backend.pico_object_constructor_chain_target_outside_hierarchy"
+text = "Pico Object constructor chain target is outside the local Type hierarchy"
+description = "Reported when a Pico Object constructor chain targets a Type outside its local inheritance hierarchy."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 333
+name = "c_backend.pico_imported_constructor_chain_implementation_missing"
+text = "Imported Pico constructor chain has no direct implementation ABI"
+description = "Reported when a Pico build cannot find a direct implementation for an imported constructor chain."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 334
+name = "c_backend.ir_function_body_unavailable"
+text = "IR function body was not available"
+description = "Internal consistency diagnostic reported when C emission receives a function without an IR body."
+diagnostic_codes = ["BMXC2001"]
+placeholders = []
+
+[[message]]
+id = 335
+name = "c_backend.yield_outside_iterator_move_next"
+text = "Yield reached C emission outside a generated iterator MoveNext"
+description = "Internal consistency diagnostic reported when Yield reaches C emission outside its generated iterator routine."
+diagnostic_codes = ["BMXC2095"]
+placeholders = []
+
+[[message]]
+id = 336
+name = "c_backend.pico_throw_type_unsupported"
+text = "Pico Throw requires an Object, String, Array, class, interface, or closure value; '{typeName}' is not supported"
+description = "Reported when a Pico Throw expression uses a type outside the compact exception profile."
+diagnostic_codes = ["BMXC2100"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 337
+name = "c_backend.release_requires_runtime_backend"
+text = "Release requires the BlitzMax runtime C backend"
+description = "Reported when Release is used with the scalar C backend."
+diagnostic_codes = ["BMXC2079"]
+placeholders = []
+
+[[message]]
+id = 338
+name = "c_backend.assert_requires_runtime_backend"
+text = "Assert requires the BlitzMax runtime C backend"
+description = "Reported when Assert is used with the scalar C backend."
+diagnostic_codes = ["BMXC2078"]
+placeholders = []
+
+[[message]]
+id = 339
+name = "c_backend.try_catch_requires_runtime_exception_backend"
+text = "Try/Catch requires the BlitzMax runtime exception backend"
+description = "Reported when Try/Catch is used without the BlitzMax runtime exception backend."
+diagnostic_codes = ["BMXC2081"]
+placeholders = []
+
+[[message]]
+id = 340
+name = "c_backend.pico_try_across_yield_unsupported"
+text = "Pico exceptions do not yet support a Try block retained across Yield"
+description = "Reported when a Pico iterator retains an active Try block across Yield."
+diagnostic_codes = ["BMXC2102"]
+placeholders = []
+
+[[message]]
+id = 341
+name = "c_backend.using_requires_runtime_exception_backend"
+text = "Using requires the BlitzMax runtime exception backend"
+description = "Reported when Using is used without the BlitzMax runtime exception backend."
+diagnostic_codes = ["BMXC2082"]
+placeholders = []
+
+[[message]]
+id = 342
+name = "c_backend.read_data_requires_runtime_backend"
+text = "ReadData requires the BlitzMax runtime C backend"
+description = "Reported when ReadData is used with the scalar C backend."
+diagnostic_codes = ["BMXC2083"]
+placeholders = []
+
+[[message]]
+id = 343
+name = "c_backend.restore_data_requires_runtime_backend"
+text = "RestoreData requires the BlitzMax runtime C backend"
+description = "Reported when RestoreData is used with the scalar C backend."
+diagnostic_codes = ["BMXC2083"]
+placeholders = []
+
+[[message]]
+id = 344
+name = "c_backend.pico_each_in_array_element_type_unsupported"
+text = "EachIn Array element type '{typeName}' is not available in the Pico managed-container profile"
+description = "Reported when Pico EachIn uses an Array element type outside its managed-container profile."
+diagnostic_codes = ["BMXC2028"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 345
+name = "c_backend.ir_statement_unsupported"
+text = "IR statement is not supported by the scalar C backend"
+description = "Internal consistency diagnostic reported when an unsupported IR statement reaches scalar C emission."
+diagnostic_codes = ["BMXC2002"]
+placeholders = []
+
+[[message]]
+id = 346
+name = "c_backend.pico_using_across_yield_unsupported"
+text = "Pico Using does not yet support a resource retained across Yield"
+description = "Reported when a Pico iterator retains a Using resource across Yield."
+diagnostic_codes = ["BMXC2103"]
+placeholders = []
+
+[[message]]
+id = 347
+name = "c_backend.read_data_conversion_unsupported"
+text = "ReadData conversion kind is not supported"
+description = "Internal consistency diagnostic reported when ReadData reaches C emission with an unsupported conversion kind."
+diagnostic_codes = ["BMXC2083"]
+placeholders = []
+
+[[message]]
+id = 348
+name = "c_backend.ir_expression_unavailable"
+text = "IR expression was not available"
+description = "Internal consistency diagnostic reported when expression emission receives no IR expression."
+diagnostic_codes = ["BMXC2010"]
+placeholders = []
+
+[[message]]
+id = 349
+name = "c_backend.managed_string_literal_requires_runtime_backend"
+text = "Managed String literals require the BlitzMax runtime C backend"
+description = "Reported when a managed String literal is emitted for a target without managed String support."
+diagnostic_codes = ["BMXC2025"]
+placeholders = []
+
+[[message]]
+id = 350
+name = "c_backend.imported_struct_constructor_value_helper_missing"
+text = "Imported Struct constructor '{constructorId}' has no value helper ABI"
+description = "Reported when an imported Struct constructor has no published value-construction helper."
+diagnostic_codes = ["BMXC2062"]
+placeholders = [{ name = "constructorId", type = "string" }]
+
+[[message]]
+id = 351
+name = "c_backend.pico_string_method_unsupported"
+text = "String method '{methodName}' is not available in the current Pico embedded String profile"
+description = "Reported when a String method is outside the selected Pico embedded String profile."
+diagnostic_codes = ["BMXC2025"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 352
+name = "c_backend.exact_method_target_not_emitted"
+text = "Exact method call target '{functionId}' was not emitted"
+description = "Internal consistency diagnostic reported when an exact call references a function absent from emitted IR."
+diagnostic_codes = ["BMXC2053"]
+placeholders = [{ name = "functionId", type = "string" }]
+
+[[message]]
+id = 353
+name = "c_backend.pico_object_to_string_requires_dynamic_string"
+text = "Object ToString requires dynamic Pico String support"
+description = "Reported when Object.ToString is used without dynamic Pico String support."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 354
+name = "c_backend.pico_object_send_message_unsupported"
+text = "Object SendMessage is not available in the current Pico Object profile"
+description = "Reported when Object.SendMessage is used with a Pico Object profile that does not provide it."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 355
+name = "c_backend.pico_virtual_dispatch_slot_unavailable"
+text = "Virtual dispatch slot is not available in the current Pico Type descriptor"
+description = "Reported when a virtual method has no slot in the selected Pico Type descriptor tier."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 356
+name = "c_backend.virtual_call_slot_not_emitted"
+text = "Virtual call slot '{classId}.{slotId}' was not emitted"
+description = "Internal consistency diagnostic reported when a virtual call references an absent class slot."
+diagnostic_codes = ["BMXC2053"]
+placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
+
+[[message]]
+id = 357
+name = "c_backend.managed_truth_sentinel_mapping_missing"
+text = "Managed truth kind '{managedKind}' has no runtime sentinel mapping"
+description = "Internal consistency diagnostic reported when a managed truth-test kind has no runtime sentinel."
+diagnostic_codes = ["BMXC2014"]
+placeholders = [{ name = "managedKind", type = "integer" }]
+
+[[message]]
+id = 358
+name = "c_backend.managed_default_sentinel_mapping_missing"
+text = "Managed default kind '{managedKind}' has no runtime sentinel mapping"
+description = "Internal consistency diagnostic reported when a managed default kind has no runtime sentinel."
+diagnostic_codes = ["BMXC2014"]
+placeholders = [{ name = "managedKind", type = "integer" }]
+
+[[message]]
+id = 359
+name = "c_backend.pico_array_requires_one_dimension"
+text = "Only one-dimensional Arrays are available in the initial Pico embedded profile"
+description = "Reported when a Pico Array allocation uses more than one dimension."
+diagnostic_codes = ["BMXC2028"]
+placeholders = []
+
+[[message]]
+id = 360
+name = "c_backend.pico_array_element_type_unsupported"
+text = "Array element type '{typeName}' is not available in the Pico managed-container profile"
+description = "Reported when Pico Array allocation, slicing, or indexing uses an unsupported element type."
+diagnostic_codes = ["BMXC2028"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 361
+name = "c_backend.pico_array_element_struct_unsupported"
+text = "Array element Struct '{typeName}' is not supported by the Pico value-descriptor tier"
+description = "Reported when a source Struct Array element is unsupported by the Pico value-descriptor tier."
+diagnostic_codes = ["BMXC2091"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 362
+name = "c_backend.pico_imported_array_element_initializer_missing"
+text = "Imported array element Struct '{typeName}' has no supported Pico element initializer ABI"
+description = "Reported when an imported Struct Array allocation or slice lacks a Pico element initializer."
+diagnostic_codes = ["BMXC2091"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 363
+name = "c_backend.enum_array_element_descriptor_missing"
+text = "Enum array element type '{typeName}' has no runtime descriptor"
+description = "Internal consistency diagnostic reported when Enum Array construction lacks its runtime descriptor."
+diagnostic_codes = ["BMXC2076"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 364
+name = "c_backend.imported_struct_array_element_layout_missing"
+text = "Imported Struct array element type '{typeName}' has no published layout"
+description = "Reported when an imported Struct Array element has no published layout."
+diagnostic_codes = ["BMXC2071"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 365
+name = "c_backend.multidimensional_imported_struct_array_initializer_missing"
+text = "Multidimensional imported Struct array allocation requires a published element initializer ABI"
+description = "Reported when multidimensional imported Struct Array allocation lacks an element initializer."
+diagnostic_codes = ["BMXC2050"]
+placeholders = []
+
+[[message]]
+id = 366
+name = "c_backend.array_allocation_rank_mismatch"
+text = "Array allocation rank and dimension count do not match"
+description = "Internal consistency diagnostic reported when Array allocation dimensions differ from the IR rank."
+diagnostic_codes = ["BMXC2050"]
+placeholders = []
+
+[[message]]
+id = 367
+name = "c_backend.pico_array_index_requires_one_dimension"
+text = "Only one-dimensional Array indexing is available in the initial Pico embedded profile"
+description = "Reported when a Pico Array index operation uses more than one dimension."
+diagnostic_codes = ["BMXC2028"]
+placeholders = []
+
+[[message]]
+id = 368
+name = "c_backend.pico_imported_array_element_struct_unsupported"
+text = "Imported array element Struct '{typeName}' is not supported by the Pico value-descriptor tier"
+description = "Reported when imported Struct Array indexing is unsupported by the Pico value-descriptor tier."
+diagnostic_codes = ["BMXC2091"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 369
+name = "c_backend.array_element_rank_mismatch"
+text = "Array element rank and index count do not match"
+description = "Internal consistency diagnostic reported when Array index count differs from the IR rank."
+diagnostic_codes = ["BMXC2051"]
+placeholders = []
+
+[[message]]
+id = 370
+name = "c_backend.pico_array_literal_element_type_unsupported"
+text = "Array literal element type '{typeName}' is not available in the Pico managed-container profile"
+description = "Reported when a Pico Array literal uses an unsupported element type."
+diagnostic_codes = ["BMXC2028"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 371
+name = "c_backend.pico_array_literal_element_struct_unsupported"
+text = "Array literal element Struct '{typeName}' is not supported by the Pico value-descriptor tier"
+description = "Reported when a source Struct Array literal is unsupported by the Pico value-descriptor tier."
+diagnostic_codes = ["BMXC2091"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 372
+name = "c_backend.pico_imported_array_literal_element_initializer_missing"
+text = "Imported array literal element Struct '{typeName}' has no supported Pico element initializer ABI"
+description = "Reported when an imported Struct Array literal lacks a Pico element initializer."
+diagnostic_codes = ["BMXC2091"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 373
+name = "c_backend.pico_dynamic_object_allocation_unsupported"
+text = "Dynamic Object allocation is not available in the initial Pico Object profile"
+description = "Reported when dynamic Object allocation is used by the initial Pico Object profile."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 374
+name = "c_backend.object_allocation_class_layout_missing"
+text = "Object allocation class '{classId}' has no emitted layout"
+description = "Internal consistency diagnostic reported when Object allocation references a class absent from emitted layouts."
+diagnostic_codes = ["BMXC2052"]
+placeholders = [{ name = "classId", type = "string" }]
+
+[[message]]
+id = 375
+name = "c_backend.imported_field_abi_record_missing"
+text = "Imported field '{fieldId}' has no ABI record"
+description = "Internal consistency diagnostic reported when imported field access references an absent ABI record."
+diagnostic_codes = ["BMXC2059"]
+placeholders = [{ name = "fieldId", type = "string" }]
+
+[[message]]
+id = 376
+name = "c_backend.pico_interface_cast_descriptor_missing"
+text = "Interface cast target has no local Pico descriptor"
+description = "Reported when a Pico Interface cast target has no available compact descriptor."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 377
+name = "c_backend.pico_object_cast_descriptor_missing"
+text = "Object cast target has no local Pico Type descriptor"
+description = "Reported when a Pico Object cast target has no available local Type descriptor."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 378
+name = "c_backend.object_cast_class_layout_missing"
+text = "Object cast class '{classId}' has no emitted layout"
+description = "Internal consistency diagnostic reported when an Object cast references a class absent from emitted layouts."
+diagnostic_codes = ["BMXC2056"]
+placeholders = [{ name = "classId", type = "string" }]
+
+[[message]]
+id = 379
+name = "c_backend.imported_object_cast_class_abi_record_missing"
+text = "Imported object cast class '{classId}' has no ABI record"
+description = "Internal consistency diagnostic reported when an imported Object cast references an absent ABI record."
+diagnostic_codes = ["BMXC2056"]
+placeholders = [{ name = "classId", type = "string" }]
+
+[[message]]
+id = 380
+name = "c_backend.pico_object_to_string_conversion_unsupported"
+text = "Object-to-String conversion is not available in the initial Pico Object profile"
+description = "Reported when Object-to-String conversion is used by the initial Pico Object profile."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 381
+name = "c_backend.ir_expression_unsupported"
+text = "IR expression is not supported by the scalar C backend"
+description = "Internal consistency diagnostic reported when an unsupported IR expression reaches scalar C emission."
+diagnostic_codes = ["BMXC2011"]
+placeholders = []
+
+[[message]]
+id = 382
+name = "c_backend.type_function_call_slot_not_emitted"
+text = "Type Function call slot '{classId}.{slotId}' was not emitted"
+description = "Internal consistency diagnostic reported when a Type Function call references an absent class-table slot."
+diagnostic_codes = ["BMXC2053"]
+placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
+
+[[message]]
+id = 383
+name = "c_backend.imported_object_construction_abi_record_missing"
+text = "Imported object construction has no class or constructor ABI record"
+description = "Internal consistency diagnostic reported when imported Object construction lacks its class or constructor record."
+diagnostic_codes = ["BMXC2058"]
+placeholders = []
+
+[[message]]
+id = 384
+name = "c_backend.pico_dynamic_imported_object_allocation_unsupported"
+text = "Dynamic imported Object allocation is not available in the current Pico module ABI"
+description = "Reported when dynamic imported Object allocation is used by the selected Pico module ABI."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 385
+name = "c_backend.pico_imported_constructor_allocation_helper_missing"
+text = "Imported constructor has no Pico allocation-helper ABI"
+description = "Reported when an imported constructor required by Pico has no published allocation helper."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 386
+name = "c_backend.imported_object_allocation_requires_runtime_backend"
+text = "Imported Object allocation requires the BlitzMax runtime C backend"
+description = "Reported when imported Object allocation is used by a scalar backend without compatible Pico support."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 387
+name = "c_backend.interface_call_slot_not_emitted"
+text = "Interface call slot '{interfaceId}.{slotId}' was not emitted"
+description = "Internal consistency diagnostic reported when an Interface call references an absent dispatch slot."
+diagnostic_codes = ["BMXC2055"]
+placeholders = [{ name = "interfaceId", type = "string" }, { name = "slotId", type = "string" }]
+
+[[message]]
+id = 388
+name = "c_backend.pico_imported_interface_dispatch_unsupported"
+text = "Imported or native Interface dispatch is not available in the current Pico descriptor tier"
+description = "Reported when imported or native Interface dispatch exceeds the selected Pico descriptor tier."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 389
+name = "c_backend.pico_interface_method_signature_unavailable"
+text = "Interface method signature is not available in the current Pico dispatch tier"
+description = "Reported when a method signature cannot be represented by the selected Pico Interface dispatch tier."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 390
+name = "c_backend.pico_imported_virtual_dispatch_slot_unavailable"
+text = "Imported virtual dispatch slot is not available in the current Pico Type descriptor ABI"
+description = "Reported when an imported virtual method has no slot in the selected Pico Type descriptor ABI."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 391
+name = "c_backend.imported_virtual_call_slot_abi_record_missing"
+text = "Imported virtual call slot '{classId}.{slotId}' has no ABI record"
+description = "Internal consistency diagnostic reported when an imported virtual call references an absent ABI record."
+diagnostic_codes = ["BMXC2057"]
+placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
+
+[[message]]
+id = 392
+name = "c_backend.imported_super_call_slot_implementation_missing"
+text = "Imported Super call slot '{classId}.{slotId}' has no direct implementation ABI"
+description = "Reported when an imported Super call lacks a published direct implementation."
+diagnostic_codes = ["BMXC2054"]
+placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
+
+[[message]]
+id = 393
+name = "c_backend.super_call_dispatch_base_descriptor_missing"
+text = "Super call dispatch class '{classId}' has no emitted base descriptor"
+description = "Internal consistency diagnostic reported when a Super call's dispatch class has no emitted base descriptor."
+diagnostic_codes = ["BMXC2054"]
+placeholders = [{ name = "classId", type = "string" }]
+
+[[message]]
+id = 394
+name = "c_backend.pico_object_super_dispatch_unsupported"
+text = "Super dispatch for built-in Object slots is not available in the current Pico inheritance tier"
+description = "Reported when built-in Object Super dispatch exceeds the selected Pico inheritance tier."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 395
+name = "c_backend.super_call_slot_not_emitted"
+text = "Super call slot '{classId}.{slotId}' was not emitted"
+description = "Internal consistency diagnostic reported when a Super call references an absent base-class slot."
+diagnostic_codes = ["BMXC2054"]
+placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
+
+[[message]]
+id = 396
+name = "c_backend.pico_catch_type_unsupported"
+text = "Pico Catch supports Object, String, Array, and class/interface types with a compact descriptor ABI; '{typeName}' is not supported"
+description = "Reported when a Pico Catch parameter type is outside its compact exception profile."
+diagnostic_codes = ["BMXC2101"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 397
+name = "c_backend.catch_type_runtime_matcher_missing"
+text = "Catch type '{typeName}' has no runtime matcher"
+description = "Internal consistency diagnostic reported when a Catch type has no emitted runtime matching operation."
+diagnostic_codes = ["BMXC2082"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 398
+name = "c_backend.assignment_operator_unsupported"
+text = "Assignment operator '{operatorText}' has no scalar C99 lowering"
+description = "Internal consistency diagnostic reported when an unsupported assignment operator reaches scalar C emission."
+diagnostic_codes = ["BMXC2024"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 399
+name = "c_backend.managed_array_conversion_requires_runtime_backend"
+text = "Explicit managed Array conversion requires the BlitzMax runtime C backend"
+description = "Reported when explicit managed Array conversion is used without a compatible runtime backend."
+diagnostic_codes = ["BMXC2028"]
+placeholders = []
+
+[[message]]
+id = 400
+name = "c_backend.string_to_byte_pointer_conversion_requires_runtime_backend"
+text = "Implicit String-to-Byte Ptr conversion requires the BlitzMax runtime C backend"
+description = "Reported when implicit String-to-Byte Ptr conversion is used without the runtime backend."
+diagnostic_codes = ["BMXC2083"]
+placeholders = []
+
+[[message]]
+id = 401
+name = "c_backend.string_to_byte_pointer_conversion_escaped_cleanup_scope"
+text = "Implicit String-to-Byte Ptr conversion escaped its statement cleanup scope"
+description = "Internal consistency diagnostic reported when a native String conversion outlives its cleanup scope."
+diagnostic_codes = ["BMXC2083"]
+placeholders = []
+
+[[message]]
+id = 402
+name = "c_backend.managed_type_field_storage_conversion_requires_runtime_backend"
+text = "Managed Type field-storage conversion requires the BlitzMax runtime C backend"
+description = "Reported when managed Type field-storage conversion is used without the runtime backend."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 403
+name = "c_backend.managed_array_storage_conversion_requires_runtime_backend"
+text = "Managed Array storage conversion requires the BlitzMax runtime C backend"
+description = "Reported when managed Array storage conversion is used without a compatible backend."
+diagnostic_codes = ["BMXC2028"]
+placeholders = []
+
+[[message]]
+id = 404
+name = "c_backend.checked_enum_conversion_requires_runtime_backend"
+text = "Checked Enum conversion requires the BlitzMax runtime C backend"
+description = "Reported when checked Enum conversion is used without the runtime backend."
+diagnostic_codes = ["BMXC2077"]
+placeholders = []
+
+[[message]]
+id = 405
+name = "c_backend.checked_enum_conversion_descriptor_missing"
+text = "Checked Enum conversion has no retained runtime descriptor"
+description = "Internal consistency diagnostic reported when checked Enum conversion lacks its runtime descriptor."
+diagnostic_codes = ["BMXC2077"]
+placeholders = []
+
+[[message]]
+id = 406
+name = "c_backend.numeric_to_string_conversion_requires_runtime_backend"
+text = "Numeric-to-String conversion requires the BlitzMax runtime C backend"
+description = "Reported when numeric-to-String conversion is used without a compatible runtime backend."
+diagnostic_codes = ["BMXC2025"]
+placeholders = []
+
+[[message]]
+id = 407
+name = "c_backend.numeric_type_string_conversion_mapping_missing"
+text = "Numeric type '{typeName}' has no String conversion runtime mapping"
+description = "Internal consistency diagnostic reported when a numeric type has no runtime String conversion."
+diagnostic_codes = ["BMXC2026"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 408
+name = "c_backend.string_to_numeric_conversion_requires_runtime_backend"
+text = "String-to-numeric conversion requires the BlitzMax runtime C backend"
+description = "Reported when String-to-numeric conversion is used without a compatible runtime backend."
+diagnostic_codes = ["BMXC2025"]
+placeholders = []
+
+[[message]]
+id = 409
+name = "c_backend.string_conversion_target_mapping_missing"
+text = "String conversion target '{typeName}' has no numeric runtime mapping"
+description = "Internal consistency diagnostic reported when a numeric target has no runtime String conversion."
+diagnostic_codes = ["BMXC2027"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 410
+name = "c_backend.managed_narrowing_conversion_reached_raw_cast"
+text = "Managed narrowing conversion from '{sourceType}' to '{targetType}' reached the raw C cast fallback"
+description = "Internal consistency diagnostic reported when managed narrowing reaches unsafe raw C-cast emission."
+diagnostic_codes = ["BMXC2090"]
+placeholders = [{ name = "sourceType", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 411
+name = "c_backend.ir_symbol_storage_missing"
+text = "IR symbol '{symbolName}' has no C storage"
+description = "Internal consistency diagnostic reported when an IR symbol has no assigned C storage name."
+diagnostic_codes = ["BMXC2012"]
+placeholders = [{ name = "symbolName", type = "string" }]
+
+[[message]]
+id = 412
+name = "c_backend.ir_function_name_missing"
+text = "IR function '{functionId}' has no C name"
+description = "Internal consistency diagnostic reported when an IR function has no assigned C name."
+diagnostic_codes = ["BMXC2013"]
+placeholders = [{ name = "functionId", type = "string" }]
+
+[[message]]
+id = 413
+name = "c_backend.managed_array_value_requires_runtime_backend"
+text = "Managed Array values require the BlitzMax runtime C backend"
+description = "Reported when managed Array values are emitted without a compatible runtime backend."
+diagnostic_codes = ["BMXC2028"]
+placeholders = []
+
+[[message]]
+id = 414
+name = "c_backend.managed_closure_value_requires_runtime_backend"
+text = "Managed Closure values require the BlitzMax runtime C backend"
+description = "Reported when managed Closure values are emitted without a compatible runtime backend."
+diagnostic_codes = ["BMXC2080"]
+placeholders = []
+
+[[message]]
+id = 415
+name = "c_backend.managed_interface_value_requires_runtime_backend"
+text = "Managed Interface values require the BlitzMax runtime C backend"
+description = "Reported when managed Interface values are emitted without a compatible runtime backend."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 416
+name = "c_backend.managed_object_value_requires_runtime_backend"
+text = "Managed Object values require the BlitzMax runtime C backend"
+description = "Reported when managed Object values are emitted without a compatible runtime backend."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 417
+name = "c_backend.managed_imported_object_value_requires_runtime_backend"
+text = "Managed imported Object values require the BlitzMax runtime C backend"
+description = "Reported when managed imported Object values are emitted without a compatible runtime backend."
+diagnostic_codes = ["BMXC2029"]
+placeholders = []
+
+[[message]]
+id = 418
+name = "c_backend.managed_string_value_requires_runtime_backend"
+text = "Managed String values require the BlitzMax runtime C backend"
+description = "Reported when managed String values are emitted without a compatible runtime backend."
+diagnostic_codes = ["BMXC2025"]
+placeholders = []
+
+[[message]]
+id = 419
+name = "c_backend.semantic_type_scalar_abi_mapping_missing"
+text = "Semantic type '{typeName}' has no scalar C99 ABI mapping"
+description = "Internal consistency diagnostic reported when a semantic type has no scalar C99 ABI mapping."
+diagnostic_codes = ["BMXC2020"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 420
+name = "c_backend.unset_callable_value_requires_runtime_backend"
+text = "Unset callable values require the BlitzMax runtime C backend"
+description = "Reported when an unset callable value is emitted without a compatible runtime sentinel."
+diagnostic_codes = ["BMXC2062"]
+placeholders = []
+
+[[message]]
+id = 421
+name = "c_backend.managed_closure_invocation_requires_runtime_backend"
+text = "Managed Closure invocation requires the BlitzMax runtime C backend"
+description = "Reported when managed Closure invocation is emitted without a compatible runtime backend."
+diagnostic_codes = ["BMXC2080"]
+placeholders = []
+
+[[message]]
+id = 422
+name = "c_backend.pico_imported_enum_intrinsic_unsupported"
+text = "Imported Enum runtime intrinsics are not available in the current Pico descriptor tier"
+description = "Reported when an imported Enum intrinsic exceeds the selected Pico descriptor tier."
+diagnostic_codes = ["BMXC2076"]
+placeholders = []
+
+[[message]]
+id = 423
+name = "c_backend.pico_enum_intrinsic_shape_invalid"
+text = "Pico Enum intrinsic has an invalid receiver or argument shape"
+description = "Internal consistency diagnostic reported when Pico Enum intrinsic IR has an invalid operand shape."
+diagnostic_codes = ["BMXC2076"]
+placeholders = []
+
+[[message]]
+id = 424
+name = "c_backend.enum_intrinsic_requires_runtime_backend"
+text = "Enum runtime intrinsic requires the BlitzMax runtime C backend"
+description = "Reported when an Enum runtime intrinsic is emitted without a compatible runtime backend."
+diagnostic_codes = ["BMXC2076"]
+placeholders = []
+
+[[message]]
+id = 425
+name = "c_backend.enum_intrinsic_descriptor_missing"
+text = "Enum intrinsic has no retained runtime descriptor"
+description = "Internal consistency diagnostic reported when Enum intrinsic IR lacks its runtime descriptor."
+diagnostic_codes = ["BMXC2076"]
+placeholders = []
+
+[[message]]
+id = 426
+name = "c_backend.enum_intrinsic_shape_invalid"
+text = "Enum intrinsic has an invalid receiver or argument shape"
+description = "Internal consistency diagnostic reported when Enum intrinsic IR has an invalid operand shape."
+diagnostic_codes = ["BMXC2076"]
+placeholders = []
+
+[[message]]
+id = 427
+name = "c_backend.binary_literal_requires_canonical_lowering"
+text = "Binary literals require canonical constant lowering before strict C99 emission"
+description = "Internal consistency diagnostic reported when a binary literal bypasses canonical constant lowering."
+diagnostic_codes = ["BMXC2024"]
+placeholders = []
+
+[[message]]
+id = 428
+name = "c_backend.literal_unsupported"
+text = "Literal '{literalText}' is not supported by the scalar C99 backend"
+description = "Internal consistency diagnostic reported when an unsupported literal reaches scalar C99 emission."
+diagnostic_codes = ["BMXC2021"]
+placeholders = [{ name = "literalText", type = "string" }]
+
+[[message]]
+id = 429
+name = "c_backend.unary_operator_unsupported"
+text = "Unary operator '{operatorText}' has no scalar C99 lowering"
+description = "Internal consistency diagnostic reported when an unsupported unary operator reaches scalar C99 emission."
+diagnostic_codes = ["BMXC2022"]
+placeholders = [{ name = "operatorText", type = "string" }]
+
+[[message]]
+id = 430
+name = "c_backend.binary_operator_unsupported"
+text = "Binary operator '{operatorText}' has no scalar C99 lowering"
+description = "Internal consistency diagnostic reported when an unsupported binary operator reaches scalar C99 emission."
+diagnostic_codes = ["BMXC2023"]
+placeholders = [{ name = "operatorText", type = "string" }]

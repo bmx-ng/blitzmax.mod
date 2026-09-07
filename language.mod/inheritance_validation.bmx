@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.LinkedList
 Import BRL.Map
 
+Import "language_messages.generated.bmx"
 Import "type_resolution.bmx"
 
 Type TInterfaceMethodCandidate
@@ -98,7 +99,7 @@ Type TInheritanceValidator
 		If Not hidden Then Return
 		currentPath = symbol.originPath
 		Local visibility:String = TSymbolAccessibility.VisibilityName(hidden.visibility)
-		AddDiagnostic("BMX3217", "Public " + symbol.KindName() + " '" + symbol.QualifiedName() + "' exposes " + visibility + " " + hidden.KindName() + " '" + hidden.QualifiedName() + "' through its " + role + ".", symbol.nameToken.span)
+		AddDiagnostic("BMX3217", TLanguageMessages.InheritancePublicContractExposesHiddenType(symbol.KindName(), symbol.QualifiedName(), visibility, hidden.KindName(), hidden.QualifiedName(), role), symbol.nameToken.span)
 	End Method
 
 	Method HiddenContractType:TSymbol(semanticType:TSemanticType)
@@ -170,9 +171,9 @@ Type TInheritanceValidator
 				If Not overridden Then implicitStructObjectOverride = IsImplicitStructObjectOverride(routine)
 			End If
 			If Not overridden And Not implicitStructObjectOverride Then
-				AddDiagnostic("BMX3211", "Method '" + routine.name + "' is marked Override but does not override a method from a base type.", overrideToken.span)
+				AddDiagnostic("BMX3211", TLanguageMessages.InheritanceOverrideMethodNotFound(routine.name), overrideToken.span)
 			Else If overridden And Not VisibilityIncludes(routine.visibility, overridden.visibility) Then
-				AddDiagnostic("BMX3212", "Method '" + routine.name + "' cannot reduce inherited visibility from '" + TSymbolAccessibility.VisibilityName(overridden.visibility) + "' to '" + TSymbolAccessibility.VisibilityName(routine.visibility) + "'.", overrideToken.span)
+				AddDiagnostic("BMX3212", TLanguageMessages.InheritanceOverrideReducesVisibility(routine.name, TSymbolAccessibility.VisibilityName(overridden.visibility), TSymbolAccessibility.VisibilityName(routine.visibility)), overrideToken.span)
 			End If
 		Next
 		For Local child:TScope = EachIn scope.children
@@ -193,11 +194,11 @@ Type TInheritanceValidator
 		If routine.containingScope And routine.containingScope.kind = SCOPE_TYPE Then owner = routine.containingScope.owner
 		Local declaration:TRoutineDeclarationSyntax = TRoutineDeclarationSyntax(routine.declaration)
 		If Not owner Or owner.kind <> SYMBOL_INTERFACE Or Not declaration Or Not declaration.isMethod Then
-			AddDiagnostic("BMX3213", "Default is valid only on an instance Method declared by an Interface.", defaultToken.span)
+			AddDiagnostic("BMX3213", TLanguageMessages.InheritanceDefaultRequiresInterfaceInstanceMethod(), defaultToken.span)
 			Return
 		End If
 		If RoutineModifierToken(routine, "abstract") Then
-			AddDiagnostic("BMX3214", "Interface method '" + routine.name + "' cannot be both Default and Abstract.", defaultToken.span)
+			AddDiagnostic("BMX3214", TLanguageMessages.InheritanceInterfaceDefaultCannotBeAbstract(routine.name), defaultToken.span)
 		End If
 	End Method
 
@@ -480,11 +481,11 @@ Type TInheritanceValidator
 			Local key:String = constraint.parameterNameToken.text.ToLower()
 			Local parameter:TSymbol = FindTypeParameter(typeScope, constraint.parameterNameToken.text)
 			If Not parameter Then
-				AddDiagnostic("BMX3207", "Generic constraint refers to undeclared type parameter '" + constraint.parameterNameToken.text + "'.", constraint.parameterNameToken.span)
+				AddDiagnostic("BMX3207", TLanguageMessages.InheritanceGenericConstraintParameterUndeclared(constraint.parameterNameToken.text), constraint.parameterNameToken.span)
 				Continue
 			End If
 			If seen.Contains(key) Then
-				AddDiagnostic("BMX3208", "Type parameter '" + parameter.name + "' has more than one constraint clause.", constraint.parameterNameToken.span)
+				AddDiagnostic("BMX3208", TLanguageMessages.InheritanceGenericConstraintDuplicateClause(parameter.name), constraint.parameterNameToken.span)
 			Else
 				seen.Insert(key, parameter)
 			End If
@@ -498,7 +499,7 @@ Type TInheritanceValidator
 				Local builtinBound:TBuiltinSemanticType = TBuiltinSemanticType(bound)
 				Local objectBound:Int = builtinBound And builtinBound.name.ToLower() = "object"
 				If bound And Not objectBound And Not TNamedSemanticType(bound) And Not TTypeParameterSemanticType(bound) And Not TErrorSemanticType(bound) Then
-					AddDiagnostic("BMX3210", "Generic constraint bound '" + bound.DisplayName() + "' is not a declared reference type or type parameter.", constraint.constraintTypes[index].span)
+					AddDiagnostic("BMX3210", TLanguageMessages.InheritanceGenericConstraintBoundInvalid(bound.DisplayName()), constraint.constraintTypes[index].span)
 				End If
 			Next
 			constraintList.AddLast(constraintInfo)
@@ -553,36 +554,36 @@ Type TInheritanceValidator
 			If info.baseEdges.length Or info.interfaceEdges.length Then
 				Local span:TSourceSpan = symbol.nameToken.span
 				If info.baseEdges.length Then span = info.baseEdges[0].syntax.span Else If info.interfaceEdges.length Then span = info.interfaceEdges[0].syntax.span
-				AddDiagnostic("BMX3202", "Struct '" + symbol.name + "' cannot extend or implement another type.", span)
+				AddDiagnostic("BMX3202", TLanguageMessages.InheritanceStructCannotInherit(symbol.name), span)
 			End If
 			Return
 		End If
 
 		If symbol.kind = SYMBOL_TYPE And info.baseEdges.length > 1 Then
-			AddDiagnostic("BMX3200", "Type '" + symbol.name + "' can extend only one base type.", info.baseEdges[1].syntax.span)
+			AddDiagnostic("BMX3200", TLanguageMessages.InheritanceTypeAllowsSingleBase(symbol.name), info.baseEdges[1].syntax.span)
 		End If
 		For Local edge:TInheritanceEdge = EachIn info.baseEdges
 			Local target:TSymbol = NamedSymbol(edge.semanticType)
 			If Not target Then Continue
 			If symbol.kind = SYMBOL_INTERFACE Then
 				If target.kind <> SYMBOL_INTERFACE Then
-					AddDiagnostic("BMX3201", "Interface '" + symbol.name + "' can extend only interfaces.", edge.syntax.span)
+					AddDiagnostic("BMX3201", TLanguageMessages.InheritanceInterfaceBaseRequiresInterface(symbol.name), edge.syntax.span)
 				Else If symbol.isExternal <> target.isExternal Then
-					AddDiagnostic("BMX3218", "External and managed interfaces cannot extend one another.", edge.syntax.span)
+					AddDiagnostic("BMX3218", TLanguageMessages.InheritanceExternalManagedInterfaceMismatch(), edge.syntax.span)
 				End If
 			Else If target.kind <> SYMBOL_TYPE Then
-				AddDiagnostic("BMX3200", "Type '" + symbol.name + "' can extend only another reference type.", edge.syntax.span)
+				AddDiagnostic("BMX3200", TLanguageMessages.InheritanceTypeBaseRequiresReferenceType(symbol.name), edge.syntax.span)
 			Else If IsFinal(target) Then
-				AddDiagnostic("BMX3205", "Type '" + target.name + "' is Final and cannot be extended.", edge.syntax.span)
+				AddDiagnostic("BMX3205", TLanguageMessages.InheritanceFinalTypeCannotBeExtended(target.name), edge.syntax.span)
 			End If
 		Next
 
 		If symbol.kind = SYMBOL_INTERFACE And info.interfaceEdges.length Then
-			AddDiagnostic("BMX3203", "Interface '" + symbol.name + "' cannot use Implements; extend interfaces instead.", info.interfaceEdges[0].syntax.span)
+			AddDiagnostic("BMX3203", TLanguageMessages.InheritanceInterfaceCannotUseImplements(symbol.name), info.interfaceEdges[0].syntax.span)
 		End If
 		For Local edge:TInheritanceEdge = EachIn info.interfaceEdges
 			Local target:TSymbol = NamedSymbol(edge.semanticType)
-			If target And target.kind <> SYMBOL_INTERFACE Then AddDiagnostic("BMX3203", "'" + target.name + "' is not an interface.", edge.syntax.span)
+			If target And target.kind <> SYMBOL_INTERFACE Then AddDiagnostic("BMX3203", TLanguageMessages.InheritanceImplementsTargetNotInterface(target.name), edge.syntax.span)
 		Next
 		ValidateDuplicateInterfaces(info)
 		ValidateInterfaceSlotCollisions(info)
@@ -615,7 +616,7 @@ Type TInheritanceValidator
 					' after canonical argument substitution.
 					If ContainsOpenTypeParameter(priorReturn) Or ContainsOpenTypeParameter(candidateReturn) Then Continue
 					If SameType(priorReturn, candidateReturn) Or IsSubtype(priorReturn, candidateReturn, 0) Or IsSubtype(candidateReturn, priorReturn, 0) Then Continue
-					AddDiagnostic("BMX3216", "Type '" + info.symbol.name + "' inherits Interface method selector '" + candidate.routine.name + "' with incompatible return types '" + priorReturn.DisplayName() + "' and '" + candidateReturn.DisplayName() + "'.", info.symbol.nameToken.span)
+					AddDiagnostic("BMX3216", TLanguageMessages.InheritanceInterfaceSelectorReturnTypesIncompatible(info.symbol.name, candidate.routine.name, priorReturn.DisplayName(), candidateReturn.DisplayName()), info.symbol.nameToken.span)
 					collision = True
 					Exit
 				Next
@@ -693,7 +694,7 @@ Type TInheritanceValidator
 				If index Then origins :+ ", "
 				origins :+ "'" + effectiveDefaults[index].ownerType.DisplayName() + "." + effectiveDefaults[index].routine.name + "'"
 			Next
-			AddDiagnostic("BMX3215", "Type '" + info.symbol.name + "' inherits unrelated default Interface methods " + origins + "; declare an overriding Method to resolve the conflict.", info.symbol.nameToken.span)
+			AddDiagnostic("BMX3215", TLanguageMessages.InheritanceUnrelatedInterfaceDefaults(info.symbol.name, origins), info.symbol.nameToken.span)
 		Next
 	End Method
 
@@ -772,7 +773,7 @@ Type TInheritanceValidator
 		For Local index:Int = 0 Until edges.length
 			For Local prior:Int = 0 Until index
 				If SameType(edges[index].semanticType, edges[prior].semanticType) Then
-					AddDiagnostic("BMX3206", "Interface '" + edges[index].semanticType.DisplayName() + "' is listed more than once.", edges[index].syntax.span)
+					AddDiagnostic("BMX3206", TLanguageMessages.InheritanceInterfaceListedMoreThanOnce(edges[index].semanticType.DisplayName()), edges[index].syntax.span)
 					Exit
 				End If
 			Next
@@ -801,7 +802,7 @@ Type TInheritanceValidator
 				If Not target Or Not model.InheritanceInfo(target) Then Continue
 				If VisitState(target) = 1 Then
 					If Not reportedCycles.Contains(symbol) Then
-						AddDiagnostic("BMX3204", "Inheritance cycle involving '" + symbol.name + "' and '" + target.name + "'.", edge.syntax.span)
+						AddDiagnostic("BMX3204", TLanguageMessages.InheritanceCycle(symbol.name, target.name), edge.syntax.span)
 						reportedCycles.Insert(symbol, symbol)
 					End If
 				Else
@@ -891,7 +892,7 @@ Type TInheritanceValidator
 				If Not IsSubtype(argumentType, required, 0) Then
 					Local span:TSourceSpan = syntax.span
 					If parameterIndex < syntax.genericArguments.length Then span = syntax.genericArguments[parameterIndex].span
-					AddDiagnostic("BMX3209", "Type argument '" + argumentType.DisplayName() + "' does not satisfy constraint '" + required.DisplayName() + "' for '" + constraint.parameterSymbol.name + "'.", span)
+					AddDiagnostic("BMX3209", TLanguageMessages.InheritanceTypeArgumentConstraintUnsatisfied(argumentType.DisplayName(), required.DisplayName(), constraint.parameterSymbol.name), span)
 				End If
 			Next
 		Next
@@ -1104,6 +1105,10 @@ Type TInheritanceValidator
 	End Function
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, currentPath))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, currentPath))
 	End Method
 

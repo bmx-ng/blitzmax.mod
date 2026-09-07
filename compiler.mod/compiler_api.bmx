@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.FileSystem
 Import BRL.MaxUtil
 Import BlitzMax.Language
+Import "bcc_messages.generated.bmx"
 Import "compiler_diagnostic.bmx"
 Import "compiler_options.bmx"
 Import "file_snapshot_resolver.bmx"
@@ -91,7 +92,7 @@ Type TBlitzMaxCompiler
 				declared :+ statement.tokens[index].text
 			Next
 			If declared.ToLower() <> expected.ToLower() Then
-				diagnostics :+ [TCompilerDiagnostic.Create("BMXC0003", "Module declaration '" + declared + "' does not match path-derived module name '" + expected + "'", analysis.snapshot.rootDocument.path, statement.span)]
+				diagnostics :+ [TCompilerDiagnostic.Create("BMXC0003", TBccMessages.CompilerModuleDeclarationMismatch(declared, expected), analysis.snapshot.rootDocument.path, statement.span)]
 			End If
 			Exit
 		Next
@@ -105,7 +106,7 @@ Type TBlitzMaxCompiler
 			If Not document Or Not document.tree Then Continue
 			For Local token:TSyntaxToken = EachIn document.tree.root.tokens
 				If token.kind <> TOKEN_DIRECTIVE Then Continue
-				diagnostics :+ [TCompilerDiagnostic.Create("BMXC0002", "Conditional directives remained after source configuration was applied", document.path, token.span)]
+				diagnostics :+ [TCompilerDiagnostic.Create("BMXC0002", TBccMessages.CompilerConditionalDirectivesRemained(), document.path, token.span)]
 				Exit
 			Next
 		Next
@@ -124,7 +125,7 @@ Type TBlitzMaxCompiler
 		If Not options Then options = TCompilerOptions.CreateDefault()
 		Local result:TCompilerResult = New TCompilerResult
 		If FileType(path) <> FILETYPE_FILE Then
-			result.diagnostics :+ [TCompilerDiagnostic.Create("BMXC0001", "Source file was not found", path)]
+			result.diagnostics :+ [TCompilerDiagnostic.Create("BMXC0001", TBccMessages.SourceFileNotFound(), path)]
 			Return result
 		End If
 		Local resolvedPath:String = RealPath(path)
@@ -144,7 +145,7 @@ Type TBlitzMaxCompiler
 	End Rem
 	Function EmitC:String(result:TCompilerResult, diagnostics:TCompilerDiagnostic[] Var)
 		If Not result Or Not result.Succeeded() Then
-			diagnostics = [TCompilerDiagnostic.Create("BMXC2000", "Successful compiler IR is required before C emission")]
+			diagnostics = [TCompilerDiagnostic.Create("BMXC2000", TBccMessages.EmissionCRequiresSuccessfulIr())]
 			Return ""
 		End If
 		Return TCompilerCBackend.Emit(result.ir, diagnostics)
@@ -158,7 +159,7 @@ Type TBlitzMaxCompiler
 	End Rem
 	Function EmitRuntimeC:String(result:TCompilerResult, diagnostics:TCompilerDiagnostic[] Var)
 		If Not result Or Not result.Succeeded() Then
-			diagnostics = [TCompilerDiagnostic.Create("BMXC2040", "Successful compiler IR is required before runtime-compatible C emission")]
+			diagnostics = [TCompilerDiagnostic.Create("BMXC2040", TBccMessages.EmissionRuntimeCRequiresSuccessfulIr())]
 			Return ""
 		End If
 		Return TCompilerCBackend.EmitRuntime(result.ir, diagnostics)
@@ -172,7 +173,7 @@ Type TBlitzMaxCompiler
 	End Rem
 	Function EmitRuntimeHeader:String(result:TCompilerResult, diagnostics:TCompilerDiagnostic[] Var)
 		If Not result Or Not result.Succeeded() Then
-			diagnostics = [TCompilerDiagnostic.Create("BMXC2041", "Successful compiler IR is required before runtime header emission")]
+			diagnostics = [TCompilerDiagnostic.Create("BMXC2041", TBccMessages.EmissionRuntimeHeaderRequiresSuccessfulIr())]
 			Return ""
 		End If
 		Return TCompilerCBackend.EmitRuntimeHeader(result.ir, diagnostics)
@@ -186,7 +187,7 @@ Type TBlitzMaxCompiler
 	End Rem
 	Function EmitInterface:String(result:TCompilerResult, diagnostics:TCompilerDiagnostic[] Var)
 		If Not result Or Not result.Succeeded() Then
-			diagnostics = [TCompilerDiagnostic.Create("BMXC2060", "Successful compiler IR is required before compact interface emission")]
+			diagnostics = [TCompilerDiagnostic.Create("BMXC2060", TBccMessages.EmissionInterfaceRequiresSuccessfulIr())]
 			Return ""
 		End If
 		Return TCompilerInterfaceEmitter.Emit(result.analysis, result.ir, diagnostics, result.genericPlan)
@@ -200,7 +201,7 @@ Type TBlitzMaxCompiler
 	End Rem
 	Function EmitGenericTemplateArtifacts:TCompilerGenericTemplateOutput[](result:TCompilerResult, diagnostics:TCompilerDiagnostic[] Var)
 		If Not result Or Not result.genericPlan Then
-			diagnostics = [TCompilerDiagnostic.Create("BMXC3051", "Compiler generic application plan is required before template artifact emission")]
+			diagnostics = [TCompilerDiagnostic.Create("BMXC3051", TBccMessages.GenericTemplateArtifactsRequirePlan())]
 			Return New TCompilerGenericTemplateOutput[0]
 		End If
 		diagnostics = New TCompilerDiagnostic[0]
@@ -215,7 +216,7 @@ Type TBlitzMaxCompiler
 	End Rem
 	Function EmitGenericManifest:String(result:TCompilerResult, diagnostics:TCompilerDiagnostic[] Var)
 		If Not result Or Not result.genericPlan Then
-			diagnostics = [TCompilerDiagnostic.Create("BMXC3050", "Compiler generic application plan is required before manifest emission")]
+			diagnostics = [TCompilerDiagnostic.Create("BMXC3050", TBccMessages.GenericManifestRequiresPlan())]
 			Return ""
 		End If
 		diagnostics = New TCompilerDiagnostic[0]
@@ -233,7 +234,7 @@ Type TBlitzMaxCompiler
 	End Rem
 	Function PlanBuildOutputs:TCompilerBuildOutputPlan(result:TCompilerResult, applicationCPath:String, headerPath:String, interfacePath:String, diagnostics:TCompilerDiagnostic[] Var)
 		If Not result Or Not result.Succeeded() Then
-			diagnostics = [TCompilerDiagnostic.Create("BMXC3062", "Successful compiler IR is required before build-output planning")]
+			diagnostics = [TCompilerDiagnostic.Create("BMXC3062", TBccMessages.BuildOutputRequiresSuccessfulIr())]
 			Return New TCompilerBuildOutputPlan
 		End If
 		Return TCompilerBuildOutputPlanner.Build(result.analysis, result.ir, result.genericPlan, applicationCPath, headerPath, interfacePath, diagnostics)

@@ -1,0 +1,11 @@
+format = 1
+domain = "language"
+locale = "en"
+next_id = 2
+
+[[message]]
+id = 1
+name = "test.catalogue_precedence"
+text = "English test fallback"
+description = "Exercises installed and override catalogue precedence."
+placeholders = []

@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.LinkedList
 
 Import "syntax.bmx"
+Import "language_messages.generated.bmx"
 
 Type TConditionalExpressionParser
 	Field tokens:TSyntaxToken[]
@@ -19,12 +20,12 @@ Type TConditionalExpressionParser
 		parser.diagnostics = diagnostics
 		parser.endOffset = directiveToken.span.EndOffset()
 		If parser.tokens.length = 0 Then
-			diagnostics.AddLast(TDiagnostic.Create("BMX2440", "Expected a conditional-compilation expression.", DIAGNOSTIC_ERROR, TSourceSpan.Create(directiveToken.span.EndOffset(), 0)))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2440", TLanguageMessages.ConditionalExpectedExpression(), DIAGNOSTIC_ERROR, TSourceSpan.Create(directiveToken.span.EndOffset(), 0)))
 			Return parser.MissingName(directiveToken.span.EndOffset())
 		End If
 		Local result:TConditionalExpressionSyntax = parser.ParseOr()
 		If parser.position < parser.tokens.length Then
-			diagnostics.AddLast(TDiagnostic.Create("BMX2441", "Unexpected token '" + parser.Current().text + "' in conditional-compilation expression.", DIAGNOSTIC_ERROR, parser.Current().span))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2441", TLanguageMessages.ConditionalUnexpectedToken(parser.Current().text), DIAGNOSTIC_ERROR, parser.Current().span))
 		End If
 		Return result
 	End Function
@@ -84,7 +85,7 @@ Type TConditionalExpressionParser
 			Else
 				Local missingAt:Int = node.expression.span.EndOffset()
 				node.closeToken = TSyntaxToken.Create(TOKEN_SYMBOL, TSourceSpan.Create(missingAt, 0), ")", Null, Null, True)
-				diagnostics.AddLast(TDiagnostic.Create("BMX2443", "Expected ')' in conditional-compilation expression.", DIAGNOSTIC_ERROR, node.closeToken.span))
+				diagnostics.AddLast(TDiagnostic.Create("BMX2443", TLanguageMessages.ConditionalExpectedCloseParenthesis(), DIAGNOSTIC_ERROR, node.closeToken.span))
 			End If
 			node.span = Combine(node.openToken.span, node.closeToken.span)
 			Return node
@@ -122,7 +123,7 @@ Type TConditionalExpressionParser
 	End Method
 
 	Method AddExpectedCondition(span:TSourceSpan)
-		diagnostics.AddLast(TDiagnostic.Create("BMX2442", "Expected a target symbol, 'Not', or '('.", DIAGNOSTIC_ERROR, span))
+		diagnostics.AddLast(TDiagnostic.Create("BMX2442", TLanguageMessages.ConditionalExpectedOperand(), DIAGNOSTIC_ERROR, span))
 	End Method
 
 	Method IsOperator:Int(value:String)

@@ -1,0 +1,25 @@
+format = 1
+domain = "bls"
+locale = "en"
+next_id = 4
+
+[[message]]
+id = 1
+name = "installed_modules.ambiguous_module"
+text = "Ambiguous module '{moduleName}' maps to both '{existingPath}' and '{discoveredPath}'"
+description = "Reported when installed-module discovery finds the same module name at two different interface paths."
+placeholders = [{ name = "moduleName", type = "string" }, { name = "existingPath", type = "string" }, { name = "discoveredPath", type = "string" }]
+
+[[message]]
+id = 2
+name = "protocol.missing_content_length_header"
+text = "LSP message has no Content-Length header"
+description = "Reported when an incoming LSP message does not provide the required Content-Length framing header."
+placeholders = []
+
+[[message]]
+id = 3
+name = "startup.standard_io_configuration_failed"
+text = "Unable to configure byte-exact LSP standard I/O"
+description = "Reported when BLS cannot configure its standard streams for byte-accurate LSP framing."
+placeholders = []

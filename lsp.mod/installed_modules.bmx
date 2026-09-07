@@ -8,6 +8,7 @@ Import BRL.LinkedList
 Import BRL.Map
 Import BlitzMax.Language
 
+Import "bls_messages.generated.bmx"
 Import "workspace_analysis.bmx"
 
 Type TLspDiscoveredModule
@@ -162,7 +163,7 @@ Type TLspInstalledModuleCatalogue
 		item.isCore = isCore
 		Local existing:TLspDiscoveredModule = TLspDiscoveredModule(result.ValueForKey(item.name))
 		If existing And SnapshotPathKey(existing.path) <> SnapshotPathKey(item.path) Then
-			Throw "Ambiguous module '" + item.name + "' maps to both '" + existing.path + "' and '" + item.path + "'"
+			Throw TBlsMessages.InstalledModulesAmbiguousModule(item.name, existing.path, item.path).Render()
 		End If
 		result.Insert(item.name, item)
 	End Function

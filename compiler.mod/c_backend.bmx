@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.Map
 Import BRL.StringBuilder
 Import BlitzMax.Language
+Import "bcc_messages.generated.bmx"
 Import "abi_naming.bmx"
 Import "compiler_diagnostic.bmx"
 Import "ir_model.bmx"
@@ -133,7 +134,7 @@ Type TCompilerCBackend
 
 	Method EmitPicoRuntimeHeaderModule:String(irModule:TCompilerIrModule)
 		If Not irModule Or Not irModule.initializationPlan Then
-			AddDiagnostic("BMXC2041", "Runtime header emission requires an initialization plan", Null)
+			AddDiagnostic("BMXC2041", TBccMessages.CBackendRuntimeHeaderInitializationPlanRequired(), Null)
 			Return ""
 		End If
 		PrepareNames(irModule, False)
@@ -158,7 +159,7 @@ Type TCompilerCBackend
 
 	Method EmitModule:String(irModule:TCompilerIrModule)
 		If Not irModule Then
-			AddDiagnostic("BMXC2000", "Compiler IR module was not available", Null)
+			AddDiagnostic("BMXC2000", TBccMessages.CBackendCompilerIrModuleUnavailable(), Null)
 			Return ""
 		End If
 		PrepareNames(irModule)
@@ -821,7 +822,7 @@ Type TCompilerCBackend
 	Method PicoSlotFunctionPointerType:String(slot:TCompilerIrClassFunctionSlot)
 		If Not slot Then Return ""
 		If slot.callableReturnType.length Then
-			AddDiagnostic("BMXC2029", "Callable-return virtual methods are not available in the current Pico dispatch tier", slot.source)
+			AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoCallableReturnVirtualMethodUnsupported(), slot.source)
 			Return ""
 		End If
 		Local parameters:String
@@ -856,7 +857,7 @@ Type TCompilerCBackend
 
 	Method EmitRuntimeModule:String(irModule:TCompilerIrModule)
 		If Not irModule Or Not irModule.initializationPlan Then
-			AddDiagnostic("BMXC2040", "Runtime-compatible C emission requires an initialization plan", Null)
+			AddDiagnostic("BMXC2040", TBccMessages.CBackendRuntimeEmissionInitializationPlanRequired(), Null)
 			Return ""
 		End If
 		PrepareNames(irModule)
@@ -1088,11 +1089,11 @@ Type TCompilerCBackend
 					If staticSupported Then
 						result :+ "    " + CType(importedField.staticArrayElementType, importedField.source) + " " + importedField.abiName + "[" + importedField.staticArrayLength + "];~n"
 					Else
-						AddDiagnostic("BMXC2029", "Imported Type field '" + importedClass.name + "." + importedField.name + "' is outside the current Pico object-layout slice", importedField.source)
+						AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoImportedTypeFieldUnsupported(importedClass.name, importedField.name), importedField.source)
 						result :+ "    uint8_t " + importedField.abiName + ";~n"
 					End If
 				Else If Not importedField.callableReturnType.length And Not PicoObjectFieldSupported(importedField.semanticType) Then
-					AddDiagnostic("BMXC2029", "Imported Type field '" + importedClass.name + "." + importedField.name + "' is outside the current Pico object-layout slice", importedField.source)
+					AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoImportedTypeFieldUnsupported(importedClass.name, importedField.name), importedField.source)
 					result :+ "    uint8_t " + importedField.abiName + ";~n"
 				Else If importedField.callableReturnType.length Then
 					result :+ "    " + CCallableFieldDeclaration(importedField.callableReturnType, importedField.callableParameters, importedField.abiName, importedField.source, importedField.callableCallingConvention) + ";~n"
@@ -1147,7 +1148,7 @@ Type TCompilerCBackend
 		If irModule.importedClasses.length Then result :+ "~n"
 		For Local importedClass:TCompilerIrImportedClass = EachIn irModule.importedClasses
 			If Not importedClass.abiName.length Then
-				AddDiagnostic("BMXC2029", "Imported Type '" + importedClass.name + "' has no Pico descriptor ABI", importedClass.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoImportedTypeDescriptorAbiMissing(importedClass.name), importedClass.source)
 				Continue
 			End If
 			Local importedSuperDescriptor:String = "0"
@@ -1160,7 +1161,7 @@ Type TCompilerCBackend
 		If irModule.importedClasses.length Then result :+ "~n"
 		For Local irInterface:TCompilerIrInterface = EachIn irModule.interfaces
 			If Not PicoInterfaceDescriptorAvailable(irInterface) Then
-				AddDiagnostic("BMXC2029", "Imported or native Interface '" + irInterface.name + "' has no Pico descriptor ABI", irInterface.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoInterfaceDescriptorAbiMissing(irInterface.name), irInterface.source)
 				Continue
 			End If
 			result :+ "static const BMXPicoInterfaceDescriptor " + PicoInterfaceDescriptorName(irInterface) + " = { " + CQuoted(irInterface.name) + ", " + CQuoted(irInterface.abiName) + " };~n"
@@ -1297,11 +1298,11 @@ Type TCompilerCBackend
 					If staticSupported Then
 						result :+ "    " + CType(irField.staticArrayElementType, irField.source) + " " + FieldName(irField.declaringClassId, irField.fieldId) + "[" + irField.staticArrayLength + "];~n"
 					Else
-						AddDiagnostic("BMXC2029", "Type field '" + irClass.name + "." + irField.name + "' is not supported by the Pico StaticArray profile", irField.source)
+						AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoStaticArrayTypeFieldUnsupported(irClass.name, irField.name), irField.source)
 						result :+ "    uint8_t " + FieldName(irField.declaringClassId, irField.fieldId) + ";~n"
 					End If
 				Else If Not irField.callableReturnType.length And Not PicoObjectFieldSupported(irField.semanticType) Then
-					AddDiagnostic("BMXC2029", "Type field '" + irClass.name + "." + irField.name + "' is not a supported scalar in the initial Pico Object profile", irField.source)
+					AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoTypeFieldScalarUnsupported(irClass.name, irField.name), irField.source)
 					result :+ "    uint8_t " + FieldName(irField.declaringClassId, irField.fieldId) + ";~n"
 				Else
 					result :+ "    " + CFieldDeclaration(irField, FieldName(irField.declaringClassId, irField.fieldId)) + ";~n"
@@ -1961,7 +1962,7 @@ Type TCompilerCBackend
 
 	Method EmitRuntimeHeaderModule:String(irModule:TCompilerIrModule)
 		If Not irModule Or Not irModule.initializationPlan Then
-			AddDiagnostic("BMXC2041", "Runtime header emission requires an initialization plan", Null)
+			AddDiagnostic("BMXC2041", TBccMessages.CBackendRuntimeHeaderInitializationPlanRequired(), Null)
 			Return ""
 		End If
 		PrepareNames(irModule, False)
@@ -2283,8 +2284,8 @@ Type TCompilerCBackend
 				If Not abiName.length Then abiName = "bmx_" + SafeIdentifier(routine.functionId + "_" + routine.name)
 				functionNames.Insert(routine.functionId, abiName)
 			End If
-			If validateInstrumentation And routine.debugInstrumentation And Not runtimeTypes Then AddDiagnostic("BMXC2030", "Debug instrumentation requires the BlitzMax runtime C backend", routine.source)
-			If validateInstrumentation And routine.coverageInstrumentation And Not runtimeTypes Then AddDiagnostic("BMXC2031", "Coverage instrumentation requires the BlitzMax runtime C backend", routine.source)
+			If validateInstrumentation And routine.debugInstrumentation And Not runtimeTypes Then AddDiagnostic("BMXC2030", TBccMessages.CBackendDebugInstrumentationRequiresRuntimeBackend(), routine.source)
+			If validateInstrumentation And routine.coverageInstrumentation And Not runtimeTypes Then AddDiagnostic("BMXC2031", TBccMessages.CBackendCoverageInstrumentationRequiresRuntimeBackend(), routine.source)
 		Next
 		For Local variable:TCompilerIrVariableDeclaration = EachIn allVariables
 			If variable And (variable.storage = "global" Or variable.storage = "constant") Then
@@ -2501,10 +2502,10 @@ Type TCompilerCBackend
 	Method EmitStructLayout:String(irStruct:TCompilerIrStruct, emitted:TMap, visiting:TMap, emittedGeneric:TMap, visitingGeneric:TMap)
 		If Not irStruct Or emitted.Contains(irStruct.structId) Then Return ""
 		If EmbeddedObjectTypes() And Not PicoPlainStructSupported(irStruct) Then
-			AddDiagnostic("BMXC2091", "Struct '" + irStruct.name + "' contains callable, imported-managed, or otherwise unsupported Pico fields", irStruct.source)
+			AddDiagnostic("BMXC2091", TBccMessages.CBackendPicoStructFieldsUnsupported(irStruct.name), irStruct.source)
 		End If
 		If visiting.Contains(irStruct.structId) Then
-			AddDiagnostic("BMXC2067", "Struct layout cycle reaches '" + irStruct.name + "'", irStruct.source)
+			AddDiagnostic("BMXC2067", TBccMessages.CBackendStructLayoutCycle(irStruct.name), irStruct.source)
 			Return ""
 		End If
 		visiting.Insert(irStruct.structId, irStruct.structId)
@@ -2715,7 +2716,7 @@ Type TCompilerCBackend
 	Method EmitImportedStructLayout:String(importedStruct:TCompilerIrImportedStruct, emitted:TMap, visiting:TMap)
 		If Not importedStruct Or emitted.Contains(importedStruct.importedStructId) Then Return ""
 		If visiting.Contains(importedStruct.importedStructId) Then
-			AddDiagnostic("BMXC2067", "Imported Struct layout cycle reaches '" + importedStruct.name + "'", importedStruct.source)
+			AddDiagnostic("BMXC2067", TBccMessages.CBackendImportedStructLayoutCycle(importedStruct.name), importedStruct.source)
 			Return ""
 		End If
 		visiting.Insert(importedStruct.importedStructId, importedStruct.importedStructId)
@@ -2892,7 +2893,7 @@ Type TCompilerCBackend
 						body :+ "        " + selfName + "." + StructFieldName(irStruct.structId, irField.fieldId) + "[" + staticIndex + "] = " + staticHelper + "();~n"
 						body :+ "    }~n"
 					Else
-						AddDiagnostic("BMXC2073", "StaticArray Struct field '" + irField.name + "' has no element default construction helper", irField.source)
+						AddDiagnostic("BMXC2073", TBccMessages.CBackendStaticArrayStructFieldDefaultHelperMissing(irField.name), irField.source)
 					End If
 				Else
 					Local elementDefault:String = CDefaultValue(irField.staticArrayElementType)
@@ -2910,7 +2911,7 @@ Type TCompilerCBackend
 				If nestedHelper.length Then
 					body :+ "    " + selfName + "." + StructFieldName(irStruct.structId, irField.fieldId) + " = " + nestedHelper + "();~n"
 				Else
-					AddDiagnostic("BMXC2068", "Nested Struct field '" + irField.name + "' has no default construction helper", irField.source)
+					AddDiagnostic("BMXC2068", TBccMessages.CBackendNestedStructFieldDefaultHelperMissing(irField.name), irField.source)
 				End If
 			Else If IsManagedCReferenceType(irField.semanticType) Then
 				body :+ "    " + selfName + "." + StructFieldName(irStruct.structId, irField.fieldId) + " = " + CDefaultValue(irField.semanticType) + ";~n"
@@ -3088,7 +3089,7 @@ Type TCompilerCBackend
 		If variable.staticArrayStructId.length Or variable.staticArrayImportedStructId.length Then
 			Local helperName:String = StaticStructArrayDefaultHelperName(variable)
 			If Not helperName.length Then
-				AddDiagnostic("BMXC2072", "StaticArray Struct element type '" + variable.staticArrayElementType + "' has no default construction helper", variable.source)
+				AddDiagnostic("BMXC2072", TBccMessages.CBackendStaticArrayStructElementDefaultHelperMissing(variable.staticArrayElementType), variable.source)
 				Return ""
 			End If
 			elementInitializer = helperName + "()"
@@ -4430,7 +4431,7 @@ Type TCompilerCBackend
 	Method EmitIteratorFactoryBody:String(factory:TCompilerIrFunction, indent:String)
 		Local stateClass:TCompilerIrClass = ClassById(factory.iteratorStateClassId)
 		If Not stateClass Then
-			AddDiagnostic("BMXC2095", "iterator factory has no generated state class", factory.source)
+			AddDiagnostic("BMXC2095", TBccMessages.CBackendIteratorFactoryStateClassMissing(), factory.source)
 			Return indent + "return " + CurrentReturnDefault(factory.source) + ";~n"
 		End If
 		Local objectType:String = "struct " + ObjectName(stateClass.classId) + " *"
@@ -4448,7 +4449,7 @@ Type TCompilerCBackend
 
 	Method EmitIteratorMoveNextBody:String(routine:TCompilerIrFunction, indent:String)
 		If Not currentIteratorFactory Or Not currentIteratorStateClass Then
-			AddDiagnostic("BMXC2095", "iterator MoveNext has no generated factory state", routine.source)
+			AddDiagnostic("BMXC2095", TBccMessages.CBackendIteratorMoveNextFactoryStateMissing(), routine.source)
 			Return indent + "return 0;~n"
 		End If
 		Local stateExpression:String = IteratorFieldExpression(currentIteratorFactory.iteratorStateFieldId)
@@ -4773,7 +4774,7 @@ Type TCompilerCBackend
 		For Local variable:TCompilerIrDebugVariable = EachIn scope.variables
 			Local typeTag:String = DebugVariableTypeTag(variable)
 			If typeTag = "?" Then
-				AddDiagnostic("BMXC2084", "Debug variable '" + variable.name + "' has no complete typetag for semantic type '" + variable.semanticType + "'", Null)
+				AddDiagnostic("BMXC2084", TBccMessages.CBackendDebugVariableTypetagIncomplete(variable.name, variable.semanticType), Null)
 				Continue
 			End If
 			If variable.declarationKind = IR_DEBUG_DECL_CONSTANT Then
@@ -5048,7 +5049,7 @@ Type TCompilerCBackend
 		If Not routine Or Not routine.chainedConstructorFunctionId.length Then Return ""
 		Local chained:TCompilerIrFunction = FunctionById(routine.chainedConstructorFunctionId)
 		If Not chained Or chained.ownerStructId <> routine.ownerStructId Then
-			AddDiagnostic("BMXC2069", "Struct constructor chain target is outside the receiver layout", routine.source)
+			AddDiagnostic("BMXC2069", TBccMessages.CBackendStructConstructorChainTargetOutsideLayout(), routine.source)
 			Return ""
 		End If
 		Local irStruct:TCompilerIrStruct = StructById(routine.ownerStructId)
@@ -5069,7 +5070,7 @@ Type TCompilerCBackend
 			Local importedOwner:TCompilerIrImportedClass
 			If importedConstructor Then importedOwner = ImportedClassById(importedConstructor.declaringImportedClassId)
 			If Not importedConstructor Or Not importedOwner Or Not importedConstructor.implementationAbiName.length Then
-				AddDiagnostic("BMXC2069", "Imported constructor chain has no direct implementation ABI", routine.source)
+				AddDiagnostic("BMXC2069", TBccMessages.CBackendImportedConstructorChainImplementationMissing(), routine.source)
 			Else
 				result :+ indent + importedConstructor.implementationAbiName + "((struct " + importedOwner.abiName + "_obj *)" + receiverName
 				For Local argument:TCompilerIrExpression = EachIn routine.chainedConstructorArguments
@@ -5111,7 +5112,7 @@ Type TCompilerCBackend
 					If helperName.length Then
 						elementInitializer = helperName + "()"
 					Else
-						AddDiagnostic("BMXC2074", "StaticArray Type field '" + irField.name + "' has no element default construction helper", irField.source)
+						AddDiagnostic("BMXC2074", TBccMessages.CBackendStaticArrayTypeFieldDefaultHelperMissing(irField.name), irField.source)
 					End If
 				End If
 				Local staticIndex:String = "bmx_static_field_init_" + SafeIdentifier(irField.fieldId)
@@ -5128,7 +5129,7 @@ Type TCompilerCBackend
 				If helperName.length Then
 					initializer = helperName + "()"
 				Else
-					AddDiagnostic("BMXC2070", "Struct field '" + irField.name + "' has no default construction helper", irField.source)
+					AddDiagnostic("BMXC2070", TBccMessages.CBackendStructFieldDefaultHelperMissing(irField.name), irField.source)
 				End If
 			End If
 			result :+ indent + receiverName + "->" + FieldName(irField.declaringClassId, irField.fieldId) + " = " + initializer + ";~n"
@@ -5143,7 +5144,7 @@ Type TCompilerCBackend
 		If routine And routine.chainedConstructorFunctionId.length Then
 			Local chained:TCompilerIrFunction = FunctionById(routine.chainedConstructorFunctionId)
 			If Not chained Or (chained.ownerClassId <> irClass.classId And chained.ownerClassId <> irClass.baseClassId) Then
-				AddDiagnostic("BMXC2029", "Pico Object constructor chain target is outside the local Type hierarchy", routine.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectConstructorChainTargetOutsideHierarchy(), routine.source)
 				Return result
 			End If
 			Local chainedReceiver:String = receiverName
@@ -5161,7 +5162,7 @@ Type TCompilerCBackend
 			Local importedOwner:TCompilerIrImportedClass
 			If importedConstructor Then importedOwner = ImportedClassById(importedConstructor.declaringImportedClassId)
 			If Not importedConstructor Or Not importedOwner Or Not importedConstructor.implementationAbiName.length Then
-				AddDiagnostic("BMXC2029", "Imported Pico constructor chain has no direct implementation ABI", routine.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoImportedConstructorChainImplementationMissing(), routine.source)
 				Return result
 			End If
 			result :+ indent + importedConstructor.implementationAbiName + "((struct " + importedOwner.abiName + "_obj *)" + receiverName
@@ -5187,7 +5188,7 @@ Type TCompilerCBackend
 				If irField.staticArrayStructId.length Or irField.staticArrayImportedStructId.length Then
 					Local staticHelper:String = ClassFieldStaticArrayDefaultHelperName(irField)
 					If Not staticHelper.length Then
-						AddDiagnostic("BMXC2074", "StaticArray Type field '" + irField.name + "' has no element default construction helper", irField.source)
+						AddDiagnostic("BMXC2074", TBccMessages.CBackendStaticArrayTypeFieldDefaultHelperMissing(irField.name), irField.source)
 						Continue
 					End If
 					elementInitializer = staticHelper + "()"
@@ -5296,7 +5297,7 @@ Type TCompilerCBackend
 
 	Method EmitBlockContents:String(block:TCompilerIrBlock, indent:String, includeDebugScope:Int = True)
 		If Not block Then
-			AddDiagnostic("BMXC2001", "IR function body was not available", Null)
+			AddDiagnostic("BMXC2001", TBccMessages.CBackendIrFunctionBodyUnavailable(), Null)
 			Return ""
 		End If
 		Local result:String
@@ -5455,7 +5456,7 @@ Type TCompilerCBackend
 		Local yielded:TCompilerIrYield = TCompilerIrYield(statement)
 		If yielded Then
 			If Not currentRoutine Or Not currentRoutine.isIteratorMoveNext Or Not currentIteratorFactory Then
-				AddDiagnostic("BMXC2095", "Yield reached C emission outside a generated iterator MoveNext", yielded.source)
+				AddDiagnostic("BMXC2095", TBccMessages.CBackendYieldOutsideIteratorMoveNext(), yielded.source)
 				Return CompleteStatementOutput(result, "")
 			End If
 			Local stateExpression:String = IteratorFieldExpression(currentIteratorFactory.iteratorStateFieldId)
@@ -5484,7 +5485,7 @@ Type TCompilerCBackend
 					Return CompleteStatementOutput(result, indent + "bmx_pico_exception_throw(bmx_pico_exception_array(" + EmitExpression(thrown.expression) + "));~n")
 				End If
 				If Not PicoObjectStorageType(throwType) Then
-					AddDiagnostic("BMXC2100", "Pico Throw requires an Object, String, Array, class, interface, or closure value; '" + thrown.expression.semanticType + "' is not supported", thrown.source)
+					AddDiagnostic("BMXC2100", TBccMessages.CBackendPicoThrowTypeUnsupported(thrown.expression.semanticType), thrown.source)
 					Return CompleteStatementOutput(result, "")
 				End If
 				Return CompleteStatementOutput(result, indent + "bmx_pico_exception_throw(bmx_pico_exception_object((BMXPicoObject *)" + EmitExpression(thrown.expression) + "));~n")
@@ -5505,7 +5506,7 @@ Type TCompilerCBackend
 		Local released:TCompilerIrRelease = TCompilerIrRelease(statement)
 		If released Then
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2079", "Release requires the BlitzMax runtime C backend", released.source)
+				AddDiagnostic("BMXC2079", TBccMessages.CBackendReleaseRequiresRuntimeBackend(), released.source)
 				Return CompleteStatementOutput(result, "")
 			End If
 			Return CompleteStatementOutput(result, indent + "bbHandleRelease((size_t)(" + EmitExpression(released.expression) + "));~n")
@@ -5513,7 +5514,7 @@ Type TCompilerCBackend
 		Local asserted:TCompilerIrAssert = TCompilerIrAssert(statement)
 		If asserted Then
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2078", "Assert requires the BlitzMax runtime C backend", asserted.source)
+				AddDiagnostic("BMXC2078", TBccMessages.CBackendAssertRequiresRuntimeBackend(), asserted.source)
 				Return CompleteStatementOutput(result, "")
 			End If
 			Local capturedAssert:TCompilerCCapturedExpression = CaptureExpression(asserted.condition, True)
@@ -5585,11 +5586,11 @@ Type TCompilerCBackend
 		Local guarded:TCompilerIrTry = TCompilerIrTry(statement)
 		If guarded Then
 			If Not runtimeTypes And Not EmbeddedObjectTypes() Then
-				AddDiagnostic("BMXC2081", "Try/Catch requires the BlitzMax runtime exception backend", guarded.source)
+				AddDiagnostic("BMXC2081", TBccMessages.CBackendTryCatchRequiresRuntimeExceptionBackend(), guarded.source)
 				Return CompleteStatementOutput(result, "")
 			End If
 			If EmbeddedObjectTypes() And currentRoutine And currentRoutine.isIteratorMoveNext And guarded.retainedInIterator Then
-				AddDiagnostic("BMXC2102", "Pico exceptions do not yet support a Try block retained across Yield", guarded.source)
+				AddDiagnostic("BMXC2102", TBccMessages.CBackendPicoTryAcrossYieldUnsupported(), guarded.source)
 				Return CompleteStatementOutput(result, "")
 			End If
 			If guarded.finallyBody Then Return CompleteStatementOutput(result, EmitTryFinally(guarded, indent))
@@ -5599,7 +5600,7 @@ Type TCompilerCBackend
 		If usingStatement Then
 			If EmbeddedObjectTypes() Then Return CompleteStatementOutput(result, EmitPicoUsing(usingStatement, indent))
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2082", "Using requires the BlitzMax runtime exception backend", usingStatement.source)
+				AddDiagnostic("BMXC2082", TBccMessages.CBackendUsingRequiresRuntimeExceptionBackend(), usingStatement.source)
 				Return CompleteStatementOutput(result, "")
 			End If
 			Local exceptionName:String = "bmx_" + SafeIdentifier(usingStatement.usingId) + "_exception"
@@ -5645,7 +5646,7 @@ Type TCompilerCBackend
 		Local dataRead:TCompilerIrDataRead = TCompilerIrDataRead(statement)
 		If dataRead Then
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2083", "ReadData requires the BlitzMax runtime C backend", dataRead.source)
+				AddDiagnostic("BMXC2083", TBccMessages.CBackendReadDataRequiresRuntimeBackend(), dataRead.source)
 				Return CompleteStatementOutput(result, "")
 			End If
 			For Local target:TCompilerIrDataReadTarget = EachIn dataRead.targets
@@ -5657,7 +5658,7 @@ Type TCompilerCBackend
 		Local dataRestore:TCompilerIrDataRestore = TCompilerIrDataRestore(statement)
 		If dataRestore Then
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2083", "RestoreData requires the BlitzMax runtime C backend", dataRestore.source)
+				AddDiagnostic("BMXC2083", TBccMessages.CBackendRestoreDataRequiresRuntimeBackend(), dataRestore.source)
 				Return CompleteStatementOutput(result, "")
 			End If
 			Return CompleteStatementOutput(result, indent + "bmx_data_offset = &bmx_data[" + dataRestore.itemIndex + "];~n")
@@ -5761,7 +5762,7 @@ Type TCompilerCBackend
 			Local element:String
 			If EmbeddedArrayTypes() Then
 				If Not PicoArrayElementSupported(eachStatement.elementType) Then
-					AddDiagnostic("BMXC2028", "EachIn Array element type '" + eachStatement.elementType + "' is not available in the Pico managed-container profile", eachStatement.source)
+					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoEachInArrayElementTypeUnsupported(eachStatement.elementType), eachStatement.source)
 					Return ""
 				End If
 				Local eachElementType:String = CType(eachStatement.elementType, eachStatement.source)
@@ -5994,7 +5995,7 @@ Type TCompilerCBackend
 			End If
 			Return CompleteStatementOutput(result, cleanup + EmitLoopDebugLeaves(loopExitDebugDepths, loopControl.targetLoopId, indent, restoredDebugDepth) + indent + "goto " + LoopExitLabel(loopControl.targetLoopId) + ";~n")
 		End If
-		AddDiagnostic("BMXC2002", "IR statement is not supported by the scalar C backend", statement.source)
+		AddDiagnostic("BMXC2002", TBccMessages.CBackendIrStatementUnsupported(), statement.source)
 		Return CompleteStatementOutput(result, "")
 	End Method
 
@@ -6126,7 +6127,7 @@ Type TCompilerCBackend
 
 	Method EmitPicoUsing:String(usingStatement:TCompilerIrUsing, indent:String)
 		If currentRoutine And currentRoutine.isIteratorMoveNext And usingStatement.retainedInIterator Then
-			AddDiagnostic("BMXC2103", "Pico Using does not yet support a resource retained across Yield", usingStatement.source)
+			AddDiagnostic("BMXC2103", TBccMessages.CBackendPicoUsingAcrossYieldUnsupported(), usingStatement.source)
 			Return ""
 		End If
 		Local usingId:String = SafeIdentifier(usingStatement.usingId)
@@ -6196,7 +6197,7 @@ Type TCompilerCBackend
 			Case DATA_READ_CONVERSION_ULONGINT Return "bbConvertToULongInt"
 			Case DATA_READ_CONVERSION_STRING Return "bbConvertToString"
 		End Select
-		AddDiagnostic("BMXC2083", "ReadData conversion kind is not supported", source)
+		AddDiagnostic("BMXC2083", TBccMessages.CBackendReadDataConversionUnsupported(), source)
 		Return "bbConvertToInt"
 	End Method
 
@@ -6550,7 +6551,7 @@ Type TCompilerCBackend
 
 	Method EmitExpression:String(expression:TCompilerIrExpression)
 		If Not expression Then
-			AddDiagnostic("BMXC2010", "IR expression was not available", Null)
+			AddDiagnostic("BMXC2010", TBccMessages.CBackendIrExpressionUnavailable(), Null)
 			Return "0"
 		End If
 		Local materialization:TCompilerIrMaterialize = TCompilerIrMaterialize(expression)
@@ -6564,7 +6565,7 @@ Type TCompilerCBackend
 			If literal.stringLiteralId.length Then
 				Local stringName:String = String(stringNames.ValueForKey(literal.stringLiteralId))
 				If stringName.length And (runtimeTypes Or EmbeddedStringTypes()) Then Return stringName
-				AddDiagnostic("BMXC2025", "Managed String literals require the BlitzMax runtime C backend", literal.source)
+				AddDiagnostic("BMXC2025", TBccMessages.CBackendManagedStringLiteralRequiresRuntimeBackend(), literal.source)
 				Return "0"
 			End If
 			Local literalStruct:TCompilerIrStruct = TCompilerIrStruct(structTypes.ValueForKey(literal.semanticType.ToLower()))
@@ -6604,7 +6605,7 @@ Type TCompilerCBackend
 				Local importedConstructor:TCompilerIrImportedStructRoutine = ImportedStructRoutineById(structNew.importedConstructorId)
 				If importedConstructor Then helperName = importedConstructor.objectNewAbiName
 				If Not helperName.length Then
-					AddDiagnostic("BMXC2062", "Imported Struct constructor '" + structNew.importedConstructorId + "' has no value helper ABI", structNew.source)
+					AddDiagnostic("BMXC2062", TBccMessages.CBackendImportedStructConstructorValueHelperMissing(structNew.importedConstructorId), structNew.source)
 					Return CDefaultValue(structNew.semanticType)
 				End If
 			Else
@@ -6643,7 +6644,7 @@ Type TCompilerCBackend
 			If EmbeddedStringTypes() And call.isExternal Then
 				Local picoStringExternal:TCompilerIrExternalFunction = TCompilerIrExternalFunction(externalFunctionsById.ValueForKey(call.functionId))
 				If PicoDesktopStringFunction(picoStringExternal) And Not PicoStringRuntimeFunctionName(picoStringExternal).length Then
-					AddDiagnostic("BMXC2025", "String method '" + call.functionName + "' is not available in the current Pico embedded String profile", call.source)
+					AddDiagnostic("BMXC2025", TBccMessages.CBackendPicoStringMethodUnsupported(call.functionName), call.source)
 					Return CDefaultValue(call.semanticType)
 				End If
 			End If
@@ -6678,7 +6679,7 @@ Type TCompilerCBackend
 				Local exactReceiver:String = EmitExpression(call.receiver)
 				exactReceiver = DebugObjectReceiver(exactReceiver, call.receiver.semanticType, call.source)
 				If Not exactTarget Or Not exactTarget.receiver Then
-					AddDiagnostic("BMXC2053", "Exact method call target '" + call.functionId + "' was not emitted", call.source)
+					AddDiagnostic("BMXC2053", TBccMessages.CBackendExactMethodTargetNotEmitted(call.functionId), call.source)
 					Return "0"
 				End If
 				result = FunctionName(call.functionId) + "((" + CType(exactTarget.receiver.semanticType, call.source) + ")" + exactReceiver
@@ -6695,9 +6696,9 @@ Type TCompilerCBackend
 							Case IR_OBJECT_SLOT_EQUALS
 								Return "bmx_pico_object_equals((void *)" + receiver + ", (void *)" + EmitExpression(call.arguments[0]) + ")"
 							Case IR_OBJECT_SLOT_TO_STRING
-								AddDiagnostic("BMXC2029", "Object ToString requires dynamic Pico String support", call.source)
+								AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectToStringRequiresDynamicString(), call.source)
 							Case IR_OBJECT_SLOT_SEND_MESSAGE
-								AddDiagnostic("BMXC2029", "Object SendMessage is not available in the current Pico Object profile", call.source)
+								AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectSendMessageUnsupported(), call.source)
 						End Select
 						Return CDefaultValue(call.semanticType)
 					End If
@@ -6706,7 +6707,7 @@ Type TCompilerCBackend
 					Local dispatchIndex:Int = PicoClassSlotIndex(dispatchClass, call.classSlotId)
 					Local pointerType:String = PicoSlotFunctionPointerType(dispatchSlot)
 					If Not dispatchClass Or dispatchIndex < 0 Or Not pointerType.length Then
-						AddDiagnostic("BMXC2029", "Virtual dispatch slot is not available in the current Pico Type descriptor", call.source)
+						AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoVirtualDispatchSlotUnavailable(), call.source)
 						Return "0"
 					End If
 					Local checkedReceiver:String = DebugObjectReceiver(receiver, call.receiver.semanticType, call.source)
@@ -6729,7 +6730,7 @@ Type TCompilerCBackend
 					End If
 					Local slot:TCompilerIrClassFunctionSlot = ClassSlot(call.classId, call.classSlotId)
 					If Not slot Then
-						AddDiagnostic("BMXC2053", "Virtual call slot '" + call.classId + "." + call.classSlotId + "' was not emitted", call.source)
+						AddDiagnostic("BMXC2053", TBccMessages.CBackendVirtualCallSlotNotEmitted(call.classId, call.classSlotId), call.source)
 						Return "0"
 					End If
 					Local receiverArgument:String = receiver
@@ -6863,7 +6864,7 @@ Type TCompilerCBackend
 				Local truthOperand:String = DebugManagedValue(EmitExpression(truth.operand), truth.managedKind, truth.operand.semanticType, truth.source)
 				Return "(" + truthOperand + " " + truthOperator + " " + sentinel + ")"
 			End If
-			AddDiagnostic("BMXC2014", "Managed truth kind '" + truth.managedKind + "' has no runtime sentinel mapping", truth.source)
+			AddDiagnostic("BMXC2014", TBccMessages.CBackendManagedTruthSentinelMappingMissing(truth.managedKind), truth.source)
 			Return "0"
 		End If
 		Local defaultValue:TCompilerIrManagedDefault = TCompilerIrManagedDefault(expression)
@@ -6882,7 +6883,7 @@ Type TCompilerCBackend
 					If EmbeddedObjectTypes() Then Return "((BMXPicoClosure *)&bmx_pico_null_object)"
 					Return "((BBClosure *)&bbNullObject)"
 			End Select
-			AddDiagnostic("BMXC2014", "Managed default kind '" + defaultValue.managedKind + "' has no runtime sentinel mapping", defaultValue.source)
+			AddDiagnostic("BMXC2014", TBccMessages.CBackendManagedDefaultSentinelMappingMissing(defaultValue.managedKind), defaultValue.source)
 			Return "0"
 		End If
 		Local identity:TCompilerIrManagedIdentity = TCompilerIrManagedIdentity(expression)
@@ -6904,25 +6905,25 @@ Type TCompilerCBackend
 		If arrayNew Then
 			If EmbeddedArrayTypes() Then
 				If arrayNew.rank <> 1 Or arrayNew.dimensions.length <> 1 Then
-					AddDiagnostic("BMXC2028", "Only one-dimensional Arrays are available in the initial Pico embedded profile", arrayNew.source)
+					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoArrayRequiresOneDimension(), arrayNew.source)
 					Return "&bmx_pico_empty_array"
 				End If
 				If Not PicoArrayElementSupported(arrayNew.elementType) Then
-					AddDiagnostic("BMXC2028", "Array element type '" + arrayNew.elementType + "' is not available in the Pico managed-container profile", arrayNew.source)
+					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoArrayElementTypeUnsupported(arrayNew.elementType), arrayNew.source)
 					Return "&bmx_pico_empty_array"
 				End If
 				Local initializer:String = "0"
 				If arrayNew.structId.length Then
 					Local elementStruct:TCompilerIrStruct = StructById(arrayNew.structId)
 					If Not PicoPlainStructSupported(elementStruct) Then
-						AddDiagnostic("BMXC2091", "Array element Struct '" + arrayNew.elementType + "' is not supported by the Pico value-descriptor tier", arrayNew.source)
+						AddDiagnostic("BMXC2091", TBccMessages.CBackendPicoArrayElementStructUnsupported(arrayNew.elementType), arrayNew.source)
 						Return "&bmx_pico_empty_array"
 					End If
 					initializer = StructArrayInitializerName(arrayNew.structId, "")
 				Else If arrayNew.importedStructId.length Then
 					Local importedElementStruct:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsById.ValueForKey(arrayNew.importedStructId))
 					If Not PicoPlainImportedStructSupported(importedElementStruct) Or Not importedElementStruct.elementInitializerAbiName.length Then
-						AddDiagnostic("BMXC2091", "Imported array element Struct '" + arrayNew.elementType + "' has no supported Pico element initializer ABI", arrayNew.source)
+						AddDiagnostic("BMXC2091", TBccMessages.CBackendPicoImportedArrayElementInitializerMissing(arrayNew.elementType), arrayNew.source)
 						Return "&bmx_pico_empty_array"
 					End If
 					initializer = importedElementStruct.elementInitializerAbiName
@@ -6941,7 +6942,7 @@ Type TCompilerCBackend
 				If arrayNew.enumId.length Then
 					Local arrayEnum:TCompilerIrEnum = EnumById(arrayNew.enumId)
 					If Not arrayEnum Or Not arrayEnum.runtimeDescriptor Then
-						AddDiagnostic("BMXC2076", "Enum array element type '" + arrayNew.elementType + "' has no runtime descriptor", arrayNew.source)
+						AddDiagnostic("BMXC2076", TBccMessages.CBackendEnumArrayElementDescriptorMissing(arrayNew.elementType), arrayNew.source)
 						Return "&bbEmptyArray"
 					End If
 					Return "bbArrayNew1DEnum(" + CQuoted(arrayNew.elementEncoding) + ", " + EmitExpression(arrayNew.dimensions[0]) + ", " + arrayEnum.runtimeDescriptor.descriptorAbiName + ")"
@@ -6950,7 +6951,7 @@ Type TCompilerCBackend
 					If arrayNew.importedStructId.length Then
 						Local importedStruct:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsById.ValueForKey(arrayNew.importedStructId))
 						If Not importedStruct Then
-							AddDiagnostic("BMXC2071", "Imported Struct array element type '" + arrayNew.elementType + "' has no published layout", arrayNew.source)
+							AddDiagnostic("BMXC2071", TBccMessages.CBackendImportedStructArrayElementLayoutMissing(arrayNew.elementType), arrayNew.source)
 							Return "&bbEmptyArray"
 						End If
 						Return PublishedStructArrayNewName(importedStruct.abiName) + "(" + EmitExpression(arrayNew.dimensions[0]) + ")"
@@ -6968,7 +6969,7 @@ Type TCompilerCBackend
 				If arrayNew.enumId.length Then
 					Local arrayEnum:TCompilerIrEnum = EnumById(arrayNew.enumId)
 					If Not arrayEnum Or Not arrayEnum.runtimeDescriptor Then
-						AddDiagnostic("BMXC2076", "Enum array element type '" + arrayNew.elementType + "' has no runtime descriptor", arrayNew.source)
+						AddDiagnostic("BMXC2076", TBccMessages.CBackendEnumArrayElementDescriptorMissing(arrayNew.elementType), arrayNew.source)
 						Return "&bbEmptyArray"
 					End If
 					Return "bbArrayNewEnum(" + CQuoted(arrayNew.elementEncoding) + ", " + arrayEnum.runtimeDescriptor.descriptorAbiName + ", " + arrayNew.rank + dimensions + ")"
@@ -6979,14 +6980,14 @@ Type TCompilerCBackend
 				If arrayNew.importedStructId.length Then
 					Local importedStruct:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsById.ValueForKey(arrayNew.importedStructId))
 					If Not importedStruct Or Not importedStruct.elementInitializerAbiName.length Then
-						AddDiagnostic("BMXC2050", "Multidimensional imported Struct array allocation requires a published element initializer ABI", arrayNew.source)
+						AddDiagnostic("BMXC2050", TBccMessages.CBackendMultidimensionalImportedStructArrayInitializerMissing(), arrayNew.source)
 						Return "&bbEmptyArray"
 					End If
 					Return "bbArrayNewStruct(" + CQuoted(arrayNew.elementEncoding) + ", sizeof(" + CType(arrayNew.elementType, arrayNew.source) + "), " + importedStruct.elementInitializerAbiName + ", " + arrayNew.rank + dimensions + ")"
 				End If
 				Return "bbArrayNew(" + CQuoted(arrayNew.elementEncoding) + ", " + arrayNew.rank + dimensions + ")"
 			End If
-			AddDiagnostic("BMXC2050", "Array allocation rank and dimension count do not match", arrayNew.source)
+			AddDiagnostic("BMXC2050", TBccMessages.CBackendArrayAllocationRankMismatch(), arrayNew.source)
 			Return "&bbEmptyArray"
 		End If
 		Local arrayLength:TCompilerIrArrayLength = TCompilerIrArrayLength(expression)
@@ -7032,7 +7033,7 @@ Type TCompilerCBackend
 		If arraySlice Then
 			If EmbeddedArrayTypes() Then
 				If Not PicoArrayElementSupported(arraySlice.elementType) Then
-					AddDiagnostic("BMXC2028", "Array element type '" + arraySlice.elementType + "' is not available in the Pico managed-container profile", arraySlice.source)
+					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoArrayElementTypeUnsupported(arraySlice.elementType), arraySlice.source)
 					Return "&bmx_pico_empty_array"
 				End If
 				Local receiver:String = EmitExpression(arraySlice.receiver)
@@ -7051,7 +7052,7 @@ Type TCompilerCBackend
 				Else If arraySlice.importedStructId.length Then
 					Local importedElementStruct:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsById.ValueForKey(arraySlice.importedStructId))
 					If Not importedElementStruct Or Not importedElementStruct.elementInitializerAbiName.length Then
-						AddDiagnostic("BMXC2091", "Imported array element Struct '" + arraySlice.elementType + "' has no supported Pico element initializer ABI", arraySlice.source)
+						AddDiagnostic("BMXC2091", TBccMessages.CBackendPicoImportedArrayElementInitializerMissing(arraySlice.elementType), arraySlice.source)
 						Return "&bmx_pico_empty_array"
 					End If
 					initializer = importedElementStruct.elementInitializerAbiName
@@ -7089,19 +7090,19 @@ Type TCompilerCBackend
 		If arrayElement Then
 			If EmbeddedArrayTypes() And Not arrayElement.isStaticArray Then
 				If arrayElement.rank <> 1 Or arrayElement.indexes.length <> 1 Then
-					AddDiagnostic("BMXC2028", "Only one-dimensional Array indexing is available in the initial Pico embedded profile", arrayElement.source)
+					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoArrayIndexRequiresOneDimension(), arrayElement.source)
 					Return "0"
 				End If
 				If Not PicoArrayElementSupported(arrayElement.elementType) Or arrayElement.callableReturnType.length Then
-					AddDiagnostic("BMXC2028", "Array element type '" + arrayElement.elementType + "' is not available in the Pico managed-container profile", arrayElement.source)
+					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoArrayElementTypeUnsupported(arrayElement.elementType), arrayElement.source)
 					Return "0"
 				End If
 				If arrayElement.structId.length And Not PicoPlainStructSupported(StructById(arrayElement.structId)) Then
-					AddDiagnostic("BMXC2091", "Array element Struct '" + arrayElement.elementType + "' is not supported by the Pico value-descriptor tier", arrayElement.source)
+					AddDiagnostic("BMXC2091", TBccMessages.CBackendPicoArrayElementStructUnsupported(arrayElement.elementType), arrayElement.source)
 					Return "0"
 				End If
 				If arrayElement.importedStructId.length And Not PicoPlainImportedStructSupported(TCompilerIrImportedStruct(importedStructsById.ValueForKey(arrayElement.importedStructId))) Then
-					AddDiagnostic("BMXC2091", "Imported array element Struct '" + arrayElement.elementType + "' is not supported by the Pico value-descriptor tier", arrayElement.source)
+					AddDiagnostic("BMXC2091", TBccMessages.CBackendPicoImportedArrayElementStructUnsupported(arrayElement.elementType), arrayElement.source)
 					Return "0"
 				End If
 				Local picoElementType:String = CType(arrayElement.elementType, arrayElement.source)
@@ -7145,7 +7146,7 @@ Type TCompilerCBackend
 				Local dataExpression:String = "BBARRAYDATA(" + receiver + ", 1)"
 				Return "((" + arrayElementDataPointerType + ")" + dataExpression + ")[" + linearIndex + "]"
 			End If
-			AddDiagnostic("BMXC2051", "Array element rank and index count do not match", arrayElement.source)
+			AddDiagnostic("BMXC2051", TBccMessages.CBackendArrayElementRankMismatch(), arrayElement.source)
 			Return "0"
 		End If
 		Local pointerElement:TCompilerIrPointerElement = TCompilerIrPointerElement(expression)
@@ -7168,21 +7169,21 @@ Type TCompilerCBackend
 			If EmbeddedArrayTypes() Then
 				If Not arrayLiteral.elements.length Then Return "&bmx_pico_empty_array"
 				If Not PicoArrayElementSupported(arrayLiteral.elementType) Or arrayLiteral.callableReturnType.length Then
-					AddDiagnostic("BMXC2028", "Array literal element type '" + arrayLiteral.elementType + "' is not available in the Pico managed-container profile", arrayLiteral.source)
+					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoArrayLiteralElementTypeUnsupported(arrayLiteral.elementType), arrayLiteral.source)
 					Return "&bmx_pico_empty_array"
 				End If
 				Local initializer:String = "0"
 				If arrayLiteral.structId.length Then
 					Local elementStruct:TCompilerIrStruct = StructById(arrayLiteral.structId)
 					If Not PicoPlainStructSupported(elementStruct) Then
-						AddDiagnostic("BMXC2091", "Array literal element Struct '" + arrayLiteral.elementType + "' is not supported by the Pico value-descriptor tier", arrayLiteral.source)
+						AddDiagnostic("BMXC2091", TBccMessages.CBackendPicoArrayLiteralElementStructUnsupported(arrayLiteral.elementType), arrayLiteral.source)
 						Return "&bmx_pico_empty_array"
 					End If
 					initializer = StructArrayInitializerName(arrayLiteral.structId, "")
 				Else If arrayLiteral.importedStructId.length Then
 					Local importedElementStruct:TCompilerIrImportedStruct = TCompilerIrImportedStruct(importedStructsById.ValueForKey(arrayLiteral.importedStructId))
 					If Not PicoPlainImportedStructSupported(importedElementStruct) Or Not importedElementStruct.elementInitializerAbiName.length Then
-						AddDiagnostic("BMXC2091", "Imported array literal element Struct '" + arrayLiteral.elementType + "' has no supported Pico element initializer ABI", arrayLiteral.source)
+						AddDiagnostic("BMXC2091", TBccMessages.CBackendPicoImportedArrayLiteralElementInitializerMissing(arrayLiteral.elementType), arrayLiteral.source)
 						Return "&bmx_pico_empty_array"
 					End If
 					initializer = importedElementStruct.elementInitializerAbiName
@@ -7233,7 +7234,7 @@ Type TCompilerCBackend
 			If irClass Then
 				If EmbeddedObjectTypes() Then
 					If objectNew.dynamicClassSource Then
-						AddDiagnostic("BMXC2029", "Dynamic Object allocation is not available in the initial Pico Object profile", objectNew.source)
+						AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoDynamicObjectAllocationUnsupported(), objectNew.source)
 						Return "((struct " + ObjectName(irClass.classId) + " *)&bmx_pico_null_object)"
 					End If
 					If objectNew.constructorFunctionId.length Then
@@ -7260,7 +7261,7 @@ Type TCompilerCBackend
 				Return "((struct " + ObjectName(irClass.classId) + " *)" + allocator + "(" + classExpression + "))"
 			End If
 			If objectNew.dynamicClassSource Then Return "((" + CType(objectNew.semanticType, objectNew.source) + ")bbObjectNew(((BBOBJECT)" + EmitExpression(objectNew.dynamicClassSource) + ")->clas))"
-			AddDiagnostic("BMXC2052", "Object allocation class '" + objectNew.classId + "' has no emitted layout", objectNew.source)
+			AddDiagnostic("BMXC2052", TBccMessages.CBackendObjectAllocationClassLayoutMissing(objectNew.classId), objectNew.source)
 			Return "&bbNullObject"
 		End If
 		Local fieldAccess:TCompilerIrFieldAccess = TCompilerIrFieldAccess(expression)
@@ -7277,7 +7278,7 @@ Type TCompilerCBackend
 					importedReceiver = DebugObjectReceiver(importedReceiver, fieldAccess.receiver.semanticType, fieldAccess.source)
 					Return "(" + importedReceiver + "->" + importedField.abiName + ")"
 				End If
-				AddDiagnostic("BMXC2059", "Imported field '" + fieldAccess.importedFieldId + "' has no ABI record", fieldAccess.source)
+				AddDiagnostic("BMXC2059", TBccMessages.CBackendImportedFieldAbiRecordMissing(fieldAccess.importedFieldId), fieldAccess.source)
 				Return "0"
 			End If
 			If fieldAccess.structId.length Then
@@ -7294,7 +7295,7 @@ Type TCompilerCBackend
 			If EmbeddedObjectTypes() Then
 				Local picoInterface:TCompilerIrInterface = InterfaceById(interfaceCast.interfaceId)
 				If PicoInterfaceDescriptorAvailable(picoInterface) Then Return "((BMXPicoObject *)bmx_pico_interface_cast((void *)" + EmitExpression(interfaceCast.operand) + ", &" + PicoInterfaceDescriptorName(picoInterface) + "))"
-				AddDiagnostic("BMXC2029", "Interface cast target has no local Pico descriptor", interfaceCast.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoInterfaceCastDescriptorMissing(), interfaceCast.source)
 				Return "((BMXPicoObject *)&bmx_pico_null_object)"
 			End If
 			Return "((BBOBJECT)bbInterfaceDowncast((BBOBJECT)" + EmitExpression(interfaceCast.operand) + ", (BBINTERFACE)&" + InterfaceDescriptorName(interfaceCast.interfaceId) + "))"
@@ -7310,29 +7311,29 @@ Type TCompilerCBackend
 					Local importedPicoClass:TCompilerIrImportedClass = ImportedClassById(objectCast.importedClassId)
 					If importedPicoClass And importedPicoClass.abiName.length Then Return "((struct " + importedPicoClass.abiName + "_obj *)bmx_pico_object_cast((void *)" + EmitExpression(objectCast.operand) + ", &" + PicoImportedTypeDescriptorName(importedPicoClass) + "))"
 				End If
-				AddDiagnostic("BMXC2029", "Object cast target has no local Pico Type descriptor", objectCast.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectCastDescriptorMissing(), objectCast.source)
 				Return "((BMXPicoObject *)&bmx_pico_null_object)"
 			End If
 			If objectCast.classId.length Then
 				Local irClass:TCompilerIrClass = ClassById(objectCast.classId)
 				If irClass Then Return "((struct " + ObjectName(irClass.classId) + " *)bbObjectDowncast((BBOBJECT)" + EmitExpression(objectCast.operand) + ", (BBClass *)&" + DescriptorName(irClass.classId) + "))"
-				AddDiagnostic("BMXC2056", "Object cast class '" + objectCast.classId + "' has no emitted layout", objectCast.source)
+				AddDiagnostic("BMXC2056", TBccMessages.CBackendObjectCastClassLayoutMissing(objectCast.classId), objectCast.source)
 				Return "&bbNullObject"
 			End If
 			Local importedClass:TCompilerIrImportedClass = ImportedClassById(objectCast.importedClassId)
 			If importedClass Then Return "((struct " + importedClass.abiName + "_obj *)bbObjectDowncast((BBOBJECT)" + EmitExpression(objectCast.operand) + ", (BBClass *)&" + importedClass.abiName + "))"
-			AddDiagnostic("BMXC2056", "Imported object cast class '" + objectCast.importedClassId + "' has no ABI record", objectCast.source)
+			AddDiagnostic("BMXC2056", TBccMessages.CBackendImportedObjectCastClassAbiRecordMissing(objectCast.importedClassId), objectCast.source)
 			Return "&bbNullObject"
 		End If
 		Local objectStringCast:TCompilerIrObjectStringCast = TCompilerIrObjectStringCast(expression)
 		If objectStringCast Then
 			If EmbeddedObjectTypes() Then
-				AddDiagnostic("BMXC2029", "Object-to-String conversion is not available in the initial Pico Object profile", objectStringCast.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectToStringConversionUnsupported(), objectStringCast.source)
 				Return "&bmx_pico_empty_string"
 			End If
 			Return "((BBSTRING)bbObjectStringcast((BBOBJECT)" + EmitExpression(objectStringCast.operand) + "))"
 		End If
-		AddDiagnostic("BMXC2011", "IR expression is not supported by the scalar C backend", expression.source)
+		AddDiagnostic("BMXC2011", TBccMessages.CBackendIrExpressionUnsupported(), expression.source)
 		Return "0"
 	End Method
 
@@ -7353,7 +7354,7 @@ Type TCompilerCBackend
 			If slot Then slotName = slot.slotName
 		End If
 		If Not slot Or slot.isMethod Or Not slotName.length Then
-			AddDiagnostic("BMXC2053", "Type Function call slot '" + call.classId + "." + call.classSlotId + "' was not emitted", call.source)
+			AddDiagnostic("BMXC2053", TBccMessages.CBackendTypeFunctionCallSlotNotEmitted(call.classId, call.classSlotId), call.source)
 			Return "0"
 		End If
 		Local receiver:String = EmitExpression(call.receiver)
@@ -7370,16 +7371,16 @@ Type TCompilerCBackend
 		Local importedClass:TCompilerIrImportedClass = ImportedClassById(objectNew.importedClassId)
 		Local constructor:TCompilerIrImportedConstructor = ImportedConstructorById(objectNew.importedConstructorId)
 		If Not importedClass Or Not constructor Then
-			AddDiagnostic("BMXC2058", "Imported object construction has no class or constructor ABI record", objectNew.source)
+			AddDiagnostic("BMXC2058", TBccMessages.CBackendImportedObjectConstructionAbiRecordMissing(), objectNew.source)
 			Return "&bbNullObject"
 		End If
 		If EmbeddedObjectTypes() Then
 			If objectNew.dynamicClassSource Then
-				AddDiagnostic("BMXC2029", "Dynamic imported Object allocation is not available in the current Pico module ABI", objectNew.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoDynamicImportedObjectAllocationUnsupported(), objectNew.source)
 				Return "((struct " + importedClass.abiName + "_obj *)&bmx_pico_null_object)"
 			End If
 			If Not constructor.objectNewAbiName.length Then
-				AddDiagnostic("BMXC2029", "Imported constructor has no Pico allocation-helper ABI", objectNew.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoImportedConstructorAllocationHelperMissing(), objectNew.source)
 				Return "((struct " + importedClass.abiName + "_obj *)&bmx_pico_null_object)"
 			End If
 			Local picoResult:String = "((struct " + importedClass.abiName + "_obj *)" + constructor.objectNewAbiName + "("
@@ -7390,7 +7391,7 @@ Type TCompilerCBackend
 			Return picoResult + "))"
 		End If
 		If Not runtimeTypes Then
-			AddDiagnostic("BMXC2029", "Imported Object allocation requires the BlitzMax runtime C backend", objectNew.source)
+			AddDiagnostic("BMXC2029", TBccMessages.CBackendImportedObjectAllocationRequiresRuntimeBackend(), objectNew.source)
 			Return "0"
 		End If
 		Local classExpression:String = "(BBClass *)&" + importedClass.abiName
@@ -7418,18 +7419,18 @@ Type TCompilerCBackend
 			Next
 		End If
 		If Not irInterface Or Not interfaceMethod Then
-			AddDiagnostic("BMXC2055", "Interface call slot '" + call.interfaceId + "." + call.interfaceSlotId + "' was not emitted", call.source)
+			AddDiagnostic("BMXC2055", TBccMessages.CBackendInterfaceCallSlotNotEmitted(call.interfaceId, call.interfaceSlotId), call.source)
 			Return "0"
 		End If
 		Local receiver:String = EmitExpression(call.receiver)
 		If EmbeddedObjectTypes() Then
 			If Not PicoInterfaceDescriptorAvailable(irInterface) Then
-				AddDiagnostic("BMXC2029", "Imported or native Interface dispatch is not available in the current Pico descriptor tier", call.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoImportedInterfaceDispatchUnsupported(), call.source)
 				Return "0"
 			End If
 			Local pointerType:String = PicoInterfaceFunctionPointerType(interfaceMethod)
 			If Not pointerType.length Or interfaceMethodIndex < 0 Then
-				AddDiagnostic("BMXC2029", "Interface method signature is not available in the current Pico dispatch tier", call.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoInterfaceMethodSignatureUnavailable(), call.source)
 				Return "0"
 			End If
 			receiver = DebugObjectReceiver(receiver, call.receiver.semanticType, call.source)
@@ -7467,9 +7468,9 @@ Type TCompilerCBackend
 				Case IR_OBJECT_SLOT_EQUALS
 					Return "bmx_pico_object_equals((void *)" + picoReceiver + ", (void *)" + EmitExpression(call.arguments[0]) + ")"
 				Case IR_OBJECT_SLOT_TO_STRING
-					AddDiagnostic("BMXC2029", "Object ToString requires dynamic Pico String support", call.source)
+					AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectToStringRequiresDynamicString(), call.source)
 				Case IR_OBJECT_SLOT_SEND_MESSAGE
-					AddDiagnostic("BMXC2029", "Object SendMessage is not available in the current Pico Object profile", call.source)
+					AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectSendMessageUnsupported(), call.source)
 			End Select
 			Return CDefaultValue(call.semanticType)
 		End If
@@ -7479,7 +7480,7 @@ Type TCompilerCBackend
 			If dispatchIndex >= 0 Then dispatchSlot = receiverClass.functionSlots[dispatchIndex]
 			Local pointerType:String = PicoSlotFunctionPointerType(dispatchSlot)
 			If dispatchIndex < 0 Or Not pointerType.length Or Not receiverClass.abiName.length Then
-				AddDiagnostic("BMXC2029", "Imported virtual dispatch slot is not available in the current Pico Type descriptor ABI", call.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoImportedVirtualDispatchSlotUnavailable(), call.source)
 				Return "0"
 			End If
 			Local receiver:String = EmitExpression(call.receiver)
@@ -7506,7 +7507,7 @@ Type TCompilerCBackend
 		Local declaringClass:TCompilerIrImportedClass
 		If importedMethod Then declaringClass = ImportedClassById(importedMethod.declaringImportedClassId)
 		If Not receiverClass Or Not importedMethod Or Not declaringClass Then
-			AddDiagnostic("BMXC2057", "Imported virtual call slot '" + call.classId + "." + call.classSlotId + "' has no ABI record", call.source)
+			AddDiagnostic("BMXC2057", TBccMessages.CBackendImportedVirtualCallSlotAbiRecordMissing(call.classId, call.classSlotId), call.source)
 			Return "0"
 		End If
 		Local receiver:String = EmitExpression(call.receiver)
@@ -7525,7 +7526,7 @@ Type TCompilerCBackend
 			Local declaringClass:TCompilerIrImportedClass
 			If importedMethod Then declaringClass = ImportedClassById(importedMethod.declaringImportedClassId)
 			If Not importedMethod Or Not declaringClass Or Not importedMethod.implementationAbiName.length Then
-				AddDiagnostic("BMXC2054", "Imported Super call slot '" + call.classId + "." + call.classSlotId + "' has no direct implementation ABI", call.source)
+				AddDiagnostic("BMXC2054", TBccMessages.CBackendImportedSuperCallSlotImplementationMissing(call.classId, call.classSlotId), call.source)
 				Return "0"
 			End If
 			Local receiver:String = EmitExpression(call.receiver)
@@ -7539,13 +7540,13 @@ Type TCompilerCBackend
 		Local baseClass:TCompilerIrClass
 		If dispatchClass Then baseClass = ClassById(dispatchClass.baseClassId)
 		If Not dispatchClass Or Not baseClass Then
-			AddDiagnostic("BMXC2054", "Super call dispatch class '" + call.classId + "' has no emitted base descriptor", call.source)
+			AddDiagnostic("BMXC2054", TBccMessages.CBackendSuperCallDispatchBaseDescriptorMissing(call.classId), call.source)
 			Return "0"
 		End If
 		Local receiver:String = EmitExpression(call.receiver)
 		Local result:String
 		If EmbeddedObjectTypes() And call.objectSlotKind <> IR_OBJECT_SLOT_NONE Then
-			AddDiagnostic("BMXC2029", "Super dispatch for built-in Object slots is not available in the current Pico inheritance tier", call.source)
+			AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectSuperDispatchUnsupported(), call.source)
 			Return CDefaultValue(call.semanticType)
 		End If
 		If call.objectSlotKind <> IR_OBJECT_SLOT_NONE Then
@@ -7559,7 +7560,7 @@ Type TCompilerCBackend
 		End If
 		Local slot:TCompilerIrClassFunctionSlot = ClassSlot(baseClass.classId, call.classSlotId)
 		If Not slot Then
-			AddDiagnostic("BMXC2054", "Super call slot '" + baseClass.classId + "." + call.classSlotId + "' was not emitted", call.source)
+			AddDiagnostic("BMXC2054", TBccMessages.CBackendSuperCallSlotNotEmitted(baseClass.classId, call.classSlotId), call.source)
 			Return "0"
 		End If
 		If EmbeddedObjectTypes() Then
@@ -7612,7 +7613,7 @@ Type TCompilerCBackend
 						If importedPicoClass And importedPicoClass.abiName.length Then Return exceptionName + ".kind == BMX_PICO_EXCEPTION_OBJECT && bmx_pico_object_cast(" + exceptionName + ".value, &" + PicoImportedTypeDescriptorName(importedPicoClass) + ") != &bmx_pico_null_object"
 					End If
 			End Select
-			AddDiagnostic("BMXC2101", "Pico Catch supports Object, String, Array, and class/interface types with a compact descriptor ABI; '" + guardedCatch.parameterType + "' is not supported", guardedCatch.source)
+			AddDiagnostic("BMXC2101", TBccMessages.CBackendPicoCatchTypeUnsupported(guardedCatch.parameterType), guardedCatch.source)
 			Return "0"
 		End If
 		Select guardedCatch.catchKind
@@ -7633,7 +7634,7 @@ Type TCompilerCBackend
 				End If
 				If descriptor.length Then Return "bbObjectDowncast((BBOBJECT)" + exceptionName + ", (BBClass *)&" + descriptor + ") != &bbNullObject"
 		End Select
-		AddDiagnostic("BMXC2082", "Catch type '" + guardedCatch.parameterType + "' has no runtime matcher", guardedCatch.source)
+		AddDiagnostic("BMXC2082", TBccMessages.CBackendCatchTypeRuntimeMatcherMissing(guardedCatch.parameterType), guardedCatch.source)
 		Return "0"
 	End Method
 
@@ -7693,7 +7694,7 @@ Type TCompilerCBackend
 			Case ":shr", ":sar" Return ">>="
 			Case ":mod" Return "%="
 		End Select
-		AddDiagnostic("BMXC2024", "Assignment operator '" + operatorText + "' has no scalar C99 lowering", source)
+		AddDiagnostic("BMXC2024", TBccMessages.CBackendAssignmentOperatorUnsupported(operatorText), source)
 		Return "="
 	End Method
 
@@ -7777,18 +7778,18 @@ Type TCompilerCBackend
 		If conversion.conversionKind = CONVERSION_POINTER_TO_VAR_REFERENCE Then Return "(*(" + operand + "))"
 		If conversion.arrayCastElementEncoding.length Then
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2028", "Explicit managed Array conversion requires the BlitzMax runtime C backend", conversion.source)
+				AddDiagnostic("BMXC2028", TBccMessages.CBackendManagedArrayConversionRequiresRuntimeBackend(), conversion.source)
 				Return "0"
 			End If
 			Return "bbArrayCastFromObject((BBOBJECT)" + operand + ", " + CQuoted(conversion.arrayCastElementEncoding) + ")"
 		End If
 		If conversion.conversionKind = CONVERSION_STRING_TO_BYTE_POINTER Then
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2083", "Implicit String-to-Byte Ptr conversion requires the BlitzMax runtime C backend", conversion.source)
+				AddDiagnostic("BMXC2083", TBccMessages.CBackendStringToBytePointerConversionRequiresRuntimeBackend(), conversion.source)
 				Return "0"
 			End If
 			If Not nativeStringScope Then
-				AddDiagnostic("BMXC2083", "Implicit String-to-Byte Ptr conversion escaped its statement cleanup scope", conversion.source)
+				AddDiagnostic("BMXC2083", TBccMessages.CBackendStringToBytePointerConversionEscapedCleanupScope(), conversion.source)
 				Return "0"
 			End If
 			Local name:String = "bmx_native_string_" + nextNativeStringId
@@ -7797,7 +7798,7 @@ Type TCompilerCBackend
 		End If
 		If conversion.conversionKind = CONVERSION_OBJECT_TO_BYTE_POINTER Then
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2029", "Managed Type field-storage conversion requires the BlitzMax runtime C backend", conversion.source)
+				AddDiagnostic("BMXC2029", TBccMessages.CBackendManagedTypeFieldStorageConversionRequiresRuntimeBackend(), conversion.source)
 				Return "0"
 			End If
 			Return "((BBBYTE *)bbObjectToFieldOffset((BBObject *)" + operand + "))"
@@ -7807,7 +7808,7 @@ Type TCompilerCBackend
 				Return "((" + CType(conversion.semanticType, conversion.source) + ")bmx_pico_array_data(" + operand + "))"
 			End If
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2028", "Managed Array storage conversion requires the BlitzMax runtime C backend", conversion.source)
+				AddDiagnostic("BMXC2028", TBccMessages.CBackendManagedArrayStorageConversionRequiresRuntimeBackend(), conversion.source)
 				Return "0"
 			End If
 			Return "((" + CType(conversion.semanticType, conversion.source) + ")BBARRAYDATA(" + operand + ", 1))"
@@ -7817,12 +7818,12 @@ Type TCompilerCBackend
 		End If
 		If conversion.checkedEnumId.length And currentModule And currentModule.buildMode.ToLower() = "debug" Then
 			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2077", "Checked Enum conversion requires the BlitzMax runtime C backend", conversion.source)
+				AddDiagnostic("BMXC2077", TBccMessages.CBackendCheckedEnumConversionRequiresRuntimeBackend(), conversion.source)
 				Return "0"
 			End If
 			Local checkedEnum:TCompilerIrEnum = EnumById(conversion.checkedEnumId)
 			If Not checkedEnum Or Not checkedEnum.runtimeDescriptor Then
-				AddDiagnostic("BMXC2077", "Checked Enum conversion has no retained runtime descriptor", conversion.source)
+				AddDiagnostic("BMXC2077", TBccMessages.CBackendCheckedEnumConversionDescriptorMissing(), conversion.source)
 				Return "0"
 			End If
 			Return "bbEnumCast_" + checkedEnum.runtimeDescriptor.numericTypeTag + "(" + checkedEnum.runtimeDescriptor.descriptorAbiName + ", " + operand + ")"
@@ -7843,7 +7844,7 @@ Type TCompilerCBackend
 					Case "double", "float64" Return "bmx_pico_string_from_double_default(" + operand + ")"
 				End Select
 			Else If Not runtimeTypes Then
-				AddDiagnostic("BMXC2025", "Numeric-to-String conversion requires the BlitzMax runtime C backend", conversion.source)
+				AddDiagnostic("BMXC2025", TBccMessages.CBackendNumericToStringConversionRequiresRuntimeBackend(), conversion.source)
 				Return "0"
 			End If
 			Select conversion.operand.semanticType.ToLower()
@@ -7859,7 +7860,7 @@ Type TCompilerCBackend
 				Case "float" Return "bbStringFromFloat(" + operand + ", 0)"
 				Case "double", "float64" Return "bbStringFromDouble(" + operand + ", 0)"
 			End Select
-			AddDiagnostic("BMXC2026", "Numeric type '" + conversion.operand.semanticType + "' has no String conversion runtime mapping", conversion.source)
+			AddDiagnostic("BMXC2026", TBccMessages.CBackendNumericTypeStringConversionMappingMissing(conversion.operand.semanticType), conversion.source)
 			Return "&bbEmptyString"
 		End If
 		If conversion.conversionKind = CONVERSION_STRING_TO_NUMERIC Then
@@ -7880,7 +7881,7 @@ Type TCompilerCBackend
 					Case "double", "float64" Return "bmx_pico_string_to_double(" + operand + ")"
 				End Select
 			Else If Not runtimeTypes Then
-				AddDiagnostic("BMXC2025", "String-to-numeric conversion requires the BlitzMax runtime C backend", conversion.source)
+				AddDiagnostic("BMXC2025", TBccMessages.CBackendStringToNumericConversionRequiresRuntimeBackend(), conversion.source)
 				Return "0"
 			End If
 			Select conversion.semanticType.ToLower()
@@ -7898,14 +7899,14 @@ Type TCompilerCBackend
 				Case "float" Return "bbStringToFloat(" + operand + ")"
 				Case "double", "float64" Return "bbStringToDouble(" + operand + ")"
 			End Select
-			AddDiagnostic("BMXC2027", "String conversion target '" + conversion.semanticType + "' has no numeric runtime mapping", conversion.source)
+			AddDiagnostic("BMXC2027", TBccMessages.CBackendStringConversionTargetMappingMissing(conversion.semanticType), conversion.source)
 			Return "0"
 		End If
 		If conversion.operand And Not conversion.implicitConversion And IsManagedCReferenceType(conversion.operand.semanticType) And IsManagedCReferenceType(conversion.semanticType) Then
 			Local sourceType:String = conversion.operand.semanticType.Trim().ToLower()
 			Local targetType:String = conversion.semanticType.Trim().ToLower()
 			If targetType <> "object" And sourceType <> targetType Then
-				AddDiagnostic("BMXC2090", "Managed narrowing conversion from '" + conversion.operand.semanticType + "' to '" + conversion.semanticType + "' reached the raw C cast fallback", conversion.source)
+				AddDiagnostic("BMXC2090", TBccMessages.CBackendManagedNarrowingConversionReachedRawCast(conversion.operand.semanticType, conversion.semanticType), conversion.source)
 				Return CDefaultValue(conversion.semanticType)
 			End If
 		End If
@@ -7917,14 +7918,14 @@ Type TCompilerCBackend
 		If localName.length Then Return localName
 		Local globalName:String = String(globalNames.ValueForKey(symbolId))
 		If globalName.length Then Return globalName
-		AddDiagnostic("BMXC2012", "IR symbol '" + sourceName + "' has no C storage", Null)
+		AddDiagnostic("BMXC2012", TBccMessages.CBackendIrSymbolStorageMissing(sourceName), Null)
 		Return "bmx_missing_" + SafeIdentifier(symbolId + "_" + sourceName)
 	End Method
 
 	Method FunctionName:String(functionId:String)
 		Local result:String = String(functionNames.ValueForKey(functionId))
 		If result.length Then Return result
-		AddDiagnostic("BMXC2013", "IR function '" + functionId + "' has no C name", Null)
+		AddDiagnostic("BMXC2013", TBccMessages.CBackendIrFunctionNameMissing(functionId), Null)
 		Return "bmx_missing_function"
 	End Method
 
@@ -7934,13 +7935,13 @@ Type TCompilerCBackend
 		If normalized.EndsWith("]") Then
 			If EmbeddedArrayTypes() Then Return "BMXPicoArray *"
 			If runtimeTypes Then Return "BBARRAY"
-			AddDiagnostic("BMXC2028", "Managed Array values require the BlitzMax runtime C backend", source)
+			AddDiagnostic("BMXC2028", TBccMessages.CBackendManagedArrayValueRequiresRuntimeBackend(), source)
 			Return "void *"
 		End If
 		If normalized.StartsWith("closure<") Then
 			If EmbeddedObjectTypes() Then Return "BMXPicoClosure *"
 			If runtimeTypes Then Return "BBClosure *"
-			AddDiagnostic("BMXC2080", "Managed Closure values require the BlitzMax runtime C backend", source)
+			AddDiagnostic("BMXC2080", TBccMessages.CBackendManagedClosureValueRequiresRuntimeBackend(), source)
 			Return "void *"
 		End If
 		Local irEnum:TCompilerIrEnum = TCompilerIrEnum(enumTypes.ValueForKey(normalized))
@@ -7954,20 +7955,20 @@ Type TCompilerCBackend
 			If irInterface.isExternInterface Then Return NativeInterfaceReceiverType(irInterface)
 			If EmbeddedObjectTypes() Then Return "BMXPicoObject *"
 			If runtimeTypes Then Return "BBOBJECT"
-			AddDiagnostic("BMXC2029", "Managed Interface values require the BlitzMax runtime C backend", source)
+			AddDiagnostic("BMXC2029", TBccMessages.CBackendManagedInterfaceValueRequiresRuntimeBackend(), source)
 			Return "void *"
 		End If
 		If opaqueInterfaceTypes.Contains(normalized) Then
 			If EmbeddedObjectTypes() Then Return "BMXPicoObject *"
 			If runtimeTypes Then Return "BBOBJECT"
-			AddDiagnostic("BMXC2029", "Managed Interface values require the BlitzMax runtime C backend", source)
+			AddDiagnostic("BMXC2029", TBccMessages.CBackendManagedInterfaceValueRequiresRuntimeBackend(), source)
 			Return "void *"
 		End If
 		Local irClass:TCompilerIrClass = TCompilerIrClass(classTypes.ValueForKey(normalized))
 		If irClass Then
 			If EmbeddedObjectTypes() Then Return "struct " + ObjectName(irClass.classId) + " *"
 			If runtimeTypes Then Return "struct " + ObjectName(irClass.classId) + " *"
-			AddDiagnostic("BMXC2029", "Managed Object values require the BlitzMax runtime C backend", source)
+			AddDiagnostic("BMXC2029", TBccMessages.CBackendManagedObjectValueRequiresRuntimeBackend(), source)
 			Return "void *"
 		End If
 		Local importedClass:TCompilerIrImportedClass = TCompilerIrImportedClass(importedClassTypes.ValueForKey(normalized))
@@ -7976,7 +7977,7 @@ Type TCompilerCBackend
 			If EmbeddedObjectTypes() Then Return "struct " + importedClass.abiName + "_obj *"
 			If runtimeTypes And importedClass.abiName = "bbObjectClass" Then Return "BBOBJECT"
 			If runtimeTypes Then Return "struct " + importedClass.abiName + "_obj *"
-			AddDiagnostic("BMXC2029", "Managed imported Object values require the BlitzMax runtime C backend", source)
+			AddDiagnostic("BMXC2029", TBccMessages.CBackendManagedImportedObjectValueRequiresRuntimeBackend(), source)
 			Return "void *"
 		End If
 		If normalized = "object" And EmbeddedObjectTypes() Then Return "BMXPicoObject *"
@@ -8015,7 +8016,7 @@ Type TCompilerCBackend
 		End If
 		If normalized = "string" And EmbeddedStringTypes() Then Return "const BMXPicoString *"
 		If normalized = "string" Then
-			AddDiagnostic("BMXC2025", "Managed String values require the BlitzMax runtime C backend", source)
+			AddDiagnostic("BMXC2025", TBccMessages.CBackendManagedStringValueRequiresRuntimeBackend(), source)
 			Return "void *"
 		End If
 		Select typeName.ToLower()
@@ -8034,7 +8035,7 @@ Type TCompilerCBackend
 			Case "float" Return "float"
 			Case "double", "float64" Return "double"
 		End Select
-		AddDiagnostic("BMXC2020", "Semantic type '" + typeName + "' has no scalar C99 ABI mapping", source)
+		AddDiagnostic("BMXC2020", TBccMessages.CBackendSemanticTypeScalarAbiMappingMissing(typeName), source)
 		Return "int32_t"
 	End Method
 
@@ -8116,7 +8117,7 @@ Type TCompilerCBackend
 	Method CallableSentinel:String(returnType:String, parameters:TCompilerIrParameter[], source:TCompilerSourceLocation, callingConvention:String = "c")
 		If EmbeddedObjectTypes() Then Return "0"
 		If Not runtimeTypes Then
-			AddDiagnostic("BMXC2062", "Unset callable values require the BlitzMax runtime C backend", source)
+			AddDiagnostic("BMXC2062", TBccMessages.CBackendUnsetCallableValueRequiresRuntimeBackend(), source)
 			Return "0"
 		End If
 		Return "((union { BBFuncPtr source; " + CType(returnType, source) + " (" + CCallingConvention(callingConvention) + "*target)(" + CCallableParameterList(parameters, source) + "); }){ .source = &brl_blitz_NullFunctionError }.target)"
@@ -8136,7 +8137,7 @@ Type TCompilerCBackend
 			Return picoInvoke + ")"
 		End If
 		If Not runtimeTypes Then
-			AddDiagnostic("BMXC2080", "Managed Closure invocation requires the BlitzMax runtime C backend", call.source)
+			AddDiagnostic("BMXC2080", TBccMessages.CBackendManagedClosureInvocationRequiresRuntimeBackend(), call.source)
 			Return CDefaultValue(call.returnType)
 		End If
 		Local callee:String = EmitExpression(call.callee)
@@ -8174,7 +8175,7 @@ Type TCompilerCBackend
 		If EmbeddedStringTypes() Then
 			Local picoEnum:TCompilerIrEnum = EnumById(intrinsic.enumId)
 			If Not picoEnum Or picoEnum.isImported Then
-				AddDiagnostic("BMXC2076", "Imported Enum runtime intrinsics are not available in the current Pico descriptor tier", intrinsic.source)
+				AddDiagnostic("BMXC2076", TBccMessages.CBackendPicoImportedEnumIntrinsicUnsupported(), intrinsic.source)
 				Return "0"
 			End If
 			Local descriptor:String = "&" + PicoEnumDescriptorName(picoEnum)
@@ -8188,16 +8189,16 @@ Type TCompilerCBackend
 				Case IR_ENUM_INTRINSIC_FROM_STRING
 					If intrinsic.arguments.length = 1 Then Return "((" + CType(picoEnum.underlyingType, intrinsic.source) + ")bmx_pico_enum_from_string(" + descriptor + ", " + EmitExpression(intrinsic.arguments[0]) + "))"
 			End Select
-			AddDiagnostic("BMXC2076", "Pico Enum intrinsic has an invalid receiver or argument shape", intrinsic.source)
+			AddDiagnostic("BMXC2076", TBccMessages.CBackendPicoEnumIntrinsicShapeInvalid(), intrinsic.source)
 			Return "0"
 		End If
 		If Not runtimeTypes Then
-			AddDiagnostic("BMXC2076", "Enum runtime intrinsic requires the BlitzMax runtime C backend", intrinsic.source)
+			AddDiagnostic("BMXC2076", TBccMessages.CBackendEnumIntrinsicRequiresRuntimeBackend(), intrinsic.source)
 			Return "0"
 		End If
 		Local irEnum:TCompilerIrEnum = EnumById(intrinsic.enumId)
 		If Not irEnum Or Not irEnum.runtimeDescriptor Then
-			AddDiagnostic("BMXC2076", "Enum intrinsic has no retained runtime descriptor", intrinsic.source)
+			AddDiagnostic("BMXC2076", TBccMessages.CBackendEnumIntrinsicDescriptorMissing(), intrinsic.source)
 			Return "0"
 		End If
 		Local enumDescriptor:TCompilerIrEnumRuntimeDescriptor = irEnum.runtimeDescriptor
@@ -8213,7 +8214,7 @@ Type TCompilerCBackend
 			Case IR_ENUM_INTRINSIC_FROM_STRING
 				If intrinsic.arguments.length = 1 Then Return enumDescriptor.fromStringAbiName + "(" + EmitExpression(intrinsic.arguments[0]) + ")"
 		End Select
-		AddDiagnostic("BMXC2076", "Enum intrinsic has an invalid receiver or argument shape", intrinsic.source)
+		AddDiagnostic("BMXC2076", TBccMessages.CBackendEnumIntrinsicShapeInvalid(), intrinsic.source)
 		Return "0"
 	End Method
 
@@ -8334,7 +8335,7 @@ Type TCompilerCBackend
 		If colon >= 0 Then value = value[..colon]
 		If value.StartsWith("$") Then Return "0x" + value[1..]
 		If value.StartsWith("%") Then
-			AddDiagnostic("BMXC2024", "Binary literals require canonical constant lowering before strict C99 emission", source)
+			AddDiagnostic("BMXC2024", TBccMessages.CBackendBinaryLiteralRequiresCanonicalLowering(), source)
 			Return "0"
 		End If
 		If value.EndsWith("!") Or value.EndsWith("#") Then value = value[..value.length - 1]
@@ -8357,7 +8358,7 @@ Type TCompilerCBackend
 		For Local index:Int = 0 Until value.length
 			Local character:Int = value[index]
 			If (character >= 48 And character <= 57) Or character = 43 Or character = 45 Or character = 46 Or character = 69 Or character = 101 Then Continue
-			AddDiagnostic("BMXC2021", "Literal '" + text + "' is not supported by the scalar C99 backend", source)
+			AddDiagnostic("BMXC2021", TBccMessages.CBackendLiteralUnsupported(text), source)
 			Return "0"
 		Next
 		Return value
@@ -8371,7 +8372,7 @@ Type TCompilerCBackend
 			Case "sizeof" Return "sizeof "
 			Case "alignof" Return "__alignof__ "
 		End Select
-		AddDiagnostic("BMXC2022", "Unary operator '" + operatorText + "' has no scalar C99 lowering", source)
+		AddDiagnostic("BMXC2022", TBccMessages.CBackendUnaryOperatorUnsupported(operatorText), source)
 		Return ""
 	End Method
 
@@ -8388,7 +8389,7 @@ Type TCompilerCBackend
 			Case "or" Return "||"
 			Case "xor" Return "^"
 		End Select
-		AddDiagnostic("BMXC2023", "Binary operator '" + operatorText + "' has no scalar C99 lowering", source)
+		AddDiagnostic("BMXC2023", TBccMessages.CBackendBinaryOperatorUnsupported(operatorText), source)
 		Return "+"
 	End Method
 
@@ -8425,6 +8426,14 @@ Type TCompilerCBackend
 	End Function
 
 	Method AddDiagnostic(code:String, message:String, source:TCompilerSourceLocation)
+		If source Then
+			diagnostics :+ [TCompilerDiagnostic.Create(code, message, source.path, source.span, source.line, source.column)]
+		Else
+			diagnostics :+ [TCompilerDiagnostic.Create(code, message)]
+		End If
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, source:TCompilerSourceLocation)
 		If source Then
 			diagnostics :+ [TCompilerDiagnostic.Create(code, message, source.path, source.span, source.line, source.column)]
 		Else
