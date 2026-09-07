@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.LinkedList
 Import BRL.Map
 
+Import "language_messages.generated.bmx"
 Import "diagnostic.bmx"
 Import "token.bmx"
 
@@ -216,7 +217,7 @@ Type TBlitzMaxLexer
 				offset :+ 1
 			Wend
 			If exponentStart = offset Then
-				AddDiagnostic("BMX1003", "A numeric exponent requires at least one digit.", TSourceSpan.Create(exponentStart, 0))
+				AddDiagnostic("BMX1003", TLanguageMessages.LexerNumericExponentRequiresDigit(), TSourceSpan.Create(exponentStart, 0))
 			End If
 		End If
 
@@ -234,7 +235,7 @@ Type TBlitzMaxLexer
 				End If
 				offset :+ 1
 			Wend
-			AddDiagnostic("BMX1001", "Unterminated multiline string literal.", TSourceSpan.Create(start, offset - start))
+			AddDiagnostic("BMX1001", TLanguageMessages.LexerUnterminatedMultilineString(), TSourceSpan.Create(start, offset - start))
 			Return TOKEN_MULTILINE_STRING_LITERAL
 		End If
 
@@ -248,7 +249,7 @@ Type TBlitzMaxLexer
 			offset :+ 1
 		Wend
 
-		AddDiagnostic("BMX1000", "Unterminated string literal.", TSourceSpan.Create(start, offset - start))
+		AddDiagnostic("BMX1000", TLanguageMessages.LexerUnterminatedString(), TSourceSpan.Create(start, offset - start))
 		Return TOKEN_STRING_LITERAL
 	End Method
 
@@ -311,7 +312,7 @@ Type TBlitzMaxLexer
 	Method AddInvalidStringEscape(start:Int, finish:Int)
 		Local length:Int = finish - start
 		If length < 1 Then length = 1
-		AddDiagnostic("BMX1004", "Bad escape sequence in string literal.", TSourceSpan.Create(start, length))
+		AddDiagnostic("BMX1004", TLanguageMessages.LexerBadStringEscape(), TSourceSpan.Create(start, length))
 	End Method
 
 	Method LexRemComment(triviaList:TList)
@@ -339,7 +340,7 @@ Type TBlitzMaxLexer
 		Wend
 
 		If Not foundTerminator Then
-			AddDiagnostic("BMX1002", "Unterminated Rem comment.", TSourceSpan.Create(start, offset - start))
+			AddDiagnostic("BMX1002", TLanguageMessages.LexerUnterminatedRemComment(), TSourceSpan.Create(start, offset - start))
 		End If
 
 		triviaList.AddLast(TSyntaxTrivia.Create(TRIVIA_BLOCK_COMMENT, TSourceSpan.Create(start, offset - start), source.text[start..offset]))
@@ -376,6 +377,10 @@ Type TBlitzMaxLexer
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
+		diagnosticList.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan)
 		diagnosticList.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span))
 	End Method
 

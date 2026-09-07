@@ -52,7 +52,7 @@ Type TCompileTimeAnalyzer
 			Local constant:TConstantValue = TConstantEvaluator.EvaluateExpressionValue(model, operand)
 			If Not constant Or constant.kind <> CONSTANT_VALUE_INTEGER Then Continue
 			If Not EnumAcceptsConstant(target, constant.integerValue) Then
-				AddDiagnostic("BMX3630", "The value " + constant.integerValue + " is not valid for Enum '" + target.DisplayName() + "'.", expression.span)
+				AddDiagnostic("BMX3630", TLanguageMessages.CompileTimeEnumConstantValueInvalid(constant.integerValue, target.DisplayName()), expression.span)
 			End If
 		Next
 	End Method
@@ -96,14 +96,14 @@ Type TCompileTimeAnalyzer
 			If evaluatedStaticArrays.Contains(staticType) Then Return
 			evaluatedStaticArrays.Insert(staticType, staticType)
 			If Not SupportedStaticElement(staticType.elementType) Then
-				AddDiagnostic("BMX3621", "StaticArray element type '" + staticType.elementType.DisplayName() + "' must be numeric, an Enum, a Pointer, a managed reference, or a Struct.", SymbolSpan(symbol), symbol.originPath)
+				AddDiagnostic("BMX3621", TLanguageMessages.CompileTimeStaticArrayElementTypeUnsupported(staticType.elementType.DisplayName()), SymbolSpan(symbol), symbol.originPath)
 			End If
 			If Not staticType.boundSyntax Or Not staticType.boundSyntax.lengthExpression Then Return
 			Local lengthValue:TConstantValue = TConstantEvaluator.EvaluateExpressionValue(model, staticType.boundSyntax.lengthExpression)
 			If Not lengthValue Or lengthValue.kind <> CONSTANT_VALUE_INTEGER Then
-				AddDiagnostic("BMX3620", "StaticArray length must be an integral constant.", staticType.boundSyntax.span, symbol.originPath)
+				AddDiagnostic("BMX3620", TLanguageMessages.CompileTimeStaticArrayLengthRequiresIntegralConstant(), staticType.boundSyntax.span, symbol.originPath)
 			Else If lengthValue.integerValue <= 0 Or lengthValue.integerValue > 2147483647:Long Then
-				AddDiagnostic("BMX3620", "StaticArray length must be between 1 and 2147483647.", staticType.boundSyntax.span, symbol.originPath)
+				AddDiagnostic("BMX3620", TLanguageMessages.CompileTimeStaticArrayLengthOutOfRange(), staticType.boundSyntax.span, symbol.originPath)
 			Else
 				staticType.length = lengthValue.integerValue
 			End If
@@ -167,7 +167,7 @@ Type TCompileTimeAnalyzer
 					If callableValue Then value = callableValue
 				End If
 				If Not value Then
-					AddDiagnostic("BMX3610", "Default value for parameter '" + parameter.nameToken.text + "' must be constant.", parameter.defaultValue.span, symbol.originPath)
+					AddDiagnostic("BMX3610", TLanguageMessages.CompileTimeParameterDefaultRequiresConstant(parameter.nameToken.text), parameter.defaultValue.span, symbol.originPath)
 					Continue
 				End If
 				If index < symbol.parameters.length Then
@@ -179,7 +179,7 @@ Type TCompileTimeAnalyzer
 					If converted Then
 						symbol.parameters[index].defaultValue = converted
 					Else
-						AddDiagnostic("BMX3611", "Constant default for parameter '" + parameter.nameToken.text + "' is incompatible with '" + symbol.parameters[index].semanticType.DisplayName() + "' in routine '" + symbol.name + "' at parameter " + index + " (declared type '" + ParameterTypeText(parameter) + "').", parameter.defaultValue.span, symbol.originPath)
+						AddDiagnostic("BMX3611", TLanguageMessages.CompileTimeParameterConstantDefaultIncompatible(parameter.nameToken.text, symbol.parameters[index].semanticType.DisplayName(), symbol.name, index, ParameterTypeText(parameter)), parameter.defaultValue.span, symbol.originPath)
 					End If
 				End If
 			Next
@@ -191,7 +191,7 @@ Type TCompileTimeAnalyzer
 
 	Method RoutineParameterIdentityIsValid:Int(symbol:TSymbol, parameter:TParameterSyntax, index:Int)
 		If index >= symbol.parameters.length Or Not symbol.parameters[index] Then
-			AddDiagnostic("BMX3690", "Internal semantic parameter mismatch in routine '" + symbol.name + "': syntax parameter " + index + " ('" + parameter.nameToken.text + "') has no semantic parameter.", parameter.span, symbol.originPath)
+			AddDiagnostic("BMX3690", TLanguageMessages.CompileTimeSemanticParameterMissing(symbol.name, index, parameter.nameToken.text), parameter.span, symbol.originPath)
 			Return False
 		End If
 		Local semanticParameter:TSemanticParameter = symbol.parameters[index]
@@ -200,7 +200,7 @@ Type TCompileTimeAnalyzer
 			Local semanticTypeName:String = "<missing>"
 			If semanticParameter.symbol Then semanticName = semanticParameter.symbol.name
 			If semanticParameter.semanticType Then semanticTypeName = semanticParameter.semanticType.DisplayName()
-			AddDiagnostic("BMX3690", "Internal semantic parameter mismatch in routine '" + symbol.name + "' at parameter " + index + ": syntax '" + parameter.nameToken.text + "' (declared type '" + ParameterTypeText(parameter) + "'), semantic symbol '" + semanticName + "' (type '" + semanticTypeName + "').", parameter.span, symbol.originPath)
+			AddDiagnostic("BMX3690", TLanguageMessages.CompileTimeSemanticParameterIdentityMismatch(symbol.name, index, parameter.nameToken.text, ParameterTypeText(parameter), semanticName, semanticTypeName), parameter.span, symbol.originPath)
 			Return False
 		End If
 		Return True
@@ -374,6 +374,13 @@ Type TCompileTimeAnalyzer
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan, path:String = "")
+		If Not path.length Then
+			If model.snapshot And model.snapshot.rootDocument Then path = model.snapshot.rootDocument.path Else If model.syntaxTree Then path = model.syntaxTree.source.path
+		End If
+		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, path))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan, path:String = "")
 		If Not path.length Then
 			If model.snapshot And model.snapshot.rootDocument Then path = model.snapshot.rootDocument.path Else If model.syntaxTree Then path = model.syntaxTree.source.path
 		End If

@@ -5,6 +5,7 @@ SuperStrict
 
 Import BRL.LinkedList
 
+Import "language_messages.generated.bmx"
 Import "expression_parser.bmx"
 Import "type_parser.bmx"
 Import "type_declaration_parser.bmx"
@@ -49,14 +50,14 @@ Type TBlitzMaxSignatureParser
 				cursor = closeGenericIndex + 1
 			Else
 				node.genericParameters = TTypeDeclarationHeaderParser.ParseGenericParameters(tokens[cursor + 1..])
-				diagnostics.AddLast(TDiagnostic.Create("BMX2203", "Expected '>' after routine generic parameters.", DIAGNOSTIC_ERROR, node.span))
+				diagnostics.AddLast(TDiagnostic.Create("BMX2203", TLanguageMessages.SignatureExpectedGenericParameterEnd(), DIAGNOSTIC_ERROR, node.span))
 				cursor = tokens.length
 			End If
 		End If
 
 		Local openIndex:Int = FindSignatureOpen(tokens, cursor)
 		If openIndex < 0 Then
-			diagnostics.AddLast(TDiagnostic.Create("BMX2200", "Expected '(' in routine declaration.", DIAGNOSTIC_ERROR, node.span))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2200", TLanguageMessages.SignatureExpectedRoutineParenthesis(), DIAGNOSTIC_ERROR, node.span))
 			node.returnType = TBlitzMaxTypeParser.Parse(tokens[cursor..])
 			Return node
 		End If
@@ -74,7 +75,7 @@ Type TBlitzMaxSignatureParser
 		Local closeIndex:Int = FindMatchingParen(tokens, openIndex)
 		If closeIndex < 0 Then
 			closeIndex = tokens.length
-			diagnostics.AddLast(TDiagnostic.Create("BMX2201", "Expected ')' in routine declaration.", DIAGNOSTIC_ERROR, TSourceSpan.Create(node.span.EndOffset(), 0)))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2201", TLanguageMessages.SignatureExpectedRoutineCloseParenthesis(), DIAGNOSTIC_ERROR, TSourceSpan.Create(node.span.EndOffset(), 0)))
 		Else
 			node.closeParenToken = tokens[closeIndex]
 		End If
@@ -164,7 +165,7 @@ Type TBlitzMaxSignatureParser
 			node.nameToken = tokens[index]
 			index :+ 1
 		Else
-			diagnostics.AddLast(TDiagnostic.Create("BMX2202", "Expected a parameter name.", DIAGNOSTIC_ERROR, node.span))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2202", TLanguageMessages.SignatureExpectedParameterName(), DIAGNOSTIC_ERROR, node.span))
 			Return node
 		End If
 
@@ -193,7 +194,7 @@ Type TBlitzMaxSignatureParser
 	Function ExtractStaticArrayBound:TSyntaxToken[](tokens:TSyntaxToken[], node:TParameterSyntax, diagnostics:TList)
 		Local closeIndex:Int = tokens.length - 1
 		If closeIndex < 2 Or tokens[closeIndex].text <> "]" Then
-			diagnostics.AddLast(TDiagnostic.Create("BMX2210", "StaticArray parameter requires a fixed length in brackets.", DIAGNOSTIC_ERROR, node.span))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2210", TLanguageMessages.SignatureStaticArrayParameterRequiresBracketedLength(), DIAGNOSTIC_ERROR, node.span))
 			Return tokens
 		End If
 		Local openIndex:Int = closeIndex - 1
@@ -201,7 +202,7 @@ Type TBlitzMaxSignatureParser
 			openIndex :- 1
 		Wend
 		If openIndex < 0 Or openIndex + 1 = closeIndex Then
-			diagnostics.AddLast(TDiagnostic.Create("BMX2210", "StaticArray parameter requires a fixed length expression.", DIAGNOSTIC_ERROR, node.span))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2210", TLanguageMessages.SignatureStaticArrayParameterRequiresLengthExpression(), DIAGNOSTIC_ERROR, node.span))
 			Return tokens
 		End If
 		Local bound:TStaticArrayBoundSyntax = New TStaticArrayBoundSyntax
@@ -226,7 +227,7 @@ Type TBlitzMaxSignatureParser
 		Local closeIndex:Int = FindMatchingParen(tokens, openIndex)
 		If closeIndex < 0 Then
 			closeIndex = tokens.length
-			diagnostics.AddLast(TDiagnostic.Create("BMX2204", "Expected ')' in callable type.", DIAGNOSTIC_ERROR, TSourceSpan.Create(node.span.EndOffset(), 0)))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2204", TLanguageMessages.SignatureExpectedCallableCloseParenthesis(), DIAGNOSTIC_ERROR, TSourceSpan.Create(node.span.EndOffset(), 0)))
 		Else
 			node.closeParenToken = tokens[closeIndex]
 		End If

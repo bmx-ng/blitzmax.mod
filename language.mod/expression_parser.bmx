@@ -5,6 +5,7 @@ SuperStrict
 
 Import BRL.LinkedList
 
+Import "language_messages.generated.bmx"
 Import "syntax.bmx"
 Import "type_parser.bmx"
 
@@ -35,7 +36,7 @@ Type TBlitzMaxExpressionParser
 			raw.kind = SYNTAX_RAW_EXPRESSION
 			raw.tokens = tokens
 			raw.span = SpanOf(tokens)
-			diagnostics.AddLast(TDiagnostic.Create("BMX2102", "Unexpected token '" + tokens[parsed.consumed].text + "' in expression.", DIAGNOSTIC_ERROR, tokens[parsed.consumed].span))
+			diagnostics.AddLast(TDiagnostic.Create("BMX2102", TLanguageMessages.ParserUnexpectedTokenInExpression(tokens[parsed.consumed].text), DIAGNOSTIC_ERROR, tokens[parsed.consumed].span))
 			Return raw
 		End If
 		Return parsed.expression
@@ -62,14 +63,14 @@ Type TBlitzMaxExpressionParser
 			Advance()
 			lowerBound = ParseFromEndDistance()
 			If position < limit And Current().text = "^" Then
-				AddDiagnostic("BMX2115", "Parenthesize a calculated from-end Range endpoint as '^(expression)'.", Current().span)
+				AddDiagnostic("BMX2115", TLanguageMessages.ParserParenthesizeCalculatedFromEndEndpoint(), Current().span)
 				ConsumeUnparenthesizedFromEndPower()
 			End If
 		Else
 			lowerBound = ParseBinary(1)
 		End If
 		If position < limit And Current().text = ".." Then Return ParseRangeLiteral(lowerBound, lowerFromEndToken)
-		If lowerFromEndToken Then AddDiagnostic("BMX2114", "A from-end endpoint must be part of a Range expression.", lowerFromEndToken.span)
+		If lowerFromEndToken Then AddDiagnostic("BMX2114", TLanguageMessages.ParserFromEndEndpointRequiresRange(), lowerFromEndToken.span)
 		Return lowerBound
 	End Method
 
@@ -86,7 +87,7 @@ Type TBlitzMaxExpressionParser
 				Advance()
 				range.upperBound = ParseFromEndDistance()
 				If position < limit And Current().text = "^" Then
-					AddDiagnostic("BMX2115", "Parenthesize a calculated from-end Range endpoint as '^(expression)'.", Current().span)
+					AddDiagnostic("BMX2115", TLanguageMessages.ParserParenthesizeCalculatedFromEndEndpoint(), Current().span)
 					ConsumeUnparenthesizedFromEndPower()
 				End If
 			Else
@@ -130,7 +131,7 @@ Type TBlitzMaxExpressionParser
 			raw.tokens = [Current()]
 			raw.span = Current().span
 			If Not depthDiagnosticReported Then
-				AddDiagnostic("BMX2103", "Expression nesting is too deep to parse safely.", raw.span)
+				AddDiagnostic("BMX2103", TLanguageMessages.ParserExpressionNestingTooDeep(), raw.span)
 				depthDiagnosticReported = True
 			End If
 			Advance()
@@ -184,7 +185,7 @@ Type TBlitzMaxExpressionParser
 		Local offset:Int
 		If limit > 0 Then offset = tokens[limit - 1].span.EndOffset()
 		missing.span = TSourceSpan.Create(offset, 0)
-		AddDiagnostic("BMX2101", "Expected an expression.", missing.span)
+		AddDiagnostic("BMX2101", TLanguageMessages.ParserExpectedExpression(), missing.span)
 		Return missing
 	End Method
 
@@ -467,7 +468,7 @@ Type TBlitzMaxExpressionParser
 				parenthesized.span = Combine(token.span, parenthesized.closeToken.span)
 			Else
 				parenthesized.span = Combine(token.span, parenthesized.expression.span)
-				AddDiagnostic("BMX2100", "Expected ')' to close expression.", TSourceSpan.Create(parenthesized.span.EndOffset(), 0))
+				AddDiagnostic("BMX2100", TLanguageMessages.ParserExpectedCloseParenthesis(), TSourceSpan.Create(parenthesized.span.EndOffset(), 0))
 			End If
 			Return parenthesized
 		End If
@@ -496,7 +497,7 @@ Type TBlitzMaxExpressionParser
 					name.span = Combine(token.span, name.qualifiedSuperCloseToken.span)
 					position = closeIndex + 1
 				Else
-					AddDiagnostic("BMX2104", "Expected an Interface type in qualified Super expression.", token.span)
+					AddDiagnostic("BMX2104", TLanguageMessages.ParserExpectedQualifiedSuperInterface(), token.span)
 				End If
 			End If
 			Return name
@@ -506,7 +507,7 @@ Type TBlitzMaxExpressionParser
 		raw.kind = SYNTAX_RAW_EXPRESSION
 		raw.tokens = [token]
 		raw.span = token.span
-		AddDiagnostic("BMX2101", "Expected an expression but found '" + token.text + "'.", token.span)
+		AddDiagnostic("BMX2101", TLanguageMessages.ParserExpectedExpressionFoundToken(token.text), token.span)
 		Advance()
 		Return raw
 	End Method
@@ -525,7 +526,7 @@ Type TBlitzMaxExpressionParser
 			call.span = Combine(callee.span, call.closeToken.span)
 		Else
 			call.span = Combine(callee.span, LastExpressionSpan(call.arguments, call.openToken.span))
-			AddDiagnostic("BMX2100", "Expected ')' after argument list.", TSourceSpan.Create(call.span.EndOffset(), 0))
+			AddDiagnostic("BMX2100", TLanguageMessages.ParserExpectedParenthesisAfterArguments(), TSourceSpan.Create(call.span.EndOffset(), 0))
 		End If
 		Return call
 	End Method
@@ -542,14 +543,14 @@ Type TBlitzMaxExpressionParser
 			Advance()
 			first = ParseFromEndDistance()
 			If position < limit And Current().text = "^" Then
-				AddDiagnostic("BMX2115", "Parenthesize a calculated from-end Range endpoint as '^(expression)'.", Current().span)
+				AddDiagnostic("BMX2115", TLanguageMessages.ParserParenthesizeCalculatedFromEndEndpoint(), Current().span)
 				ConsumeUnparenthesizedFromEndPower()
 			End If
 		Else
 			first = ParseBinary(1)
 		End If
 		If position < limit And Current().text = ".." Then Return ParseSlice(expression, openToken, first, lowerFromEndToken)
-		If lowerFromEndToken Then AddDiagnostic("BMX2114", "A from-end endpoint requires a Range slice.", lowerFromEndToken.span)
+		If lowerFromEndToken Then AddDiagnostic("BMX2114", TLanguageMessages.ParserFromEndEndpointRequiresRange(), lowerFromEndToken.span)
 
 		Local index:TIndexExpressionSyntax = New TIndexExpressionSyntax
 		index.kind = SYNTAX_INDEX_EXPRESSION
@@ -568,7 +569,7 @@ Type TBlitzMaxExpressionParser
 			index.span = Combine(expression.span, index.closeToken.span)
 		Else
 			index.span = Combine(expression.span, LastExpressionSpan(index.indexes, index.openToken.span))
-			AddDiagnostic("BMX2100", "Expected ']' after index list.", TSourceSpan.Create(index.span.EndOffset(), 0))
+			AddDiagnostic("BMX2100", TLanguageMessages.ParserExpectedBracketAfterIndexes(), TSourceSpan.Create(index.span.EndOffset(), 0))
 		End If
 		Return index
 	End Method
@@ -588,7 +589,7 @@ Type TBlitzMaxExpressionParser
 				Advance()
 				slice.upperBound = ParseFromEndDistance()
 				If position < limit And Current().text = "^" Then
-					AddDiagnostic("BMX2115", "Parenthesize a calculated from-end Range endpoint as '^(expression)'.", Current().span)
+					AddDiagnostic("BMX2115", TLanguageMessages.ParserParenthesizeCalculatedFromEndEndpoint(), Current().span)
 					ConsumeUnparenthesizedFromEndPower()
 				End If
 			Else
@@ -603,7 +604,7 @@ Type TBlitzMaxExpressionParser
 			Local last:TSourceSpan = slice.rangeToken.span
 			If slice.upperBound Then last = slice.upperBound.span
 			slice.span = Combine(expression.span, last)
-			AddDiagnostic("BMX2100", "Expected ']' after slice.", TSourceSpan.Create(slice.span.EndOffset(), 0))
+			AddDiagnostic("BMX2100", TLanguageMessages.ParserExpectedBracketAfterSlice(), TSourceSpan.Create(slice.span.EndOffset(), 0))
 		End If
 		Return slice
 	End Method
@@ -625,7 +626,7 @@ Type TBlitzMaxExpressionParser
 		node.targetType = TBlitzMaxTypeParser.Parse(tokens[start..position])
 		node.span = Combine(expression.span, node.targetType.span)
 		If Not IsNamedNumericLiteralTypeTag(expression, node.targetType) Then
-			AddDiagnostic("BMX2105", "A postfix ':Type' is valid only on a numeric literal; use Type(expression) for an explicit conversion.", node.targetType.span)
+			AddDiagnostic("BMX2105", TLanguageMessages.ParserPostfixTypeRequiresNumericLiteral(), node.targetType.span)
 		End If
 		Return node
 	End Method
@@ -673,7 +674,7 @@ Type TBlitzMaxExpressionParser
 				Advance()
 			Wend
 		Else
-			AddDiagnostic("BMX2110", "Expected a type after 'New'.", node.newToken.span)
+			AddDiagnostic("BMX2110", TLanguageMessages.ParserExpectedTypeAfterNew(), node.newToken.span)
 		End If
 		If position > typeStart Then node.createdType = TBlitzMaxTypeParser.Parse(tokens[typeStart..position])
 		Local dimensions:TList = New TList
@@ -687,7 +688,7 @@ Type TBlitzMaxExpressionParser
 				node.closeParenToken = Current()
 				Advance()
 			Else
-				AddDiagnostic("BMX2111", "Expected ')' after constructor arguments.", TSourceSpan.Create(Current().span.start, 0))
+				AddDiagnostic("BMX2111", TLanguageMessages.ParserExpectedParenthesisAfterConstructorArguments(), TSourceSpan.Create(Current().span.start, 0))
 			End If
 		Else
 			node.arguments = New TExpressionSyntax[0]
@@ -744,7 +745,7 @@ Type TBlitzMaxExpressionParser
 			call.span = Combine(name.span, call.closeToken.span)
 		Else
 			call.span = Combine(name.span, LastExpressionSpan(call.arguments, call.openToken.span))
-			AddDiagnostic("BMX2111", "Expected ')' after constructor arguments.", TSourceSpan.Create(call.span.EndOffset(), 0))
+			AddDiagnostic("BMX2111", TLanguageMessages.ParserExpectedParenthesisAfterConstructorArguments(), TSourceSpan.Create(call.span.EndOffset(), 0))
 		End If
 		Return call
 	End Method
@@ -768,7 +769,7 @@ Type TBlitzMaxExpressionParser
 			node.span = Combine(node.openToken.span, node.closeToken.span)
 		Else
 			node.span = Combine(node.openToken.span, LastExpressionSpan(node.elements, node.openToken.span))
-			AddDiagnostic("BMX2112", "Expected ']' after array literal.", TSourceSpan.Create(node.span.EndOffset(), 0))
+			AddDiagnostic("BMX2112", TLanguageMessages.ParserExpectedBracketAfterArrayLiteral(), TSourceSpan.Create(node.span.EndOffset(), 0))
 		End If
 		Return node
 	End Method
@@ -920,7 +921,7 @@ Type TBlitzMaxExpressionParser
 			Local last:TSourceSpan = node.targetType.span
 			If node.expression Then last = node.expression.span
 			node.span = Combine(node.openToken.span, last)
-			AddDiagnostic("BMX2113", "Expected ')' after cast expression.", TSourceSpan.Create(node.span.EndOffset(), 0))
+			AddDiagnostic("BMX2113", TLanguageMessages.ParserExpectedParenthesisAfterCast(), TSourceSpan.Create(node.span.EndOffset(), 0))
 		End If
 		Return node
 	End Method
@@ -945,7 +946,7 @@ Type TBlitzMaxExpressionParser
 			Local last:TSourceSpan = node.openToken.span
 			If node.expression Then last = node.expression.span
 			node.span = Combine(node.targetType.span, last)
-			AddDiagnostic("BMX2113", "Expected ')' after cast expression.", TSourceSpan.Create(node.span.EndOffset(), 0))
+			AddDiagnostic("BMX2113", TLanguageMessages.ParserExpectedParenthesisAfterCast(), TSourceSpan.Create(node.span.EndOffset(), 0))
 		End If
 		Return node
 	End Method
@@ -964,6 +965,10 @@ Type TBlitzMaxExpressionParser
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span))
 	End Method
 

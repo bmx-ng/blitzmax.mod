@@ -4,6 +4,7 @@
 SuperStrict
 
 Import BlitzMax.Language
+Import BlitzMax.Locale
 
 Rem
 bbdoc: Describes a problem reported by compiler planning, lowering, or emission.
@@ -11,6 +12,7 @@ End Rem
 Type TCompilerDiagnostic
 	Field code:String
 	Field message:String
+	Field localisedMessage:TLocalisedMessage
 	Field path:String
 	Field span:TSourceSpan
 	' Source locations decoded from interfaces or retained IR may no longer
@@ -40,12 +42,33 @@ Type TCompilerDiagnostic
 		Return result
 	End Function
 
+	Function Create:TCompilerDiagnostic(code:String, message:TLocalisedMessage, path:String = "", span:TSourceSpan = Null, line:Int = 0, column:Int = 0)
+		Local result:TCompilerDiagnostic = New TCompilerDiagnostic
+		result.code = code
+		result.localisedMessage = message
+		result.message = message.Render()
+		result.path = path
+		result.span = span
+		result.line = line
+		result.column = column
+		Return result
+	End Function
+
+	Method MessageFor:String(context:TLocaleContext)
+		If localisedMessage Then Return localisedMessage.Render(context)
+		Return message
+	End Method
+
 	Rem
 	bbdoc: Formats this compiler diagnostic for display.
 	param: Optional source text used to resolve a source span.
 	returns: A path, location, diagnostic code, and message suitable for logs or a console.
 	End Rem
 	Method Format:String(source:TSourceText = Null)
+		Return FormatFor(source, Null)
+	End Method
+
+	Method FormatFor:String(source:TSourceText, context:TLocaleContext)
 		Local location:String = path
 		If source And span And (Not path.length Or source.path = path) Then
 			Local position:TSourcePosition = source.Position(span.start)
@@ -55,6 +78,6 @@ Type TCompilerDiagnostic
 			location :+ ":" + line + ":" + (column + 1)
 		End If
 		If location.length Then location :+ ": "
-		Return location + "error " + code + ": " + message
+		Return location + "error " + code + ": " + MessageFor(context)
 	End Method
 End Type

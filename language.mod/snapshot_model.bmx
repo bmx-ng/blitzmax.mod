@@ -3,6 +3,8 @@
 
 SuperStrict
 
+Import BlitzMax.Locale
+
 Import "interface_model.bmx"
 Import "syntax.bmx"
 
@@ -122,6 +124,7 @@ End Rem
 Type TSnapshotDiagnostic
 	Field code:String
 	Field message:String
+	Field localisedMessage:TLocalisedMessage
 	Field path:String
 	Field span:TSourceSpan
 
@@ -134,7 +137,37 @@ Type TSnapshotDiagnostic
 		Return result
 	End Function
 
+	Rem
+	bbdoc: Creates a snapshot diagnostic from a stable localised message reference.
+	about: The rendered #message remains available for existing consumers while
+	#localisedMessage preserves the domain, ID, fallback, and named arguments.
+	End Rem
+	Function Create:TSnapshotDiagnostic(code:String, message:TLocalisedMessage, path:String, span:TSourceSpan = Null)
+		Local result:TSnapshotDiagnostic = New TSnapshotDiagnostic
+		result.code = code
+		result.localisedMessage = message
+		result.message = message.Render()
+		result.path = path
+		result.span = span
+		Return result
+	End Function
+
+	Rem
+	bbdoc: Renders this snapshot diagnostic using an explicit locale context.
+	End Rem
+	Method MessageFor:String(context:TLocaleContext)
+		If localisedMessage Then Return localisedMessage.Render(context)
+		Return message
+	End Method
+
 	Method Format:String(snapshot:TCompilationSnapshot = Null)
+		Return FormatFor(snapshot, Null)
+	End Method
+
+	Rem
+	bbdoc: Formats this snapshot diagnostic using an explicit locale context.
+	End Rem
+	Method FormatFor:String(snapshot:TCompilationSnapshot, context:TLocaleContext)
 		Local location:String = path
 		If snapshot And span Then
 			Local document:TSourceDocumentModel = snapshot.DocumentForPath(path)
@@ -143,7 +176,7 @@ Type TSnapshotDiagnostic
 			End If
 		End If
 		If location.length Then location :+ ": "
-		Return location + "error " + code + ": " + message
+		Return location + "error " + code + ": " + MessageFor(context)
 	End Method
 End Type
 

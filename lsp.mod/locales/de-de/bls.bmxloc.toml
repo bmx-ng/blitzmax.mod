@@ -1,0 +1,24 @@
+format = 1
+domain = "bls"
+locale = "de-de"
+
+[[message]]
+id = 1
+name = "installed_modules.ambiguous_module"
+translated = false
+text = "Ambiguous module '{moduleName}' maps to both '{existingPath}' and '{discoveredPath}'"
+placeholders = [{ name = "moduleName", type = "string" }, { name = "existingPath", type = "string" }, { name = "discoveredPath", type = "string" }]
+
+[[message]]
+id = 2
+name = "protocol.missing_content_length_header"
+translated = false
+text = "LSP message has no Content-Length header"
+placeholders = []
+
+[[message]]
+id = 3
+name = "startup.standard_io_configuration_failed"
+translated = false
+text = "Unable to configure byte-exact LSP standard I/O"
+placeholders = []

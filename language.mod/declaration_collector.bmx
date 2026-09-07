@@ -5,6 +5,7 @@ SuperStrict
 
 Import BRL.LinkedList
 
+Import "language_messages.generated.bmx"
 Import "conditional_evaluator.bmx"
 Import "semantic_model.bmx"
 Import "snapshot_model.bmx"
@@ -85,7 +86,7 @@ Type TDeclarationCollector
 		Local existing:TSymbol[] = scope.LookupLocal(symbol.name)
 		For Local candidate:TSymbol = EachIn existing
 			If candidate.NamespaceKind() = symbol.NamespaceKind() And symbol.NamespaceKind() <> SYMBOL_NAMESPACE_ROUTINE Then
-				diagnostics.AddLast(TDiagnostic.Create("BMX3000", "Duplicate " + symbol.KindName().ToLower() + " declaration '" + symbol.name + "'.", DIAGNOSTIC_ERROR, token.span, CurrentSourcePath()))
+				diagnostics.AddLast(TDiagnostic.Create("BMX3000", TLanguageMessages.DeclarationDuplicate(symbol.KindName().ToLower(), symbol.name), DIAGNOSTIC_ERROR, token.span, CurrentSourcePath()))
 				Exit
 			End If
 		Next
@@ -145,7 +146,7 @@ Type TDeclarationCollector
 		If externBlock Then
 			Local previousConvention:String = externCallingConvention
 			If Not TCallingConventionResolver.IsRecognized(externBlock.callingConventionToken) Then
-				diagnostics.AddLast(TDiagnostic.Create("BMX3016", "Unrecognized calling convention '" + TCallingConventionResolver.WrittenName(externBlock.callingConventionToken) + "'.", DIAGNOSTIC_ERROR, externBlock.callingConventionToken.span, CurrentSourcePath()))
+				diagnostics.AddLast(TDiagnostic.Create("BMX3016", TLanguageMessages.TypeResolutionCallingConventionUnrecognized(TCallingConventionResolver.WrittenName(externBlock.callingConventionToken)), DIAGNOSTIC_ERROR, externBlock.callingConventionToken.span, CurrentSourcePath()))
 			End If
 			externCallingConvention = TCallingConventionResolver.Resolve(externBlock.callingConventionToken, TargetPlatform())
 			externDepth :+ 1
@@ -402,14 +403,14 @@ Type TDeclarationCollector
 				If token.text = "=" Then afterAssignment = True; Continue
 				If afterAssignment Then Continue
 				If token.kind = TOKEN_STRING_LITERAL And Not TCallingConventionResolver.IsRecognized(token) Then
-					diagnostics.AddLast(TDiagnostic.Create("BMX3016", "Unrecognized calling convention '" + TCallingConventionResolver.WrittenName(token) + "'.", DIAGNOSTIC_ERROR, token.span, CurrentSourcePath()))
+					diagnostics.AddLast(TDiagnostic.Create("BMX3016", TLanguageMessages.TypeResolutionCallingConventionUnrecognized(TCallingConventionResolver.WrittenName(token)), DIAGNOSTIC_ERROR, token.span, CurrentSourcePath()))
 				End If
 			Next
 		End If
 		If symbol Then symbol.callingConvention = TCallingConventionResolver.RoutineConvention(declaration, externCallingConvention, TargetPlatform())
 		If symbol And declaration.signature Then symbol.metadata = TDeclarationMetadata.Parse(declaration.signature.modifierTokens, diagnostics, CurrentSourcePath())
 		If symbol And symbol.metadata And symbol.metadata.Has("nomangle") And declaration.isMethod Then
-			diagnostics.AddLast(TDiagnostic.Create("BMX3014", "Only functions can specify NoMangle.", DIAGNOSTIC_ERROR, declaration.span, CurrentSourcePath()))
+			diagnostics.AddLast(TDiagnostic.Create("BMX3014", TLanguageMessages.DeclarationNomangleRequiresFunction(), DIAGNOSTIC_ERROR, declaration.span, CurrentSourcePath()))
 		End If
 		If symbol Then ValidateNoMangleOverload(symbol, parent, declaration)
 		Local interfaceOwner:Int = symbol And parent And parent.owner And parent.owner.kind = SYMBOL_INTERFACE
@@ -462,7 +463,7 @@ Type TDeclarationCollector
 			If Not candidate Or candidate = symbol Or candidate.kind <> SYMBOL_ROUTINE Then Continue
 			Local candidateNoMangle:Int = candidate.metadata And candidate.metadata.Has("nomangle")
 			If (symbolNoMangle And (candidateNoMangle Or RoutineParameterCount(candidate) = 0)) Or (candidateNoMangle And RoutineParameterCount(symbol) = 0) Then
-				diagnostics.AddLast(TDiagnostic.Create("BMX3015", "NoMangle routine '" + symbol.name + "' conflicts with another overload.", DIAGNOSTIC_ERROR, declaration.span, CurrentSourcePath()))
+				diagnostics.AddLast(TDiagnostic.Create("BMX3015", TLanguageMessages.DeclarationNomangleOverloadConflict(symbol.name), DIAGNOSTIC_ERROR, declaration.span, CurrentSourcePath()))
 				Return
 			End If
 		Next

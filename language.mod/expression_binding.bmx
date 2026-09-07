@@ -82,19 +82,19 @@ Type TExpressionBinder
 		Local validForm:Int = bareName And bareName.nameToken.text.ToLower() = "new"
 		If superName And superName.nameToken.text.ToLower() = "super" Then validForm = True
 		If Not validForm Then
-			AddDiagnostic("BMX3320", "A constructor can only be delegated with New(...) or Super.New(...).", call.span)
+			AddDiagnostic("BMX3320", TLanguageMessages.BindingConstructorDelegationRequiresNewSyntax(), call.span)
 			Return
 		End If
 		Local enclosing:TSymbol = EnclosingRoutine(scope)
 		If Not enclosing Or enclosing.name.ToLower() <> "new" Then
-			AddDiagnostic("BMX3321", "Constructor delegation is only valid inside a New method.", call.span)
+			AddDiagnostic("BMX3321", TLanguageMessages.BindingConstructorDelegationRequiresNewMethod(), call.span)
 			Return
 		End If
 		If Not scope Or scope.kind <> SCOPE_ROUTINE Or statementIndex <> 0 Then
-			AddDiagnostic("BMX3322", "Constructor delegation must be the first statement in a New method.", call.span)
+			AddDiagnostic("BMX3322", TLanguageMessages.BindingConstructorDelegationMustBeFirst(), call.span)
 			Return
 		End If
-		If resolved.routine = enclosing Then AddDiagnostic("BMX3323", "A constructor cannot delegate directly to itself.", call.span)
+		If resolved.routine = enclosing Then AddDiagnostic("BMX3323", TLanguageMessages.BindingConstructorCannotDelegateToItself(), call.span)
 	End Method
 
 	Method BuildBoundTrees()
@@ -426,13 +426,13 @@ Type TExpressionBinder
 		If result.protocolKind = 0 Then
 			Local diagnosticSpan:TSourceSpan
 			If collectionSyntax Then diagnosticSpan = collectionSyntax.span Else If syntax Then diagnosticSpan = syntax.span
-			AddDiagnostic("BMX3330", operationName + " requires an Array, String, StaticArray, IIterable, IIterator, or suitable ObjectEnumerator method.", diagnosticSpan)
+			AddDiagnostic("BMX3330", TLanguageMessages.BindingIterationRequiresSupportedSource(operationName), diagnosticSpan)
 			Return Null
 		End If
 		If Not result.iteratorType Then
 			Local diagnosticSpan:TSourceSpan
 			If collectionSyntax Then diagnosticSpan = collectionSyntax.span Else If syntax Then diagnosticSpan = syntax.span
-			AddDiagnostic("BMX3331", operationName + " iterator factory does not return a usable iterator type.", diagnosticSpan)
+			AddDiagnostic("BMX3331", TLanguageMessages.BindingIteratorFactoryReturnTypeUnusable(operationName), diagnosticSpan)
 			Return Null
 		End If
 		If result.protocolKind = EACH_IN_PROTOCOL_ITERABLE Or result.protocolKind = EACH_IN_PROTOCOL_ITERATOR Then
@@ -445,13 +445,13 @@ Type TExpressionBinder
 		If Not result.advance Or Not result.current Then
 			Local diagnosticSpan:TSourceSpan
 			If collectionSyntax Then diagnosticSpan = collectionSyntax.span Else If syntax Then diagnosticSpan = syntax.span
-			AddDiagnostic("BMX3331", operationName + " iterator does not provide the required advance and current-value methods.", diagnosticSpan)
+			AddDiagnostic("BMX3331", TLanguageMessages.BindingIteratorMissingRequiredMethods(operationName), diagnosticSpan)
 			Return Null
 		End If
 		If Not TConversionClassifier.IsIntegral(result.advance.returnType) Or IsBuiltin(result.current.returnType, "void") Then
 			Local diagnosticSpan:TSourceSpan
 			If collectionSyntax Then diagnosticSpan = collectionSyntax.span Else If syntax Then diagnosticSpan = syntax.span
-			AddDiagnostic("BMX3331", operationName + " iterator advance must return an integral value and its current-value method must return a value.", diagnosticSpan)
+			AddDiagnostic("BMX3331", TLanguageMessages.BindingIteratorMethodReturnsInvalid(operationName), diagnosticSpan)
 			Return Null
 		End If
 		result.elementType = result.current.returnType
@@ -491,12 +491,12 @@ Type TExpressionBinder
 	Method ResolveEachInDeconstruction:Int(iteration:TResolvedEachIn, bindingCount:Int, scope:TScope, syntax:TForStatementSyntax)
 		If Not iteration Or Not iteration.elementType Then Return False
 		If bindingCount <> 2 Then
-			AddDiagnostic("BMX3335", "EachIn deconstruction currently requires exactly two loop bindings for BRL.Blitz.IDeconstruct2<A, B>.", syntax.header.span)
+			AddDiagnostic("BMX3335", TLanguageMessages.BindingEachInDeconstructionRequiresTwoBindings(), syntax.header.span)
 			Return False
 		End If
 		Local contract:TNamedSemanticType = FindProtocolInterface(iteration.elementType, "ideconstruct2", "brl.blitz")
 		If Not contract Or contract.typeArguments.length <> 2 Then
-			AddDiagnostic("BMX3336", "EachIn element type '" + iteration.elementType.DisplayName() + "' must implement BRL.Blitz.IDeconstruct2<A, B> for two loop bindings.", syntax.header.span)
+			AddDiagnostic("BMX3336", TLanguageMessages.BindingEachInElementRequiresDeconstruct2(iteration.elementType.DisplayName()), syntax.header.span)
 			Return False
 		End If
 		Local resolved:TResolvedCall = ResolveEachInMember(contract, "Deconstruct", scope, 2)
@@ -507,7 +507,7 @@ Type TExpressionBinder
 			Next
 		End If
 		If Not valid Then
-			AddDiagnostic("BMX3337", "BRL.Blitz.IDeconstruct2<A, B> must provide Method Deconstruct(first:A Var, second:B Var).", syntax.header.span)
+			AddDiagnostic("BMX3337", TLanguageMessages.BindingDeconstruct2RequiresMethodContract(), syntax.header.span)
 			Return False
 		End If
 		resolved.omittedArguments = New Int[2]
@@ -527,7 +527,7 @@ Type TExpressionBinder
 			If symbol.isTypeInferred Then
 				symbol.declaredType = componentType
 			Else If symbol.declaredType And Not TGenericRoutineInference.SameType(symbol.declaredType, componentType) Then
-				AddDiagnostic("BMX3338", "EachIn binding '" + symbol.name + "' has type '" + symbol.declaredType.DisplayName() + "', but IDeconstruct2 component " + (index + 1) + " has type '" + componentType.DisplayName() + "'.", declarator.span)
+				AddDiagnostic("BMX3338", TLanguageMessages.BindingEachInDeconstructionBindingTypeMismatch(symbol.name, symbol.declaredType.DisplayName(), index + 1, componentType.DisplayName()), declarator.span)
 			End If
 		Next
 	End Method
@@ -552,7 +552,7 @@ Type TExpressionBinder
 		If Not required Then Return
 		If conversions.ClassifyExplicit(iteration.elementType, required).Exists() Then Return
 		If IsLegacyEachInObjectConversion(iteration.elementType, required) Then Return
-		AddDiagnostic("BMX3339", "EachIn element type '" + iteration.elementType.DisplayName() + "' cannot be converted to " + name + " of type '" + required.DisplayName() + "'.", span)
+		AddDiagnostic("BMX3339", TLanguageMessages.BindingEachInElementConversionNotAvailable(iteration.elementType.DisplayName(), name, required.DisplayName()), span)
 	End Method
 
 	Function IsLegacyEachInObjectConversion:Int(actual:TSemanticType, required:TSemanticType)
@@ -819,7 +819,7 @@ Type TExpressionBinder
 				If iteratorType And iteratorType.typeArguments.length = 1 Then
 					routineSymbol.iteratorElementType = iteratorType.typeArguments[0]
 				Else
-					AddDiagnostic("BMX3332", "A routine containing Yield must return IIterator<T>, ICloseableIterator<T>, or a compatible iterator Interface.", routine.signature.span)
+					AddDiagnostic("BMX3332", TLanguageMessages.BindingYieldingRoutineRequiresIteratorReturn(), routine.signature.span)
 				End If
 			End If
 			For Local parameter:TParameterSyntax = EachIn routine.signature.parameters
@@ -851,7 +851,7 @@ Type TExpressionBinder
 				For Local dimension:TExpressionSyntax = EachIn declarator.arrayDimensions
 					Local dimensionType:TSemanticType = BindExpression(dimension, scope)
 					If dimensionType And Not TConversionClassifier.IsIntegral(dimensionType) Then
-						AddDiagnostic("BMX3310", "Type '" + dimensionType.DisplayName() + "' is not valid for an array dimension; an integral type is required.", dimension.span)
+						AddDiagnostic("BMX3310", TLanguageMessages.BindingArrayDimensionRequiresIntegralType(dimensionType.DisplayName()), dimension.span)
 					End If
 				Next
 				If declarator.callableType Then BindCallableStaticArrayBounds(declarator.callableType, scope)
@@ -909,7 +909,7 @@ Type TExpressionBinder
 			If Not leftType Then leftType = BindExpression(assignment.left, scope)
 			Local assignedSymbol:TSymbol = AssignedSymbol(assignment.left)
 			If assignedSymbol And assignedSymbol.isReadOnly And Not CanAssignReadOnlyField(assignedSymbol, scope) Then
-				AddDiagnostic("BMX3315", "ReadOnly field '" + assignedSymbol.name + "' can only be assigned in a constructor.", assignment.left.span)
+				AddDiagnostic("BMX3315", TLanguageMessages.BindingReadonlyFieldAssignmentRequiresConstructor(assignedSymbol.name), assignment.left.span)
 			End If
 			If assignment.operatorToken.text = "=" And TNamedSemanticType(leftType) And Not TNewExpressionSyntax(assignment.right) Then
 				Local resolvedAssignment:TResolvedCall = ResolveOperator(assignment, assignment.left, ":=", leftType, [assignment.right], [rightType], scope)
@@ -946,7 +946,7 @@ Type TExpressionBinder
 				Local routineSymbol:TSymbol = EnclosingRoutine(scope)
 				If routineSymbol And routineSymbol.isIteratorRoutine Then
 					BindExpression(returnStatement.expression, scope)
-					AddDiagnostic("BMX3334", "A yielding routine can use only bare Return to complete the iterator.", returnStatement.expression.span)
+					AddDiagnostic("BMX3334", TLanguageMessages.BindingYieldingRoutineRequiresBareReturn(), returnStatement.expression.span)
 					Return
 				End If
 				Local requiredReturn:TSemanticType
@@ -954,7 +954,7 @@ Type TExpressionBinder
 				Local returnedType:TSemanticType = BindContextualExpression(returnStatement.expression, scope, requiredReturn)
 				If routineSymbol And routineSymbol.declaredType Then
 					If IsBuiltin(routineSymbol.declaredType, "void") Then
-						AddDiagnostic("BMX3310", ReturnRoutineKind(routineSymbol) + " '" + routineSymbol.name + "' does not return a value, so Return cannot include an expression.", returnStatement.expression.span)
+						AddDiagnostic("BMX3310", TLanguageMessages.BindingVoidRoutineReturnRejectsExpression(ReturnRoutineKind(routineSymbol), routineSymbol.name), returnStatement.expression.span)
 					Else
 						CheckAssignmentConversion(returnedType, routineSymbol.declaredType, returnStatement.expression.span, "return from '" + routineSymbol.name + "'", returnStatement.expression)
 					End If
@@ -964,7 +964,7 @@ Type TExpressionBinder
 					CheckAssignmentConversion(returnedType, model.BuiltinType("Int"), returnStatement.expression.span, "return from the module entry", returnStatement.expression)
 				End If
 			Else If Not EnclosingRoutine(scope) And EffectiveSourceMode() = SOURCE_MODE_SUPERSTRICT Then
-				AddDiagnostic("BMX3311", "The module entry returns Int, so Return requires a value in SuperStrict code.", returnStatement.returnToken.span)
+				AddDiagnostic("BMX3311", TLanguageMessages.BindingModuleEntryReturnRequiresValue(), returnStatement.returnToken.span)
 			End If
 			Return
 		End If
@@ -973,7 +973,7 @@ Type TExpressionBinder
 			Local routineSymbol:TSymbol = EnclosingRoutine(scope)
 			If Not routineSymbol Then
 				If yieldStatement.expression Then BindExpression(yieldStatement.expression, scope)
-				AddDiagnostic("BMX3333", "Yield is valid only inside a Function or Method.", yieldStatement.yieldToken.span)
+				AddDiagnostic("BMX3333", TLanguageMessages.BindingYieldRequiresRoutine(), yieldStatement.yieldToken.span)
 			Else If yieldStatement.expression Then
 				If yieldStatement.fromToken Then
 					BindExpression(yieldStatement.expression, scope)
@@ -1000,8 +1000,8 @@ Type TExpressionBinder
 		Local releaseStatement:TReleaseStatementSyntax = TReleaseStatementSyntax(node)
 		If releaseStatement Then
 			Local releaseType:TSemanticType = BindExpression(releaseStatement.expression, scope)
-			If releaseStatement.expression And Not IsAddressable(releaseStatement.expression) Then AddDiagnostic("BMX3311", "Release requires a writable integer variable.", releaseStatement.expression.span)
-			If releaseType And Not TConversionClassifier.IsIntegral(releaseType) Then AddDiagnostic("BMX3310", "Release requires an integer variable, not '" + releaseType.DisplayName() + "'.", releaseStatement.expression.span)
+			If releaseStatement.expression And Not IsAddressable(releaseStatement.expression) Then AddDiagnostic("BMX3311", TLanguageMessages.BindingReleaseRequiresWritableInteger(), releaseStatement.expression.span)
+			If releaseType And Not TConversionClassifier.IsIntegral(releaseType) Then AddDiagnostic("BMX3310", TLanguageMessages.BindingReleaseRequiresInteger(releaseType.DisplayName()), releaseStatement.expression.span)
 			Return
 		End If
 		Local defDataStatement:TDefDataStatementSyntax = TDefDataStatementSyntax(node)
@@ -1080,12 +1080,12 @@ Type TExpressionBinder
 			Local activeDefault:TDefaultClauseSyntax
 			For Local defaultClause:TDefaultClauseSyntax = EachIn selectStatement.defaultClauses
 				If model.snapshot And Not TConditionalEvaluator.IsActive(defaultClause.conditionalExpression, model.snapshot.options.conditionalSymbols) Then Continue
-				If activeDefault And (model.snapshot Or (Not activeDefault.conditionalExpression And Not defaultClause.conditionalExpression)) Then AddDiagnostic("BMX2400", "A Select statement can contain only one active Default clause.", defaultClause.defaultToken.span)
+				If activeDefault And (model.snapshot Or (Not activeDefault.conditionalExpression And Not defaultClause.conditionalExpression)) Then AddDiagnostic("BMX2400", TLanguageMessages.BindingSelectAllowsSingleActiveDefault(), defaultClause.defaultToken.span)
 				If Not activeDefault Then activeDefault = defaultClause
 			Next
 			For Local caseClause:TCaseClauseSyntax = EachIn selectStatement.cases
 				If model.snapshot And Not TConditionalEvaluator.IsActive(caseClause.conditionalExpression, model.snapshot.options.conditionalSymbols) Then Continue
-				If activeDefault And caseClause.span.start > activeDefault.span.start And (model.snapshot Or (Not activeDefault.conditionalExpression And Not caseClause.conditionalExpression)) Then AddDiagnostic("BMX2401", "An active Case clause cannot follow Default.", caseClause.caseToken.span)
+				If activeDefault And caseClause.span.start > activeDefault.span.start And (model.snapshot Or (Not activeDefault.conditionalExpression And Not caseClause.conditionalExpression)) Then AddDiagnostic("BMX2401", TLanguageMessages.BindingActiveCaseCannotFollowDefault(), caseClause.caseToken.span)
 				For Local caseValue:TExpressionSyntax = EachIn caseClause.values
 					Local caseType:TSemanticType = BindExpression(caseValue, scope)
 					If selectedType Then CheckConversion(caseType, selectedType, caseValue.span, "Select Case value", caseValue)
@@ -1145,7 +1145,7 @@ Type TExpressionBinder
 		If Not initializerType Then
 			Local arrayLiteral:TArrayLiteralExpressionSyntax = TArrayLiteralExpressionSyntax(declarator.initializer)
 			If arrayLiteral And Not arrayLiteral.elements.length Then
-				AddDiagnostic("BMX3350", "The type of local '" + symbol.name + "' cannot be inferred from an empty array literal; write an explicit array type.", declarator.initializer.span)
+				AddDiagnostic("BMX3350", TLanguageMessages.BindingCannotInferEmptyArrayLocal(symbol.name), declarator.initializer.span)
 			End If
 			Return
 		End If
@@ -1154,11 +1154,11 @@ Type TExpressionBinder
 		Local arrayType:TArraySemanticType = TArraySemanticType(initializerType)
 		If arrayType And TErrorSemanticType(arrayType.elementType) Then Return
 		If (builtin And builtin.name.ToLower() = "null") Or (arrayType And IsBuiltin(arrayType.elementType, "null")) Then
-			AddDiagnostic("BMX3351", "The type of local '" + symbol.name + "' cannot be inferred from Null; write an explicit reference type.", declarator.initializer.span)
+			AddDiagnostic("BMX3351", TLanguageMessages.BindingCannotInferNullLocal(symbol.name), declarator.initializer.span)
 			Return
 		End If
 		If builtin And builtin.name.ToLower() = "void" Then
-			AddDiagnostic("BMX3352", "The initializer for inferred local '" + symbol.name + "' does not produce a value.", declarator.initializer.span)
+			AddDiagnostic("BMX3352", TLanguageMessages.BindingInferredLocalInitializerHasNoValue(symbol.name), declarator.initializer.span)
 			Return
 		End If
 		symbol.declaredType = initializerType
@@ -1172,7 +1172,7 @@ Type TExpressionBinder
 		Local result:TSemanticType
 		Local functionLiteral:TFunctionLiteralExpressionSyntax = TFunctionLiteralExpressionSyntax(expression)
 		If functionLiteral Then
-			AddDiagnostic("BMX3340", "A Function literal requires an explicit callable target type.", functionLiteral.functionToken.span)
+			AddDiagnostic("BMX3340", TLanguageMessages.BindingFunctionLiteralRequiresCallableTarget(), functionLiteral.functionToken.span)
 			result = ErrorType("Function literal")
 		End If
 		Local literal:TLiteralExpressionSyntax = TLiteralExpressionSyntax(expression)
@@ -1188,9 +1188,9 @@ Type TExpressionBinder
 						result = ResolveType(name.qualifiedSuperType, scope)
 						Local qualifiedInterface:TNamedSemanticType = TNamedSemanticType(result)
 						If Not qualifiedInterface Or Not qualifiedInterface.symbol Or qualifiedInterface.symbol.kind <> SYMBOL_INTERFACE Then
-							AddDiagnostic("BMX3324", "Qualified Super requires an Interface type.", name.span)
+							AddDiagnostic("BMX3324", TLanguageMessages.BindingQualifiedSuperRequiresInterface(), name.span)
 						Else If Not inheritanceValidator.IsSubtype(SelfType(scope), result, 0) Then
-							AddDiagnostic("BMX3325", "Interface '" + result.DisplayName() + "' is not inherited by the current type.", name.span)
+							AddDiagnostic("BMX3325", TLanguageMessages.BindingInterfaceNotInheritedByCurrentType(result.DisplayName()), name.span)
 						End If
 					Else
 						result = SuperType(scope)
@@ -1218,7 +1218,7 @@ Type TExpressionBinder
 						Local callable:TCallableSemanticType = CallableFromRoutine(routines[0])
 						If IsInstanceRoutine(routines[0]) Then
 							If Not SupportsBoundMethodReceiver(SelfType(scope)) Then
-								AddDiagnostic("BMX3348", "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined.", name.span)
+								AddDiagnostic("BMX3348", TLanguageMessages.BindingBoundMethodReceiverRequiresReferenceType(), name.span)
 								result = ErrorType(routines[0].name)
 							Else
 								result = ManagedRoutineClosure(callable, routines[0])
@@ -1230,7 +1230,7 @@ Type TExpressionBinder
 				End If
 				If Not result Then
 					Local declaredMembers:TSymbol[] = MemberSymbols(SelfType(scope), name.nameToken.text)
-					If Not ReportInaccessibleName(name, declaredMembers, scope) Then AddDiagnostic("BMX3300", "Name '" + name.nameToken.text + "' could not be resolved as a value.", name.span)
+					If Not ReportInaccessibleName(name, declaredMembers, scope) Then AddDiagnostic("BMX3300", TLanguageMessages.BindingNameNotResolvedAsValue(name.nameToken.text), name.span)
 				End If
 			Else
 				Local call:TCallExpressionSyntax = TCallExpressionSyntax(expression)
@@ -1240,9 +1240,9 @@ Type TExpressionBinder
 					If namedCastTarget Then
 						model.namedCastTargetMap.Insert(call, namedCastTarget)
 						If call.arguments.length <> 1 Then
-							AddDiagnostic("BMX3313", "A named type cast requires exactly one expression.", call.span)
+							AddDiagnostic("BMX3313", TLanguageMessages.BindingNamedCastRequiresOneExpression(), call.span)
 						Else If argumentTypes[0] And Not conversions.ClassifyExplicit(argumentTypes[0], namedCastTarget).Exists() Then
-							AddDiagnostic("BMX3312", "Type '" + argumentTypes[0].DisplayName() + "' cannot be explicitly converted to '" + namedCastTarget.DisplayName() + "'.", call.span)
+							AddDiagnostic("BMX3312", TLanguageMessages.BindingExplicitConversionNotAvailable(argumentTypes[0].DisplayName(), namedCastTarget.DisplayName()), call.span)
 						End If
 						result = namedCastTarget
 					Else
@@ -1250,7 +1250,7 @@ Type TExpressionBinder
 						If resolved Then
 							ValidateImplicitRoutineCapture(call.callee, resolved)
 							Local qualifiedSuper:TNameExpressionSyntax = QualifiedSuperReceiver(call.callee)
-							If qualifiedSuper And resolved.routine And resolved.routine.interfaceMethodKind <> INTERFACE_METHOD_DEFAULT Then AddDiagnostic("BMX3326", "Qualified Super can call only a Default Interface method body.", call.span)
+							If qualifiedSuper And resolved.routine And resolved.routine.interfaceMethodKind <> INTERFACE_METHOD_DEFAULT Then AddDiagnostic("BMX3326", TLanguageMessages.BindingQualifiedSuperRequiresDefaultInterfaceMethod(), call.span)
 							result = resolved.returnType
 						End If
 					End If
@@ -1274,7 +1274,7 @@ Type TExpressionBinder
 								Local dimensionTypes:TSemanticType[] = BindExpressions(creation.dimensions, scope)
 								For Local dimensionIndex:Int = 0 Until creation.dimensions.length
 									If creation.dimensions[dimensionIndex] And dimensionTypes[dimensionIndex] And Not TConversionClassifier.IsIntegral(dimensionTypes[dimensionIndex]) Then
-										AddDiagnostic("BMX3310", "Type '" + dimensionTypes[dimensionIndex].DisplayName() + "' is not valid for an array dimension; an integral type is required.", creation.dimensions[dimensionIndex].span)
+										AddDiagnostic("BMX3310", TLanguageMessages.BindingArrayDimensionRequiresIntegralType(dimensionTypes[dimensionIndex].DisplayName()), creation.dimensions[dimensionIndex].span)
 									End If
 								Next
 								Local dynamicInstance:TSemanticType = BindDynamicNewInstance(creation, scope)
@@ -1286,7 +1286,7 @@ Type TExpressionBinder
 								If creation.dimensionRanks.length = 0 Then
 									Local createdNamed:TNamedSemanticType = TNamedSemanticType(result)
 									If createdNamed And createdNamed.symbol And model.IsAbstractType(createdNamed.symbol) Then
-										AddDiagnostic("BMX3316", "Cannot create an instance of abstract type '" + createdNamed.DisplayName() + "'.", creation.createdType.span)
+										AddDiagnostic("BMX3316", TLanguageMessages.BindingCannotInstantiateAbstractType(createdNamed.DisplayName()), creation.createdType.span)
 									End If
 									If createdNamed And createdNamed.symbol Then ResolveConstructor(creation, createdNamed, constructorArgumentTypes, scope)
 								End If
@@ -1321,7 +1321,7 @@ Type TExpressionBinder
 									result = indexedType
 									RecordRangeIndex(indexed, INDEX_ACCESS_RANGE_ARRAY, indexedType, result, indexTypes[0], scope)
 								Else
-									AddDiagnostic("BMX3310", "Range slicing requires a one-dimensional heap Array.", indexed.span)
+									AddDiagnostic("BMX3310", TLanguageMessages.BindingRangeSlicingRequiresOneDimensionalArray(), indexed.span)
 									result = ErrorType("Range slice")
 								End If
 							Else
@@ -1332,7 +1332,7 @@ Type TExpressionBinder
 						Local staticArrayType:TStaticArraySemanticType = TStaticArraySemanticType(indexedType)
 						If staticArrayType Then
 							If rangeIndex Then
-								AddDiagnostic("BMX3310", "Range slicing requires a one-dimensional heap Array; StaticArray values are not supported.", indexed.span)
+								AddDiagnostic("BMX3310", TLanguageMessages.BindingRangeSlicingRejectsStaticArray(), indexed.span)
 								result = ErrorType("Range slice")
 							Else
 								result = staticArrayType.elementType
@@ -1350,14 +1350,14 @@ Type TExpressionBinder
 								result = resolvedIndex.returnType
 								RecordIndex(indexed, INDEX_ACCESS_OPERATOR, indexedType, result, resolvedIndex)
 							Else If indexed <> indexSetterTarget Then
-								AddDiagnostic("BMX3304", "Type '" + indexedType.DisplayName() + "' does not provide an applicable indexing operator.", indexed.span)
+								AddDiagnostic("BMX3304", TLanguageMessages.BindingTypeHasNoApplicableIndexingOperator(indexedType.DisplayName()), indexed.span)
 							End If
 						End If
 						Local resolvedAccess:TResolvedIndexAccess = model.ResolvedIndex(indexed)
 						If resolvedAccess And resolvedAccess.accessKind <> INDEX_ACCESS_OPERATOR And resolvedAccess.accessKind <> INDEX_ACCESS_RANGE_ARRAY And resolvedAccess.accessKind <> INDEX_ACCESS_RANGE_STRING Then
 							Local indexType:TSemanticType = model.BuiltinType("UInt")
 							For Local index:Int = 0 Until indexed.indexes.length
-								If indexed.indexes[index] And indexTypes[index] And Not conversions.ClassifyAssignmentExpression(indexed.indexes[index], indexTypes[index], indexType).Exists() Then AddDiagnostic("BMX3310", "Type '" + indexTypes[index].DisplayName() + "' is not valid for an index expression; conversion to UInt is required.", indexed.indexes[index].span)
+								If indexed.indexes[index] And indexTypes[index] And Not conversions.ClassifyAssignmentExpression(indexed.indexes[index], indexTypes[index], indexType).Exists() Then AddDiagnostic("BMX3310", TLanguageMessages.BindingIndexExpressionRequiresUintConversion(indexTypes[index].DisplayName()), indexed.indexes[index].span)
 							Next
 						End If
 					Else
@@ -1367,10 +1367,10 @@ Type TExpressionBinder
 							Local lowerType:TSemanticType = BindExpression(slice.lowerBound, scope)
 							Local upperType:TSemanticType = BindExpression(slice.upperBound, scope)
 							Local sliceIndexType:TSemanticType = model.BuiltinType("Int")
-							If slice.lowerBound And lowerType And Not conversions.ClassifyAssignmentExpression(slice.lowerBound, lowerType, sliceIndexType).Exists() Then AddDiagnostic("BMX3310", "Type '" + lowerType.DisplayName() + "' is not valid for a slice bound; conversion to Int is required.", slice.lowerBound.span)
-							If slice.upperBound And upperType And Not conversions.ClassifyAssignmentExpression(slice.upperBound, upperType, sliceIndexType).Exists() Then AddDiagnostic("BMX3310", "Type '" + upperType.DisplayName() + "' is not valid for a slice bound; conversion to Int is required.", slice.upperBound.span)
+							If slice.lowerBound And lowerType And Not conversions.ClassifyAssignmentExpression(slice.lowerBound, lowerType, sliceIndexType).Exists() Then AddDiagnostic("BMX3310", TLanguageMessages.BindingSliceBoundRequiresIntConversion(lowerType.DisplayName()), slice.lowerBound.span)
+							If slice.upperBound And upperType And Not conversions.ClassifyAssignmentExpression(slice.upperBound, upperType, sliceIndexType).Exists() Then AddDiagnostic("BMX3310", TLanguageMessages.BindingSliceBoundRequiresIntConversion(upperType.DisplayName()), slice.upperBound.span)
 							If IsBuiltin(slicedType, "string") Or TArraySemanticType(slicedType) Then result = slicedType
-							If Not result And slicedType Then AddDiagnostic("BMX3304", "Type '" + slicedType.DisplayName() + "' does not support slicing.", slice.span)
+							If Not result And slicedType Then AddDiagnostic("BMX3304", TLanguageMessages.BindingTypeDoesNotSupportSlicing(slicedType.DisplayName()), slice.span)
 						Else
 							Local range:TRangeExpressionSyntax = TRangeExpressionSyntax(expression)
 							If range Then result = BindRangeExpression(range, scope)
@@ -1406,7 +1406,7 @@ Type TExpressionBinder
 		If Not canonicalRange Then
 			BindRangeEndpointValue(range.lowerBound, scope)
 			BindRangeEndpointValue(range.upperBound, scope)
-			AddDiagnostic("BMX3350", "Range expression syntax requires Import BRL.Range.", range.rangeToken.span)
+			AddDiagnostic("BMX3350", TLanguageMessages.BindingRangeRequiresBrlRange(), range.rangeToken.span)
 			Return ErrorType("Range expression")
 		End If
 
@@ -1426,7 +1426,7 @@ Type TExpressionBinder
 	Method BindRangeEndpointValue:TSemanticType(expression:TExpressionSyntax, scope:TScope)
 		If Not expression Then Return Null
 		Local result:TSemanticType = BindExpression(expression, scope)
-		If result And Not TConversionClassifier.IsIntegral(result) Then AddDiagnostic("BMX3310", "Type '" + result.DisplayName() + "' is not valid for a Range endpoint; conversion to Int is required.", expression.span)
+		If result And Not TConversionClassifier.IsIntegral(result) Then AddDiagnostic("BMX3310", TLanguageMessages.BindingRangeEndpointRequiresIntConversion(result.DisplayName()), expression.span)
 		Return result
 	End Method
 
@@ -1515,13 +1515,13 @@ Type TExpressionBinder
 		Next
 		If matches = 0 Then Return Null
 		If matches > 1 Then
-			AddDiagnostic("BMX3349", "Bound Method reference is ambiguous for target type '" + required.DisplayName() + "'.", expression.span)
+			AddDiagnostic("BMX3349", TLanguageMessages.BindingBoundMethodReferenceAmbiguousForTarget(required.DisplayName()), expression.span)
 			Local error:TErrorSemanticType = ErrorType("ambiguous bound Method")
 			model.expressionTypeMap.Insert(expression, error)
 			Return error
 		End If
 		If Not SupportsBoundMethodReceiver(receiverType) Then
-			AddDiagnostic("BMX3348", "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined.", expression.span)
+			AddDiagnostic("BMX3348", TLanguageMessages.BindingBoundMethodReceiverRequiresReferenceType(), expression.span)
 			Local error:TErrorSemanticType = ErrorType(selected.name)
 			model.expressionTypeMap.Insert(expression, error)
 			Return error
@@ -1549,10 +1549,10 @@ Type TExpressionBinder
 		Local closure:TClosureSemanticType = TClosureSemanticType(required)
 		If closure Then callable = closure.signature
 		If Not callable Then
-			AddDiagnostic("BMX3340", "A Function literal requires an explicit callable target type.", literal.functionToken.span)
+			AddDiagnostic("BMX3340", TLanguageMessages.BindingFunctionLiteralRequiresCallableTarget(), literal.functionToken.span)
 			Return ErrorType("Function literal")
 		End If
-		If EffectiveSourceMode() <> SOURCE_MODE_SUPERSTRICT Then AddDiagnostic("BMX3341", "Function literals require SuperStrict mode.", literal.functionToken.span)
+		If EffectiveSourceMode() <> SOURCE_MODE_SUPERSTRICT Then AddDiagnostic("BMX3341", TLanguageMessages.BindingFunctionLiteralRequiresSuperStrict(), literal.functionToken.span)
 
 		Local literalScope:TScope = model.ScopeFor(literal)
 		Local routine:TSymbol = model.DeclaredSymbol(literal)
@@ -1562,7 +1562,7 @@ Type TExpressionBinder
 		routine.parameterTypes = New TSemanticType[literal.parameters.length]
 		routine.parameters = New TSemanticParameter[literal.parameters.length]
 		If literal.parameters.length <> callable.parameterTypes.length Then
-			AddDiagnostic("BMX3342", "Function literal has " + literal.parameters.length + " parameters but target type '" + callable.DisplayName() + "' requires " + callable.parameterTypes.length + ".", literal.span)
+			AddDiagnostic("BMX3342", TLanguageMessages.BindingFunctionLiteralParameterCountMismatch(literal.parameters.length, callable.DisplayName(), callable.parameterTypes.length), literal.span)
 		End If
 		For Local index:Int = 0 Until literal.parameters.length
 			Local parameter:TParameterSyntax = literal.parameters[index]
@@ -1572,12 +1572,12 @@ Type TExpressionBinder
 			If index < callable.parameterTypes.length Then targetType = callable.parameterTypes[index]
 			If index < callable.parameterModes.length Then targetMode = callable.parameterModes[index]
 			If symbol Then
-				If symbol.declaredType And targetType And Not TGenericRoutineInference.SameType(symbol.declaredType, targetType) Then AddDiagnostic("BMX3343", "Function literal parameter '" + symbol.name + "' has type '" + symbol.declaredType.DisplayName() + "' but target requires '" + targetType.DisplayName() + "'.", parameter.span)
+				If symbol.declaredType And targetType And Not TGenericRoutineInference.SameType(symbol.declaredType, targetType) Then AddDiagnostic("BMX3343", TLanguageMessages.BindingFunctionLiteralParameterTypeMismatch(symbol.name, symbol.declaredType.DisplayName(), targetType.DisplayName()), parameter.span)
 				If Not symbol.declaredType Then symbol.declaredType = targetType
 				symbol.parameterMode = targetMode
 			End If
-			If parameter.varToken And targetMode <> PARAMETER_PASS_VAR Then AddDiagnostic("BMX3344", "Function literal parameter '" + parameter.nameToken.text + "' must match the target's Var passing mode.", parameter.span)
-			If parameter.defaultValue Then AddDiagnostic("BMX3347", "Function literal parameters cannot declare default values.", parameter.defaultValue.span)
+			If parameter.varToken And targetMode <> PARAMETER_PASS_VAR Then AddDiagnostic("BMX3344", TLanguageMessages.BindingFunctionLiteralParameterRequiresVarMode(parameter.nameToken.text), parameter.span)
+			If parameter.defaultValue Then AddDiagnostic("BMX3347", TLanguageMessages.BindingFunctionLiteralParametersRejectDefaults(), parameter.defaultValue.span)
 			routine.parameterTypes[index] = targetType
 			Local semanticParameter:TSemanticParameter = New TSemanticParameter
 			semanticParameter.symbol = symbol
@@ -1587,7 +1587,7 @@ Type TExpressionBinder
 		Next
 		If literal.returnType Then
 			Local writtenReturn:TSemanticType = ResolveType(literal.returnType, literalScope)
-			If writtenReturn And callable.returnType And Not TGenericRoutineInference.SameType(writtenReturn, callable.returnType) Then AddDiagnostic("BMX3345", "Function literal return type '" + writtenReturn.DisplayName() + "' does not match target return type '" + callable.returnType.DisplayName() + "'.", literal.returnType.span)
+			If writtenReturn And callable.returnType And Not TGenericRoutineInference.SameType(writtenReturn, callable.returnType) Then AddDiagnostic("BMX3345", TLanguageMessages.BindingFunctionLiteralReturnTypeMismatch(writtenReturn.DisplayName(), callable.returnType.DisplayName()), literal.returnType.span)
 		End If
 
 		Local previousScope:TScope = activeFunctionLiteralScope
@@ -1715,16 +1715,16 @@ Type TExpressionBinder
 	Method ReportCapture(expression:TExpressionSyntax, name:String)
 		If captureReports.Contains(expression) Then Return
 		captureReports.Insert(expression, expression)
-		AddDiagnostic("BMX3346", "Thin Function literal cannot capture '" + name + "'; captured lexical state requires managed Closure support.", expression.span)
+		AddDiagnostic("BMX3346", TLanguageMessages.BindingThinFunctionLiteralCannotCapture(name), expression.span)
 	End Method
 
 	Method ReportUnsupportedCapture(expression:TExpressionSyntax, name:String, reason:String)
 		If captureReports.Contains(expression) Then Return
 		captureReports.Insert(expression, expression)
 		If Not activeFunctionLiteralManaged Then
-			AddDiagnostic("BMX3346", "Thin Function literal cannot capture '" + name + "'; captured lexical state requires managed Closure support.", expression.span)
+			AddDiagnostic("BMX3346", TLanguageMessages.BindingThinFunctionLiteralCannotCapture(name), expression.span)
 		Else
-			AddDiagnostic("BMX3346", "Managed Closure cannot capture '" + name + "' in this phase: " + reason + ".", expression.span)
+			AddDiagnostic("BMX3346", TLanguageMessages.BindingManagedClosureCannotCapture(name, reason), expression.span)
 		End If
 	End Method
 
@@ -1969,7 +1969,7 @@ Type TExpressionBinder
 			creation.instanceExpression = name
 			Local instanceType:TSemanticType = BindExpression(name, scope)
 			model.typeMap.Insert(reference, instanceType)
-			diagnostics.AddLast(TDiagnostic.Create("BMX3410", "Use of New <Object instance> is deprecated, and support will be removed in a future update.", DIAGNOSTIC_WARNING, creation.span, CurrentSourcePath()))
+			diagnostics.AddLast(TDiagnostic.Create("BMX3410", TLanguageMessages.BindingDynamicNewInstanceDeprecated(), DIAGNOSTIC_WARNING, creation.span, CurrentSourcePath()))
 			Return instanceType
 		Next
 		Return Null
@@ -2232,14 +2232,14 @@ Type TExpressionBinder
 			Local callable:TCallableSemanticType = TCallableSemanticType(TGenericRoutineInference.Substitute(CallableFromRoutine(routines[0]), TypeSubstitutions(declaringReceiver)))
 			If IsInstanceRoutine(routines[0]) Then
 				If Not SupportsBoundMethodReceiver(receiver) Then
-					AddDiagnostic("BMX3348", "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined.", member.span)
+					AddDiagnostic("BMX3348", TLanguageMessages.BindingBoundMethodReceiverRequiresReferenceType(), member.span)
 					Return ErrorType(routines[0].name)
 				End If
 				Return ManagedRoutineClosure(callable, routines[0])
 			End If
 			Return callable
 		End If
-		AddDiagnostic("BMX3301", "Member '" + member.nameToken.text + "' could not be resolved.", member.nameToken.span)
+		AddDiagnostic("BMX3301", TLanguageMessages.BindingMemberNotResolved(member.nameToken.text), member.nameToken.span)
 		Return Null
 	End Method
 
@@ -2271,11 +2271,11 @@ Type TExpressionBinder
 			End If
 		Next
 		If applicable.Count() = 0 Then
-			AddDiagnostic("BMX3341", "Generic routine reference '" + referenceName + "' has no specialization applicable to the supplied type arguments.", reference.span)
+			AddDiagnostic("BMX3341", TLanguageMessages.BindingGenericRoutineReferenceHasNoSpecialization(referenceName), reference.span)
 			Return ErrorType(referenceName)
 		End If
 		If applicable.Count() > 1 Then
-			AddDiagnostic("BMX3342", "Generic routine reference '" + referenceName + "' is ambiguous between matching overloads.", reference.span)
+			AddDiagnostic("BMX3342", TLanguageMessages.BindingGenericRoutineReferenceIsAmbiguous(referenceName), reference.span)
 			Return ErrorType(referenceName)
 		End If
 		Local binding:TGenericRoutineBinding = TGenericRoutineBinding(applicable.First())
@@ -2286,7 +2286,7 @@ Type TExpressionBinder
 		callable.returnType = binding.returnType
 		If IsInstanceRoutine(binding.routine) Then
 			If Not SupportsBoundMethodReceiver(receiverType) Then
-				AddDiagnostic("BMX3348", "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined.", reference.span)
+				AddDiagnostic("BMX3348", TLanguageMessages.BindingBoundMethodReceiverRequiresReferenceType(), reference.span)
 				Return ErrorType(binding.routine.name)
 			End If
 			Return ManagedRoutineClosure(callable, binding.routine)
@@ -2377,7 +2377,7 @@ Type TExpressionBinder
 			For Local constructor:TSymbol = EachIn constructors
 				If AritySatisfied(constructor, 0) Then blockedVisibility = TSymbolAccessibility.VisibilityName(constructor.visibility); Exit
 			Next
-			AddDiagnostic("BMX3317", "The default constructor for '" + createdType.DisplayName() + "' is " + blockedVisibility + " and cannot be called from this scope.", creation.createdType.span)
+			AddDiagnostic("BMX3317", TLanguageMessages.BindingDefaultConstructorInaccessible(createdType.DisplayName(), blockedVisibility), creation.createdType.span)
 			Return Null
 		End If
 		Return ResolveCandidates(creation, creation, createdType.DisplayName() + ".New", creation.arguments, argumentTypes, New TTypeReferenceSyntax[0], Null, accessible, TypeSubstitutions(createdType), createdType, scope)
@@ -2535,21 +2535,21 @@ Type TExpressionBinder
 		model.callSignatureMap.Insert(callSyntax, signatures)
 	End Method
 
-	Function AmbiguousCallMessage:String(callName:String, applicable:TList)
-		Local message:String = "Call '" + callName + "' is ambiguous between applicable overloads."
+	Function AmbiguousCallMessage:TLocalisedMessage(callName:String, applicable:TList)
+		Local candidates:String
 		If applicable And applicable.Count() Then
-			message :+ "~nCandidates:"
+			candidates :+ "~nCandidates:"
 			For Local candidate:TApplicableRoutine = EachIn applicable
-				message :+ "~n  " + candidate.routine.QualifiedName() + "("
+				candidates :+ "~n  " + candidate.routine.QualifiedName() + "("
 				For Local index:Int = 0 Until candidate.parameterTypes.length
-					If index Then message :+ ", "
-					If candidate.parameterTypes[index] Then message :+ candidate.parameterTypes[index].DisplayName() Else message :+ "<unresolved>"
-					If index < candidate.routine.parameters.length And candidate.routine.parameters[index].passingMode = PARAMETER_PASS_VAR Then message :+ " Var"
+					If index Then candidates :+ ", "
+					If candidate.parameterTypes[index] Then candidates :+ candidate.parameterTypes[index].DisplayName() Else candidates :+ "<unresolved>"
+					If index < candidate.routine.parameters.length And candidate.routine.parameters[index].passingMode = PARAMETER_PASS_VAR Then candidates :+ " Var"
 				Next
-				message :+ ")"
+				candidates :+ ")"
 			Next
 		End If
-		Return message
+		Return TLanguageMessages.BindingCallAmbiguous(callName, candidates)
 	End Function
 
 	Function RoutineScopeTier:Int(routine:TSymbol, hasTypeMemberCandidate:Int)
@@ -2640,30 +2640,30 @@ Type TExpressionBinder
 		Return result
 	End Function
 
-	Method InapplicableCallMessage:String(callName:String, arguments:TExpressionSyntax[], argumentTypes:TSemanticType[], candidates:TSymbol[], containingSubstitutions:TMap, receiverType:TSemanticType)
-		Local message:String = "No applicable overload was found for call '" + callName + "'.~nArgument types: ("
+	Method InapplicableCallMessage:TLocalisedMessage(callName:String, arguments:TExpressionSyntax[], argumentTypes:TSemanticType[], candidates:TSymbol[], containingSubstitutions:TMap, receiverType:TSemanticType)
+		Local argumentsText:String
 		For Local index:Int = 0 Until argumentTypes.length
-			If index Then message :+ ", "
-			If index < arguments.length And TOmittedArgumentExpressionSyntax(arguments[index]) Then message :+ "<omitted>" Else If argumentTypes[index] Then message :+ argumentTypes[index].DisplayName() Else message :+ "<unresolved>"
+			If index Then argumentsText :+ ", "
+			If index < arguments.length And TOmittedArgumentExpressionSyntax(arguments[index]) Then argumentsText :+ "<omitted>" Else If argumentTypes[index] Then argumentsText :+ argumentTypes[index].DisplayName() Else argumentsText :+ "<unresolved>"
 		Next
-		message :+ ")"
+		Local candidatesText:String
 		If candidates.length Then
-			message :+ "~nCandidates:"
+			candidatesText :+ "~nCandidates:"
 			For Local routine:TSymbol = EachIn candidates
 				Local substitutions:TMap = containingSubstitutions
 				Local declaringReceiver:TSemanticType = MemberDeclaringType(receiverType, routine)
 				If declaringReceiver Then substitutions = TypeSubstitutions(declaringReceiver)
 				Local parameterTypes:TSemanticType[] = SubstituteTypes(routine.parameterTypes, substitutions)
-				message :+ "~n  " + routine.QualifiedName() + "("
+				candidatesText :+ "~n  " + routine.QualifiedName() + "("
 				For Local index:Int = 0 Until parameterTypes.length
-					If index Then message :+ ", "
-					If parameterTypes[index] Then message :+ parameterTypes[index].DisplayName() Else message :+ "<unresolved>"
-					If index < routine.parameters.length And routine.parameters[index].passingMode = PARAMETER_PASS_VAR Then message :+ " Var"
+					If index Then candidatesText :+ ", "
+					If parameterTypes[index] Then candidatesText :+ parameterTypes[index].DisplayName() Else candidatesText :+ "<unresolved>"
+					If index < routine.parameters.length And routine.parameters[index].passingMode = PARAMETER_PASS_VAR Then candidatesText :+ " Var"
 				Next
-				message :+ ")"
+				candidatesText :+ ")"
 			Next
 		End If
-		Return message
+		Return TLanguageMessages.BindingNoApplicableOverload(callName, argumentsText, candidatesText)
 	End Method
 
 	Method AritySatisfied:Int(routine:TSymbol, count:Int)
@@ -2871,7 +2871,7 @@ Type TExpressionBinder
 		Local conversion:TConversion = conversions.ClassifyExpression(expression, actual, required)
 		If conversion.Exists() Then Return True
 		If ReportUncalledRoutineReference(expression, required) Then Return False
-		AddDiagnostic("BMX3310", "Type '" + actual.DisplayName() + "' cannot be implicitly converted to '" + required.DisplayName() + "' in " + context + ".", span)
+		AddDiagnostic("BMX3310", TLanguageMessages.BindingImplicitConversionNotAvailable(actual.DisplayName(), required.DisplayName(), context), span)
 		Return False
 	End Method
 
@@ -2881,7 +2881,7 @@ Type TExpressionBinder
 		Local conversion:TConversion = conversions.ClassifyAssignmentExpression(expression, actual, required)
 		If conversion.Exists() Then Return True
 		If ReportUncalledRoutineReference(expression, required) Then Return False
-		AddDiagnostic("BMX3310", "Type '" + actual.DisplayName() + "' cannot be implicitly converted to '" + required.DisplayName() + "' in " + context + ".", span)
+		AddDiagnostic("BMX3310", TLanguageMessages.BindingImplicitConversionNotAvailable(actual.DisplayName(), required.DisplayName(), context), span)
 		Return False
 	End Method
 
@@ -2936,7 +2936,7 @@ Type TExpressionBinder
 			If parameterType Then signature :+ parameterType.DisplayName() Else signature :+ "<unresolved>"
 		Next
 		signature :+ ")"
-		AddDiagnostic("BMX3319", "Cannot call abstract Function " + signature + ".", span)
+		AddDiagnostic("BMX3319", TLanguageMessages.BindingCannotCallAbstractFunction(signature), span)
 		Return True
 	End Method
 
@@ -3000,7 +3000,7 @@ Type TExpressionBinder
 			Local sourceText:String = model.syntaxTree.source.Slice(expression.span).Trim()
 			If sourceText.length Then invocation = sourceText
 		End If
-		AddDiagnostic("BMX3314", kind + " '" + symbol.name + "' is being used as a value rather than called.~nAdd parentheses to call it: " + invocation + "()", expression.span)
+		AddDiagnostic("BMX3314", TLanguageMessages.BindingRoutineUsedAsValue(kind, symbol.name, invocation), expression.span)
 		Return True
 	End Method
 
@@ -3030,12 +3030,12 @@ Type TExpressionBinder
 				Return
 		End Select
 		If Not SameStorageReference(assignment.left, assignment.right) Then Return
-		Local message:String = "Variable '" + assignedSymbol.name + "' is assigned to itself."
+		Local suggestion:String
 		If assignedSymbol.kind = SYMBOL_PARAMETER Then
 			Local fld:TSymbol = EnclosingFieldNamed(scope, assignedSymbol.name)
-			If fld Then message :+ " Did you mean 'Self." + fld.name + "'?"
+			If fld Then suggestion = " Did you mean 'Self." + fld.name + "'?"
 		End If
-		AddDiagnostic("BMX3411", message, assignment.span, DIAGNOSTIC_WARNING)
+		AddDiagnostic("BMX3411", TLanguageMessages.BindingVariableAssignedToItself(assignedSymbol.name, suggestion), assignment.span, DIAGNOSTIC_WARNING)
 	End Method
 
 	Method SameStorageReference:Int(left:TExpressionSyntax, right:TExpressionSyntax)
@@ -3386,7 +3386,7 @@ Type TExpressionBinder
 		' does not erase the declaration's identity. Editor features can still use
 		' this reference for hover and navigation while diagnostics reject the call.
 		model.referencedSymbolMap.Insert(member, symbol)
-		AddDiagnostic("BMX3318", category + " '" + symbol.QualifiedName() + "' is " + visibility + " and cannot be accessed from this scope.", member.nameToken.span)
+		AddDiagnostic("BMX3318", TLanguageMessages.BindingSymbolInaccessibleFromScope(category, symbol.QualifiedName(), visibility), member.nameToken.span)
 		inaccessibleMemberReports.Insert(member, symbol)
 		Return True
 	End Method
@@ -3404,7 +3404,7 @@ Type TExpressionBinder
 		End If
 		Local visibility:String = TSymbolAccessibility.VisibilityName(symbol.visibility)
 		model.referencedSymbolMap.Insert(name, symbol)
-		AddDiagnostic("BMX3318", category + " '" + symbol.QualifiedName() + "' is " + visibility + " and cannot be accessed from this scope.", name.nameToken.span)
+		AddDiagnostic("BMX3318", TLanguageMessages.BindingSymbolInaccessibleFromScope(category, symbol.QualifiedName(), visibility), name.nameToken.span)
 		inaccessibleMemberReports.Insert(name, symbol)
 		Return True
 	End Method
@@ -3507,13 +3507,13 @@ Type TExpressionBinder
 			End If
 		End If
 		If Not symbol Then
-			AddDiagnostic("BMX3300", "Generic type qualifier '" + QualifiedExpressionName(expression) + "' could not be resolved as a type.", expression.span)
+			AddDiagnostic("BMX3300", TLanguageMessages.BindingGenericTypeQualifierNotResolved(QualifiedExpressionName(expression)), expression.span)
 			Return Null
 		End If
 
 		Local parameters:TSymbol[] = TypeParametersForOwner(symbol)
 		If parameters.length <> typeArguments.length Then
-			AddDiagnostic("BMX3306", "Generic type '" + symbol.name + "' expects " + parameters.length + " type argument(s), but " + typeArguments.length + " were supplied.", expression.span)
+			AddDiagnostic("BMX3306", TLanguageMessages.BindingGenericTypeArgumentCountMismatch(symbol.name, parameters.length, typeArguments.length), expression.span)
 			Return Null
 		End If
 		Local result:TNamedSemanticType = New TNamedSemanticType
@@ -3596,16 +3596,16 @@ Type TExpressionBinder
 		End If
 		Local operand:TSemanticType = BindExpression(unary.operand, scope)
 		If operation = "asc" Then
-			If operand And Not conversions.ClassifyExpression(unary.operand, operand, model.BuiltinType("String")).Exists() Then AddDiagnostic("BMX3310", "Type '" + operand.DisplayName() + "' cannot be converted to 'String' for Asc.", unary.operand.span)
+			If operand And Not conversions.ClassifyExpression(unary.operand, operand, model.BuiltinType("String")).Exists() Then AddDiagnostic("BMX3310", TLanguageMessages.BindingAscRequiresStringConversion(operand.DisplayName()), unary.operand.span)
 			Return model.BuiltinType("Int")
 		End If
 		If operation = "chr" Then
-			If operand And Not conversions.ClassifyAssignmentExpression(unary.operand, operand, model.BuiltinType("Int")).Exists() Then AddDiagnostic("BMX3310", "Type '" + operand.DisplayName() + "' cannot be converted to 'Int' for Chr.", unary.operand.span)
+			If operand And Not conversions.ClassifyAssignmentExpression(unary.operand, operand, model.BuiltinType("Int")).Exists() Then AddDiagnostic("BMX3310", TLanguageMessages.BindingChrRequiresIntConversion(operand.DisplayName()), unary.operand.span)
 			Return model.BuiltinType("String")
 		End If
 		If operation = "stackalloc" Then
 			Local sizeType:TSemanticType = model.BuiltinType("Size_T")
-			If operand And Not conversions.ClassifyAssignmentExpression(unary.operand, operand, sizeType).Exists() Then AddDiagnostic("BMX3310", "Type '" + operand.DisplayName() + "' cannot be converted to 'Size_T' for StackAlloc.", unary.operand.span)
+			If operand And Not conversions.ClassifyAssignmentExpression(unary.operand, operand, sizeType).Exists() Then AddDiagnostic("BMX3310", TLanguageMessages.BindingStackAllocRequiresSizeTConversion(operand.DisplayName()), unary.operand.span)
 			Local allocatedPointer:TPointerSemanticType = New TPointerSemanticType
 			allocatedPointer.kind = SEMANTIC_TYPE_POINTER
 			allocatedPointer.elementType = model.BuiltinType("Byte")
@@ -3618,7 +3618,7 @@ Type TExpressionBinder
 		Select operation
 			Case "not", "len" Return model.BuiltinType("Int")
 			Case "varptr"
-				If Not IsAddressable(unary.operand) Then AddDiagnostic("BMX3311", "VarPtr requires writable, addressable storage.", unary.operand.span)
+				If Not IsAddressable(unary.operand) Then AddDiagnostic("BMX3311", TLanguageMessages.BindingVarPtrRequiresWritableStorage(), unary.operand.span)
 				Local pointer:TPointerSemanticType = New TPointerSemanticType
 				pointer.kind = SEMANTIC_TYPE_POINTER
 				pointer.elementType = operand
@@ -3682,7 +3682,7 @@ Type TExpressionBinder
 		Local actual:TSemanticType = BindExpression(cast.expression, scope)
 		Local required:TSemanticType = ResolveType(cast.targetType, scope)
 		If actual And required And Not conversions.ClassifyExplicit(actual, required).Exists() Then
-			AddDiagnostic("BMX3312", "Type '" + actual.DisplayName() + "' cannot be explicitly converted to '" + required.DisplayName() + "'.", cast.span)
+			AddDiagnostic("BMX3312", TLanguageMessages.BindingExplicitConversionNotAvailable(actual.DisplayName(), required.DisplayName()), cast.span)
 		End If
 		Return required
 	End Method
@@ -3811,7 +3811,7 @@ Type TExpressionBinder
 			If routine.parameterTypes.length = 1 And TConversionClassifier.IsIntegral(routine.parameterTypes[0]) Then access.rangeEndRoutine = routine; Exit
 		Next
 		If Not access.rangeStartRoutine Or Not access.rangeEndRoutine Then
-			AddDiagnostic("BMX3304", "The standard Range type does not provide its required bound-resolution methods.", syntax.span)
+			AddDiagnostic("BMX3304", TLanguageMessages.BindingStandardRangeMissingBoundResolution(), syntax.span)
 			Return
 		End If
 		model.resolvedIndexMap.Insert(syntax, access)
@@ -3985,6 +3985,10 @@ Type TExpressionBinder
 	End Function
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan, severity:Int = DIAGNOSTIC_ERROR)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, severity, span, CurrentSourcePath()))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan, severity:Int = DIAGNOSTIC_ERROR)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, severity, span, CurrentSourcePath()))
 	End Method
 

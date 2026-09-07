@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.Map
 Import BRL.StringBuilder
 Import BlitzMax.Language
+Import "bcc_messages.generated.bmx"
 Import "compiler_diagnostic.bmx"
 Import "ir_model.bmx"
 Import "generic_application_plan.bmx"
@@ -33,7 +34,7 @@ Type TCompilerInterfaceEmitter
 
 	Method EmitModule:String()
 		If Not irModule Or Not irModule.initializationPlan Or irModule.initializationPlan.unitKind <> IR_UNIT_MODULE Then
-			AddDiagnostic("BMXC2060", "Compact interface emission requires a module compilation", Null)
+			AddDiagnostic("BMXC2060", TBccMessages.InterfaceEmissionModuleCompilationRequired(), Null)
 			Return ""
 		End If
 
@@ -97,17 +98,17 @@ Type TCompilerInterfaceEmitter
 				End If
 				If Not variable.isPublished Then Continue
 				If variable.isStaticArray Then
-					AddDiagnostic("BMXC2065", "Public Global type '" + variable.semanticType + "' is outside the compact interface slice", variable.source)
+					AddDiagnostic("BMXC2065", TBccMessages.InterfaceEmissionGlobalTypeUnsupported(variable.semanticType), variable.source)
 					Continue
 				End If
 				If variable.arrayCallableReturnType.length Then
 					If Not CallableArrayShapeSupported(variable.arrayCallableReturnType, variable.arrayCallableParameters, variable.arrayCallableRank) Then
-						AddDiagnostic("BMXC2065", "Callable-array Global '" + variable.name + "' is outside the compact interface slice", variable.source)
+						AddDiagnostic("BMXC2065", TBccMessages.InterfaceEmissionCallableArrayGlobalUnsupported(variable.name), variable.source)
 						Continue
 					End If
 				Else If variable.callableReturnType.length Then
 					If Not SupportsGlobalType(variable.callableReturnType) Then
-						AddDiagnostic("BMXC2065", "Callable Global return type '" + variable.callableReturnType + "' is outside the compact interface slice", variable.source)
+						AddDiagnostic("BMXC2065", TBccMessages.InterfaceEmissionCallableGlobalReturnTypeUnsupported(variable.callableReturnType), variable.source)
 						Continue
 					End If
 					Local supportedParameters:Int = True
@@ -115,11 +116,11 @@ Type TCompilerInterfaceEmitter
 						If Not GlobalParameterSupported(parameter) Or Not ParameterModeSupported(parameter) Then supportedParameters = False
 					Next
 					If Not supportedParameters Then
-						AddDiagnostic("BMXC2065", "Callable Global '" + variable.name + "' has parameters outside the compact interface slice", variable.source)
+						AddDiagnostic("BMXC2065", TBccMessages.InterfaceEmissionCallableGlobalParametersUnsupported(variable.name), variable.source)
 						Continue
 					End If
 				Else If Not SupportsGlobalType(variable.semanticType) Then
-					AddDiagnostic("BMXC2065", "Public Global type '" + variable.semanticType + "' is outside the compact interface slice", variable.source)
+					AddDiagnostic("BMXC2065", TBccMessages.InterfaceEmissionGlobalTypeUnsupported(variable.semanticType), variable.source)
 					Continue
 				End If
 				body.Append(EmitGlobal(variable)).Append("~n")
@@ -200,7 +201,7 @@ Type TCompilerInterfaceEmitter
 			Local finish:Int = lines.length
 			If declarationIndex + 1 < file.declarations.length Then finish = file.declarations[declarationIndex + 1].line - 1
 			If first < 0 Or first >= lines.length Or finish < first Then
-				AddDiagnostic("BMXC2072", "Quoted-source interface '" + dependency.path + "' has invalid declaration boundaries", Null)
+				AddDiagnostic("BMXC2072", TBccMessages.InterfaceEmissionQuotedSourceBoundariesInvalid(dependency.path), Null)
 				Return ""
 			End If
 			For Local lineIndex:Int = first Until finish
@@ -460,7 +461,7 @@ Type TCompilerInterfaceEmitter
 				' preserves its template but makes TFunctions.Identity<T> unresolvable.
 				If artifact.isMethod Or GenericRoutineOwnerName(artifact).length Then Continue
 				If artifact.members.length <> 1 Then
-					AddDiagnostic("BMXC2070", "Generic routine template '" + declarationName + "' has an invalid canonical signature", Null)
+					AddDiagnostic("BMXC2070", TBccMessages.InterfaceEmissionGenericRoutineSignatureInvalid(declarationName), Null)
 					Continue
 				End If
 				Local routine:TGenericTemplateMember = artifact.members[0]
@@ -490,7 +491,7 @@ Type TCompilerInterfaceEmitter
 			If artifact.baseType Then
 				inheritanceName = GenericInheritanceName(artifact.baseType.semanticType, artifact)
 				If Not inheritanceName.length Then
-					AddDiagnostic("BMXC2070", "Generic template '" + declarationName + "' has a base outside canonical interface publication", Null)
+					AddDiagnostic("BMXC2070", TBccMessages.InterfaceEmissionGenericBaseUnpublishable(declarationName), Null)
 					Continue
 				End If
 			End If
@@ -500,7 +501,7 @@ Type TCompilerInterfaceEmitter
 					If interfaceIndex Then inheritanceName :+ ","
 					Local interfaceName:String = GenericInheritanceName(artifact.interfaces[interfaceIndex].semanticType, artifact)
 					If Not interfaceName.length Then
-						AddDiagnostic("BMXC2070", "Generic template '" + declarationName + "' has an Interface outside canonical interface publication", Null)
+						AddDiagnostic("BMXC2070", TBccMessages.InterfaceEmissionGenericInterfaceUnpublishable(declarationName), Null)
 						Continue
 					End If
 					inheritanceName :+ interfaceName
@@ -518,7 +519,7 @@ Type TCompilerInterfaceEmitter
 				Local memberType:String = GenericInterfaceType(member.semanticType, artifact)
 				Local isVoidMethod:Int = member.kind = TEMPLATE_MEMBER_METHOD And member.semanticType And member.semanticType.kind = TEMPLATE_TYPE_BUILTIN And member.semanticType.symbolName.ToLower() = "void"
 				If Not memberType.length And member.semanticType And Not isVoidMethod Then
-					AddDiagnostic("BMXC2070", "Generic template member '" + member.name + "' has a type outside canonical interface publication", Null)
+					AddDiagnostic("BMXC2070", TBccMessages.InterfaceEmissionGenericMemberTypeUnpublishable(member.name), Null)
 					Continue
 				End If
 				If member.kind = TEMPLATE_MEMBER_FIELD Then
@@ -535,7 +536,7 @@ Type TCompilerInterfaceEmitter
 						Local parameter:TGenericTemplateValueParameter = member.parameters[parameterIndex]
 						Local parameterType:String = GenericInterfaceType(parameter.semanticType, artifact)
 						If Not parameterType.length And parameter.semanticType Then
-							AddDiagnostic("BMXC2070", "Generic template parameter '" + member.name + "." + parameter.name + "' has a type outside canonical interface publication", Null)
+							AddDiagnostic("BMXC2070", TBccMessages.InterfaceEmissionGenericParameterTypeUnpublishable(member.name + "." + parameter.name), Null)
 							Continue
 						End If
 						result :+ parameter.name + parameterType
@@ -605,7 +606,7 @@ Type TCompilerInterfaceEmitter
 				Continue
 			End If
 			If artifact.members.length <> 1 Then
-				AddDiagnostic("BMXC2070", "Generic method template '" + artifact.identity.qualifiedName + "' has an invalid canonical signature", Null)
+				AddDiagnostic("BMXC2070", TBccMessages.InterfaceEmissionGenericMethodSignatureInvalid(artifact.identity.qualifiedName), Null)
 				Continue
 			End If
 			Local routine:TGenericTemplateMember = artifact.members[0]
@@ -777,12 +778,12 @@ Type TCompilerInterfaceEmitter
 
 	Method EmitEnum:String(irEnum:TCompilerIrEnum)
 		If Not irEnum Or Not irEnum.abiName.length Then
-			AddDiagnostic("BMXC2075", "Public Enum has no canonical ABI identity", EnumSource(irEnum))
+			AddDiagnostic("BMXC2075", TBccMessages.InterfaceEmissionEnumAbiIdentityMissing(), EnumSource(irEnum))
 			Return ""
 		End If
 		Local underlyingMarker:String = EnumUnderlyingInterfaceType(irEnum.underlyingType)
 		If Not underlyingMarker.length Then
-			AddDiagnostic("BMXC2075", "Public Enum '" + irEnum.name + "' has unsupported underlying type '" + irEnum.underlyingType + "'", irEnum.source)
+			AddDiagnostic("BMXC2075", TBccMessages.InterfaceEmissionEnumUnderlyingTypeUnsupported(irEnum.name, irEnum.underlyingType), irEnum.source)
 			Return ""
 		End If
 		Local result:String = irEnum.name + "\" + underlyingMarker + "{" + SourceSuffix(irEnum.source) + "~n"
@@ -812,7 +813,7 @@ Type TCompilerInterfaceEmitter
 	Method EmitInterfaceTree:String(irInterface:TCompilerIrInterface, emitted:TMap, visiting:TMap)
 		If Not irInterface Or emitted.Contains(irInterface.interfaceId) Then Return ""
 		If visiting.Contains(irInterface.interfaceId) Then
-			AddDiagnostic("BMXC2062", "Public Interface inheritance cycle reaches '" + irInterface.name + "'", irInterface.source)
+			AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceInheritanceCycle(irInterface.name), irInterface.source)
 			Return ""
 		End If
 		visiting.Insert(irInterface.interfaceId, irInterface.interfaceId)
@@ -820,12 +821,12 @@ Type TCompilerInterfaceEmitter
 		For Local baseId:String = EachIn irInterface.baseInterfaceIds
 			Local baseInterface:TCompilerIrInterface = InterfaceById(baseId)
 			If Not baseInterface Then
-				AddDiagnostic("BMXC2062", "Public Interface '" + irInterface.name + "' has no retained base Interface layout", irInterface.source)
+				AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceBaseLayoutMissing(irInterface.name), irInterface.source)
 				Continue
 			End If
 			If Not baseInterface.isImported Then
 				If baseInterface.visibility <> VISIBILITY_PUBLIC Then
-					AddDiagnostic("BMXC2062", "Public Interface '" + irInterface.name + "' has a non-public base Interface", irInterface.source)
+					AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceBaseNotPublic(irInterface.name), irInterface.source)
 					Continue
 				End If
 				result :+ EmitInterfaceTree(baseInterface, emitted, visiting)
@@ -839,7 +840,7 @@ Type TCompilerInterfaceEmitter
 
 	Method EmitInterface:String(irInterface:TCompilerIrInterface)
 		If Not irInterface Or Not irInterface.abiName.length Then
-			AddDiagnostic("BMXC2062", "Public Interface has no canonical ABI identity", InterfaceSource(irInterface))
+			AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceAbiIdentityMissing(), InterfaceSource(irInterface))
 			Return ""
 		End If
 		Local baseName:String = "Object"
@@ -847,7 +848,7 @@ Type TCompilerInterfaceEmitter
 		If irInterface.baseInterfaceIds.length Then
 			Local baseInterface:TCompilerIrInterface = InterfaceById(irInterface.baseInterfaceIds[0])
 			If Not baseInterface Then
-				AddDiagnostic("BMXC2062", "Public Interface '" + irInterface.name + "' has no retained base Interface identity", irInterface.source)
+				AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceBaseIdentityMissing(irInterface.name), irInterface.source)
 				Return ""
 			End If
 			baseName = baseInterface.name
@@ -855,7 +856,7 @@ Type TCompilerInterfaceEmitter
 		For Local index:Int = 1 Until irInterface.baseInterfaceIds.length
 			Local additionalBase:TCompilerIrInterface = InterfaceById(irInterface.baseInterfaceIds[index])
 			If Not additionalBase Then
-				AddDiagnostic("BMXC2062", "Public Interface '" + irInterface.name + "' has no retained additional base Interface identity", irInterface.source)
+				AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceAdditionalBaseIdentityMissing(irInterface.name), irInterface.source)
 				Return ""
 			End If
 			If index = 1 Then baseName :+ "@" Else baseName :+ ","
@@ -875,26 +876,26 @@ Type TCompilerInterfaceEmitter
 	Method EmitInterfaceMethod:String(irInterface:TCompilerIrInterface, interfaceMethod:TCompilerIrInterfaceMethod)
 		If interfaceMethod.callableReturnType.length Then
 			If Not SupportsMemberType(interfaceMethod.callableReturnType) Then
-				AddDiagnostic("BMXC2062", "Public Interface method callable return type '" + interfaceMethod.callableReturnType + "' is outside the compact interface slice", interfaceMethod.source)
+				AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceMethodCallableReturnTypeUnsupported(interfaceMethod.callableReturnType), interfaceMethod.source)
 				Return ""
 			End If
 			For Local callableParameter:TCompilerIrParameter = EachIn interfaceMethod.callableReturnParameters
 				If Not ParameterModeSupported(callableParameter) Or Not MemberParameterSupported(callableParameter) Then
-					AddDiagnostic("BMXC2062", "Public Interface method '" + irInterface.name + "." + interfaceMethod.name + "' has a callable return signature outside the compact interface slice", interfaceMethod.source)
+					AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceMethodCallableSignatureUnsupported(irInterface.name + "." + interfaceMethod.name), interfaceMethod.source)
 					Return ""
 				End If
 			Next
 		Else If Not SupportsMemberType(interfaceMethod.returnType) Then
-			AddDiagnostic("BMXC2062", "Public Interface method return type '" + interfaceMethod.returnType + "' is outside the compact interface slice", interfaceMethod.source)
+			AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceMethodReturnTypeUnsupported(interfaceMethod.returnType), interfaceMethod.source)
 			Return ""
 		End If
 		If Not interfaceMethod.abiName.length Then
-			AddDiagnostic("BMXC2062", "Public Interface method '" + irInterface.name + "." + interfaceMethod.name + "' has no canonical ABI identity", interfaceMethod.source)
+			AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceMethodAbiIdentityMissing(irInterface.name + "." + interfaceMethod.name), interfaceMethod.source)
 			Return ""
 		End If
 		For Local parameter:TCompilerIrParameter = EachIn interfaceMethod.parameters
 			If Not ParameterModeSupported(parameter) Or Not MemberParameterSupported(parameter) Then
-				AddDiagnostic("BMXC2062", "Public Interface method '" + irInterface.name + "." + interfaceMethod.name + "' has parameters outside the compact interface slice", interfaceMethod.source)
+				AddDiagnostic("BMXC2062", TBccMessages.InterfaceEmissionInterfaceMethodParametersUnsupported(irInterface.name + "." + interfaceMethod.name), interfaceMethod.source)
 				Return ""
 			End If
 		Next
@@ -923,7 +924,7 @@ Type TCompilerInterfaceEmitter
 	Method EmitStructTree:String(irStruct:TCompilerIrStruct, emitted:TMap, visiting:TMap)
 		If Not irStruct Or emitted.Contains(irStruct.structId) Then Return ""
 		If visiting.Contains(irStruct.structId) Then
-			AddDiagnostic("BMXC2066", "Public Struct layout cycle reaches '" + irStruct.name + "'", irStruct.source)
+			AddDiagnostic("BMXC2066", TBccMessages.InterfaceEmissionStructLayoutCycle(irStruct.name), irStruct.source)
 			Return ""
 		End If
 		visiting.Insert(irStruct.structId, irStruct.structId)
@@ -941,14 +942,14 @@ Type TCompilerInterfaceEmitter
 
 	Method EmitStruct:String(irStruct:TCompilerIrStruct)
 		If Not irStruct Or Not irStruct.abiName.length Then
-			AddDiagnostic("BMXC2066", "Public Struct has no canonical ABI identity", irStruct.source)
+			AddDiagnostic("BMXC2066", TBccMessages.InterfaceEmissionStructAbiIdentityMissing(), irStruct.source)
 			Return ""
 		End If
 		Local result:String = irStruct.name + "^Null{" + SourceSuffix(irStruct.source) + "~n"
 		For Local irField:TCompilerIrStructField = EachIn irStruct.fields
 			If irField.isStaticArray Then
 				If Not SupportsMemberType(irField.staticArrayElementType) Then
-					AddDiagnostic("BMXC2066", "Public Struct StaticArray field element type '" + irField.staticArrayElementType + "' is outside the compact interface slice", irField.source)
+					AddDiagnostic("BMXC2066", TBccMessages.InterfaceEmissionStructStaticArrayElementTypeUnsupported(irField.staticArrayElementType), irField.source)
 					Continue
 				End If
 				result :+ "~~" + irField.name + MemberInterfaceType(irField.staticArrayElementType) + "&[" + irField.staticArrayLength + "]&" + VisibilityTicks(irField.visibility) + SourceSuffix(irField.source) + "~n"
@@ -956,7 +957,7 @@ Type TCompilerInterfaceEmitter
 			End If
 			If irField.callableReturnType.length Then
 				If Not ParameterShapeSupported(irField.semanticType, irField.callableReturnType, irField.callableParameters) Then
-					AddDiagnostic("BMXC2066", "Public Struct callable field type '" + irField.semanticType + "' is outside the compact interface slice", irField.source)
+					AddDiagnostic("BMXC2066", TBccMessages.InterfaceEmissionStructCallableFieldTypeUnsupported(irField.semanticType), irField.source)
 					Continue
 				End If
 				Local callablePrefix:String = "."
@@ -971,7 +972,7 @@ Type TCompilerInterfaceEmitter
 			End If
 			If irField.arrayCallableReturnType.length Then
 				If Not CallableArrayShapeSupported(irField.arrayCallableReturnType, irField.arrayCallableParameters, irField.arrayCallableRank) Then
-					AddDiagnostic("BMXC2066", "Public Struct callable-array field type '" + irField.semanticType + "' is outside the compact interface slice", irField.source)
+					AddDiagnostic("BMXC2066", TBccMessages.InterfaceEmissionStructCallableArrayFieldTypeUnsupported(irField.semanticType), irField.source)
 					Continue
 				End If
 				Local callableArrayPrefix:String = "."
@@ -980,7 +981,7 @@ Type TCompilerInterfaceEmitter
 				Continue
 			End If
 			If Not SupportsMemberType(irField.semanticType) Then
-				AddDiagnostic("BMXC2066", "Public Struct field type '" + irField.semanticType + "' is outside the compact interface slice", irField.source)
+				AddDiagnostic("BMXC2066", TBccMessages.InterfaceEmissionStructFieldTypeUnsupported(irField.semanticType), irField.source)
 				Continue
 			End If
 			Local prefix:String = "."
@@ -1024,21 +1025,21 @@ Type TCompilerInterfaceEmitter
 
 	Method EmitType:String(irClass:TCompilerIrClass)
 		If Not irClass Or Not irClass.abiName.length Then
-			AddDiagnostic("BMXC2061", "Public Type has no canonical ABI identity", irClass.source)
+			AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeAbiIdentityMissing(), irClass.source)
 			Return ""
 		End If
 		Local baseName:String = "Object"
 		If irClass.baseClassId.length Then
 			Local baseClass:TCompilerIrClass = ClassById(irClass.baseClassId)
 			If Not baseClass Or Not baseClass.isPublished Then
-				AddDiagnostic("BMXC2061", "Public Type '" + irClass.name + "' has a base outside the compact interface slice", irClass.source)
+				AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeBaseUnpublishable(irClass.name), irClass.source)
 				Return ""
 			End If
 			baseName = baseClass.name
 		Else If irClass.baseImportedClassId.length Then
 			Local importedBase:TCompilerIrImportedClass = ImportedClassById(irClass.baseImportedClassId)
 			If Not importedBase Then
-				AddDiagnostic("BMXC2061", "Public Type '" + irClass.name + "' has no imported base ABI record", irClass.source)
+				AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeImportedBaseRecordMissing(irClass.name), irClass.source)
 				Return ""
 			End If
 			If importedBase.isGenericSpecialization And importedBase.semanticType.Contains("<") Then
@@ -1051,7 +1052,7 @@ Type TCompilerInterfaceEmitter
 		For Local interfaceId:String = EachIn irClass.declaredInterfaceIds
 			Local implementedInterface:TCompilerIrInterface = InterfaceById(interfaceId)
 			If Not implementedInterface Then
-				AddDiagnostic("BMXC2061", "Public Type '" + irClass.name + "' has no retained implemented Interface identity", irClass.source)
+				AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeImplementedInterfaceIdentityMissing(irClass.name), irClass.source)
 				Continue
 			End If
 			If implementedNames.length Then implementedNames :+ ","
@@ -1096,7 +1097,7 @@ Type TCompilerInterfaceEmitter
 	Method EmitField:String(irField:TCompilerIrClassField)
 		If irField And irField.isStaticArray Then
 			If Not SupportsMemberType(irField.staticArrayElementType) Then
-				AddDiagnostic("BMXC2061", "Public Type StaticArray field element type '" + irField.staticArrayElementType + "' is outside the compact interface slice", FieldSource(irField))
+				AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeStaticArrayFieldElementTypeUnsupported(irField.staticArrayElementType), FieldSource(irField))
 				Return ""
 			End If
 			Return "~~" + irField.name + MemberInterfaceType(irField.staticArrayElementType) + "&[" + irField.staticArrayLength + "]&" + VisibilityTicks(irField.visibility) + SourceSuffix(irField.source)
@@ -1118,7 +1119,7 @@ Type TCompilerInterfaceEmitter
 		If Not fieldShapeSupported Then
 			Local typeName:String
 			If irField Then typeName = irField.semanticType
-			AddDiagnostic("BMXC2061", "Public Type field type '" + typeName + "' is outside the compact interface slice", FieldSource(irField))
+			AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeFieldTypeUnsupported(typeName), FieldSource(irField))
 			Return ""
 		End If
 		Local prefix:String = "."
@@ -1150,27 +1151,27 @@ Type TCompilerInterfaceEmitter
 		Local erasedPrivateReturnType:Int = Not routine.callableReturnType.length And UnpublishedClassByType(routine.returnType) <> Null
 		If routine.callableReturnType.length Then
 			If Not SupportsMemberType(routine.callableReturnType) Then
-				AddDiagnostic("BMXC2061", "Public Type routine callable return type '" + routine.callableReturnType + "' is outside the compact interface slice", routine.source)
+				AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeRoutineCallableReturnTypeUnsupported(routine.callableReturnType), routine.source)
 				Return ""
 			End If
 			For Local callableParameter:TCompilerIrParameter = EachIn routine.callableReturnParameters
 				If Not ParameterModeSupported(callableParameter) Or Not MemberParameterSupported(callableParameter) Then
-					AddDiagnostic("BMXC2061", "Type routine '" + routine.name + "' has a callable return signature outside the compact interface slice", routine.source)
+					AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeRoutineCallableSignatureUnsupported(routine.name), routine.source)
 					Return ""
 				End If
 			Next
 		Else If Not erasedPrivateReturnType And Not SupportsMemberType(routine.returnType) Then
-			AddDiagnostic("BMXC2061", "Public Type routine return type '" + routine.returnType + "' is outside the compact interface slice", routine.source)
+			AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeRoutineReturnTypeUnsupported(routine.returnType), routine.source)
 			Return ""
 		End If
 		For Local parameter:TCompilerIrParameter = EachIn routine.parameters
 			If parameter.isOptional And Not MemberDefaultSupported(parameter) Then
-				AddDiagnostic("BMXC2061", "Type routine '" + routine.name + "' has a default argument outside the compact interface slice", routine.source)
+				AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeRoutineDefaultArgumentUnsupported(routine.name), routine.source)
 				Return ""
 			End If
 			Local supportedMode:Int = ParameterModeSupported(parameter)
 			If Not supportedMode Or Not MemberParameterSupported(parameter) Then
-				AddDiagnostic("BMXC2061", "Type routine '" + routine.name + "' has parameters outside the compact interface slice", routine.source)
+				AddDiagnostic("BMXC2061", TBccMessages.InterfaceEmissionTypeRoutineParametersUnsupported(routine.name), routine.source)
 				Return ""
 			End If
 		Next
@@ -1423,12 +1424,12 @@ Type TCompilerInterfaceEmitter
 
 	Method EmitConstant:String(variable:TCompilerIrVariableDeclaration)
 		If (Not SupportsType(variable.semanticType) And Not EnumByType(variable.semanticType)) Or variable.callableReturnType.length Or variable.isStaticArray Then
-			AddDiagnostic("BMXC2064", "Public constant type '" + variable.semanticType + "' is outside the compact interface slice", variable.source)
+			AddDiagnostic("BMXC2064", TBccMessages.InterfaceEmissionConstantTypeUnsupported(variable.semanticType), variable.source)
 			Return ""
 		End If
 		Local literal:TCompilerIrLiteral = TCompilerIrLiteral(variable.initializer)
 		If Not literal Then
-			AddDiagnostic("BMXC2064", "Public constant '" + variable.name + "' is not represented by a normalized literal", variable.source)
+			AddDiagnostic("BMXC2064", TBccMessages.InterfaceEmissionConstantLiteralNotNormalized(variable.name), variable.source)
 			Return ""
 		End If
 		Local valueText:String
@@ -1439,7 +1440,7 @@ Type TCompilerInterfaceEmitter
 				If stringLiteral.literalId = literal.stringLiteralId Then stringValue = stringLiteral.value; found = True; Exit
 			Next
 			If Not found Then
-				AddDiagnostic("BMXC2064", "Public String constant '" + variable.name + "' has no retained literal value", variable.source)
+				AddDiagnostic("BMXC2064", TBccMessages.InterfaceEmissionStringConstantLiteralMissing(variable.name), variable.source)
 				Return ""
 			End If
 			valueText = "$" + QuotedConstantString(stringValue)
@@ -1452,27 +1453,27 @@ Type TCompilerInterfaceEmitter
 	Method EmitRoutine:String(routine:TCompilerIrFunction)
 		If routine.callableReturnType.length Then
 			If Not SupportsRoutineType(routine.callableReturnType) Then
-				AddDiagnostic("BMXC2063", "Public routine callable return type '" + routine.callableReturnType + "' is outside the compact interface slice", routine.source)
+				AddDiagnostic("BMXC2063", TBccMessages.InterfaceEmissionRoutineCallableReturnTypeUnsupported(routine.callableReturnType), routine.source)
 				Return ""
 			End If
 			For Local callableParameter:TCompilerIrParameter = EachIn routine.callableReturnParameters
 				If Not ParameterModeSupported(callableParameter) Or Not ParameterSupported(callableParameter) Then
-					AddDiagnostic("BMXC2063", "Public routine '" + routine.name + "' has a callable return signature outside the compact interface slice", routine.source)
+					AddDiagnostic("BMXC2063", TBccMessages.InterfaceEmissionRoutineCallableSignatureUnsupported(routine.name), routine.source)
 					Return ""
 				End If
 			Next
 		Else If Not SupportsRoutineType(routine.returnType) Then
-			AddDiagnostic("BMXC2063", "Public routine return type '" + routine.returnType + "' is outside the compact interface slice", routine.source)
+			AddDiagnostic("BMXC2063", TBccMessages.InterfaceEmissionRoutineReturnTypeUnsupported(routine.returnType), routine.source)
 			Return ""
 		End If
 		For Local parameter:TCompilerIrParameter = EachIn routine.parameters
 			If parameter.isOptional And Not RoutineDefaultSupported(parameter) Then
-				AddDiagnostic("BMXC2063", "Public routine '" + routine.name + "' has a default argument outside the compact interface slice", routine.source)
+				AddDiagnostic("BMXC2063", TBccMessages.InterfaceEmissionRoutineDefaultArgumentUnsupported(routine.name), routine.source)
 				Return ""
 			End If
 			Local supportedMode:Int = ParameterModeSupported(parameter)
 			If Not supportedMode Or Not ParameterSupported(parameter) Then
-				AddDiagnostic("BMXC2063", "Public routine '" + routine.name + "' has parameters outside the compact interface slice", routine.source)
+				AddDiagnostic("BMXC2063", TBccMessages.InterfaceEmissionRoutineParametersUnsupported(routine.name), routine.source)
 				Return ""
 			End If
 		Next
@@ -1792,6 +1793,14 @@ Type TCompilerInterfaceEmitter
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, source:TCompilerSourceLocation)
+		If source Then
+			diagnostics :+ [TCompilerDiagnostic.Create(code, message, source.path, source.span, source.line, source.column)]
+		Else
+			diagnostics :+ [TCompilerDiagnostic.Create(code, message)]
+		End If
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, source:TCompilerSourceLocation)
 		If source Then
 			diagnostics :+ [TCompilerDiagnostic.Create(code, message, source.path, source.span, source.line, source.column)]
 		Else

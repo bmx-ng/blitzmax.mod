@@ -166,7 +166,7 @@ Type TDataFlowAnalyzer
 			definition.labelToken = syntax.label.nameToken
 			Local previous:TDataDefinition = TDataDefinition(section.labels.ValueForKey(definition.normalizedLabel))
 			If previous Then
-				AddDiagnostic("BMX3500", "Duplicate data label '" + definition.labelName + "'.", definition.labelToken.span)
+				AddDiagnostic("BMX3500", TLanguageMessages.DataDuplicateLabel(definition.labelName), definition.labelToken.span)
 			Else
 				section.labels.Insert(definition.normalizedLabel, definition)
 			End If
@@ -182,9 +182,9 @@ Type TDataFlowAnalyzer
 				item.semanticType = model.ExpressionType(expressionSyntax)
 				Local constant:TConstantValue = TConstantEvaluator.EvaluateExpressionValue(model, expressionSyntax, currentPath)
 				item.constantValue = constant
-				If Not constant Or (constant.kind <> CONSTANT_VALUE_INTEGER And constant.kind <> CONSTANT_VALUE_FLOAT And constant.kind <> CONSTANT_VALUE_STRING) Then AddDiagnostic("BMX3503", "Data items must be constant numeric or string expressions.", expressionSyntax.span)
+				If Not constant Or (constant.kind <> CONSTANT_VALUE_INTEGER And constant.kind <> CONSTANT_VALUE_FLOAT And constant.kind <> CONSTANT_VALUE_STRING) Then AddDiagnostic("BMX3503", TLanguageMessages.DataItemRequiresConstantNumericOrString(), expressionSyntax.span)
 			Else
-				AddDiagnostic("BMX3503", "A data item is missing between separators.", syntax.span)
+				AddDiagnostic("BMX3503", TLanguageMessages.DataItemMissingBetweenSeparators(), syntax.span)
 			End If
 			items.AddLast(item)
 			definitionItems.AddLast(item)
@@ -201,12 +201,12 @@ Type TDataFlowAnalyzer
 			If Not name Or Not name.nameToken Then
 				Local span:TSourceSpan = syntax.span
 				If syntax.label Then span = syntax.label.span
-				AddDiagnostic("BMX3501", "RestoreData requires a data-label name.", span)
+				AddDiagnostic("BMX3501", TLanguageMessages.DataRestoreRequiresLabelName(), span)
 				Continue
 			End If
 			Local definition:TDataDefinition = TDataDefinition(section.labels.ValueForKey(name.nameToken.text.ToLower()))
 			If Not definition Then
-				AddDiagnostic("BMX3502", "Data label '" + name.nameToken.text + "' could not be found.", name.nameToken.span)
+				AddDiagnostic("BMX3502", TLanguageMessages.DataLabelNotFound(name.nameToken.text), name.nameToken.span)
 				Continue
 			End If
 			Local binding:TDataRestoreBinding = New TDataRestoreBinding
@@ -234,11 +234,11 @@ Type TDataFlowAnalyzer
 				If target.syntax Then
 					target.expression = model.BoundExpression(target.syntax)
 					target.targetType = model.ExpressionType(target.syntax)
-					If Not IsWritableTarget(target.syntax) Then AddDiagnostic("BMX3510", "ReadData target must be a writable variable, field, or indexed element.", target.syntax.span)
+					If Not IsWritableTarget(target.syntax) Then AddDiagnostic("BMX3510", TLanguageMessages.DataReadTargetRequiresWritableStorage(), target.syntax.span)
 					target.conversionKind = DataReadConversion(target.targetType)
-					If target.targetType And target.conversionKind = DATA_READ_CONVERSION_NONE Then AddDiagnostic("BMX3511", "ReadData does not support target type '" + target.targetType.DisplayName() + "'.", target.syntax.span)
+					If target.targetType And target.conversionKind = DATA_READ_CONVERSION_NONE Then AddDiagnostic("BMX3511", TLanguageMessages.DataReadTargetTypeUnsupported(target.targetType.DisplayName()), target.syntax.span)
 				Else
-					AddDiagnostic("BMX3510", "A ReadData target is missing between separators.", syntax.span)
+					AddDiagnostic("BMX3510", TLanguageMessages.DataReadTargetMissingBetweenSeparators(), syntax.span)
 				End If
 				operation.targets[index] = target
 			Next
@@ -300,6 +300,10 @@ Type TDataFlowAnalyzer
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, currentPath))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span, currentPath))
 	End Method
 End Type

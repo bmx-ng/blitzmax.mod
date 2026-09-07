@@ -6,6 +6,8 @@ SuperStrict
 Import BRL.Stream
 Import Text.Json
 
+Import "bls_messages.generated.bmx"
+
 Const JSONRPC_PARSE_ERROR:Int = -32700
 Const JSONRPC_INVALID_REQUEST:Int = -32600
 Const JSONRPC_METHOD_NOT_FOUND:Int = -32601
@@ -49,7 +51,7 @@ Type TLspTransport
 			Local name:String = line[..separator].Trim().ToLower()
 			If name = "content-length" Then contentLength = Int(line[separator + 1..].Trim())
 		Wend
-		If contentLength < 0 Then Throw "LSP message has no Content-Length header"
+		If contentLength < 0 Then Throw TBlsMessages.ProtocolMissingContentLengthHeader().Render()
 		If contentLength = 0 Then Return ""
 		Local bytes:Byte[contentLength]
 		input.ReadBytes(bytes, contentLength)

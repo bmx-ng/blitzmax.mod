@@ -9,7 +9,9 @@ about: Provides protocol framing, document and workspace services, and an embedd
 End Rem
 Module BlitzMax.LSP
 
-ModuleInfo "Version: 0.24.11"
+ModuleInfo "Version: 0.24.12"
+ModuleInfo "History: Localise BLS protocol and installed-module discovery errors."
+ModuleInfo "History: Honour the LSP client locale for user-facing diagnostics."
 ModuleInfo "History: Added a preferred Self-qualification fix for hidden-field self-assignment warnings."
 ModuleInfo "Author: Bruce A Henderson and contributors"
 ModuleInfo "License: zlib/libpng"
@@ -20,6 +22,7 @@ Import BRL.Stream
 Import Text.Json
 Import BlitzMax.Language
 
+Import "bls_messages.generated.bmx"
 Import "protocol.bmx"
 Import "message_queue.bmx"
 Import "documents.bmx"

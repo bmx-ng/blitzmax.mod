@@ -9,12 +9,33 @@ about: Parses and analyses BlitzMax source for compilers, editors, interpreters,
 End Rem
 Module BlitzMax.Language
 
-ModuleInfo "Version: 0.13.11"
+ModuleInfo "Version: 0.13.14"
+ModuleInfo "History: Localise snapshot, dependency, and generic-template loading diagnostics."
+ModuleInfo "History: Complete localisation of lexer, parser, signature, declaration, interface, and overload diagnostics."
+ModuleInfo "History: Localise type-resolution, callable, and Closure diagnostics."
+ModuleInfo "History: Localise inheritance, Interface, Override, and generic-constraint diagnostics."
+ModuleInfo "History: Localise control-flow and unreachable-code diagnostics."
+ModuleInfo "History: Localise compile-time, StaticArray, and parameter-default diagnostics."
+ModuleInfo "History: Localise constant and Enum evaluation diagnostics."
+ModuleInfo "History: Localise DefData, RestoreData, and ReadData diagnostics."
+ModuleInfo "History: Localise constructor delegation, iterator, and EachIn deconstruction diagnostics."
+ModuleInfo "History: Localise member, generic reference, access, conversion, and intrinsic diagnostics."
+ModuleInfo "History: Localise Function literal and Closure capture diagnostics."
+ModuleInfo "History: Localise expression resolution, construction, indexing, slicing, and Range diagnostics."
+ModuleInfo "History: Localise statement binding and inferred Local diagnostics."
+ModuleInfo "History: Localise Select, Try, Catch, Finally, and Using parser diagnostics."
+ModuleInfo "History: Localise If, While, Repeat, and For parser diagnostics."
+ModuleInfo "History: Localise conditional-expression, expression-recovery, Enum, visibility, and loop-label parser diagnostics."
+ModuleInfo "History: Expand the localisation pilot to typed and plural diagnostics."
+ModuleInfo "History: Add the first generated localised diagnostic message."
 ModuleInfo "History: Warn when an ordinary assignment assigns a variable to itself."
 ModuleInfo "Author: Bruce A Henderson and contributors"
 ModuleInfo "License: zlib/libpng"
 ModuleInfo "Copyright: 2026 Bruce A Henderson and contributors"
 
+Import BlitzMax.Locale
+
+Import "language_messages.generated.bmx"
 Import "cancellation.bmx"
 Import "blitzmax_parser.bmx"
 Import "snapshot_loader.bmx"

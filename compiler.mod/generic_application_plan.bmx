@@ -7,6 +7,7 @@ Import BRL.Map
 Import BRL.StringBuilder
 Import Collections.StringMap
 Import BlitzMax.Language
+Import "bcc_messages.generated.bmx"
 Import "compiler_diagnostic.bmx"
 Import "compiler_options.bmx"
 Import "generic_specialization.bmx"
@@ -983,7 +984,7 @@ Type TCompilerGenericApplicationPlanner
 	Method DemandClosedGenericRoutineReference(syntax:TSyntaxNode, routineReference:TBoundRoutineReferenceExpression)
 		If Not syntax Or Not routineReference Or Not routineReference.routine Or routineReference.routine.genericArity <= 0 Then Return
 		If routineReference.typeArguments.length <> routineReference.routine.genericArity Then
-			AddDiagnostic("BMXC3046", "Generic routine reference has no complete canonical type-argument binding", syntax)
+			AddDiagnostic("BMXC3046", TBccMessages.GenericRoutineReferenceTypeArgumentsIncomplete(), syntax)
 			Return
 		End If
 		For Local argument:TSemanticType = EachIn routineReference.typeArguments
@@ -995,7 +996,7 @@ Type TCompilerGenericApplicationPlanner
 		For Local index:Int = 0 Until arguments.length
 			arguments[index] = ClosedArgument(routineReference.typeArguments[index])
 			If Not arguments[index] Then
-				AddDiagnostic("BMXC3040", "Generic routine-reference specialization arguments are outside the supported canonical value/reference slice", syntax)
+				AddDiagnostic("BMXC3040", TBccMessages.GenericRoutineReferenceArgumentsUnsupported(), syntax)
 				Return
 			End If
 		Next
@@ -1005,14 +1006,14 @@ Type TCompilerGenericApplicationPlanner
 			If routineReference.routine.containingScope Then owner = routineReference.routine.containingScope.owner
 			Local receiver:TNamedSemanticType = TCompilerGenericInheritance.ConstructedOwnerType(routineReference.staticReceiverType, owner, analysis.model)
 			If Not receiver Or receiver.typeArguments.length <> artifact.containingParameters.length Then
-				AddDiagnostic("BMXC3046", "Generic routine reference has no complete containing-Type argument binding", syntax)
+				AddDiagnostic("BMXC3046", TBccMessages.GenericRoutineReferenceContainingTypeArgumentsIncomplete(), syntax)
 				Return
 			End If
 			containingArguments = New TTemplateTypeReference[receiver.typeArguments.length]
 			For Local index:Int = 0 Until containingArguments.length
 				containingArguments[index] = ClosedArgument(receiver.typeArguments[index])
 				If Not containingArguments[index] Then
-					AddDiagnostic("BMXC3040", "Generic routine-reference containing-Type arguments are outside the supported canonical value/reference slice", syntax)
+					AddDiagnostic("BMXC3040", TBccMessages.GenericRoutineReferenceContainingTypeArgumentsUnsupported(), syntax)
 					Return
 				End If
 			Next
@@ -1034,7 +1035,7 @@ Type TCompilerGenericApplicationPlanner
 			If resolved And resolved.routine Then DemandClosedGenericOwnerMethod(syntax, resolved)
 			If Not resolved Or Not IsTemplateSymbol(resolved.routine) Or resolved.routine.kind <> SYMBOL_ROUTINE Then Continue
 			If resolved.typeArguments.length <> resolved.routine.genericArity Then
-				AddDiagnostic("BMXC3046", "Generic routine call has no complete canonical type-argument binding", syntax)
+				AddDiagnostic("BMXC3046", TBccMessages.GenericRoutineCallTypeArgumentsIncomplete(), syntax)
 				Continue
 			End If
 			Local containsOpenArgument:Int
@@ -1051,7 +1052,7 @@ Type TCompilerGenericApplicationPlanner
 				If Not arguments[index] Then supported = False
 			Next
 			If Not supported Then
-				AddDiagnostic("BMXC3040", "Generic routine specialization arguments are outside the supported canonical value/reference slice", syntax)
+				AddDiagnostic("BMXC3040", TBccMessages.GenericRoutineSpecializationArgumentsUnsupported(), syntax)
 				Continue
 			End If
 			Local request:TGenericSpecializationRequestSite = New TGenericSpecializationRequestSite
@@ -1068,7 +1069,7 @@ Type TCompilerGenericApplicationPlanner
 				If resolved.routine.containingScope Then methodOwner = resolved.routine.containingScope.owner
 				If boundCall And boundCall.receiver Then receiverType = TCompilerGenericInheritance.ConstructedOwnerType(boundCall.receiver.semanticType, methodOwner, analysis.model)
 				If Not receiverType Or receiverType.typeArguments.length <> artifact.containingParameters.length Then
-					AddDiagnostic("BMXC3046", "Generic method call has no complete containing-Type argument binding", syntax)
+					AddDiagnostic("BMXC3046", TBccMessages.GenericMethodContainingTypeArgumentsIncomplete(), syntax)
 					Continue
 				End If
 				containingArguments = New TTemplateTypeReference[receiverType.typeArguments.length]
@@ -1077,7 +1078,7 @@ Type TCompilerGenericApplicationPlanner
 					If Not containingArguments[index] Then supported = False
 				Next
 				If Not supported Then
-					AddDiagnostic("BMXC3040", "Generic method containing-Type arguments are outside the supported canonical value/reference slice", syntax)
+					AddDiagnostic("BMXC3040", TBccMessages.GenericMethodContainingTypeArgumentsUnsupported(), syntax)
 					Continue
 				End If
 			End If
@@ -1201,7 +1202,7 @@ Type TCompilerGenericApplicationPlanner
 			For Local index:Int = 0 Until named.typeArguments.length
 				templateArguments[index] = ClosedArgument(named.typeArguments[index])
 				If Not templateArguments[index] Then
-					AddDiagnostic("BMXC3040", "Generic specialization argument '" + named.typeArguments[index].DisplayName() + "' has no supported canonical value or published reference identity", syntax)
+					AddDiagnostic("BMXC3040", TBccMessages.GenericSpecializationArgumentIdentityUnsupported(named.typeArguments[index].DisplayName()), syntax)
 					Return
 				End If
 			Next
@@ -1261,12 +1262,12 @@ Type TCompilerGenericApplicationPlanner
 					End If
 				End If
 				If Not symbol.genericTemplateArtifact Then
-					AddDiagnostic("BMXC3041", "Imported generic Type '" + symbol.QualifiedName() + "' has no canonical template artifact; rebuild its defining module", symbol.declaration)
+					AddDiagnostic("BMXC3041", TBccMessages.GenericImportedTypeTemplateMissing(symbol.QualifiedName()), symbol.declaration)
 					Return Null
 				End If
 			End If
 			If symbol.genericTemplateArtifact.languageLinkageRevision.ToLower() <> COMPILER_GENERIC_LANGUAGE_LINKAGE_REVISION.ToLower() Then
-				AddDiagnostic("BMXC3042", "Imported generic Type '" + symbol.QualifiedName() + "' uses incompatible language/linkage revision '" + symbol.genericTemplateArtifact.languageLinkageRevision + "'", symbol.declaration)
+				AddDiagnostic("BMXC3042", TBccMessages.GenericImportedTypeLanguageRevisionIncompatible(symbol.QualifiedName(), symbol.genericTemplateArtifact.languageLinkageRevision), symbol.declaration)
 				Return Null
 			End If
 			artifactsBySymbol.Insert(symbol, symbol.genericTemplateArtifact)
@@ -1679,6 +1680,16 @@ Type TCompilerGenericApplicationPlanner
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, syntax:TSyntaxNode)
+		Local source:TTemplateSourceLocation = TemplateSource(syntax)
+		Local path:String
+		Local span:TSourceSpan
+		If source Then path = source.path
+		If Not path.length And analysis And analysis.syntaxTree And analysis.syntaxTree.source Then path = analysis.syntaxTree.source.path
+		If syntax Then span = syntax.span
+		diagnostics :+ [TCompilerDiagnostic.Create(code, message, path, span)]
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, syntax:TSyntaxNode)
 		Local source:TTemplateSourceLocation = TemplateSource(syntax)
 		Local path:String
 		Local span:TSourceSpan

@@ -1,0 +1,2100 @@
+format = 1
+domain = "language"
+locale = "en"
+next_id = 264
+
+[[message]]
+id = 1
+name = "parser.expression_nesting_too_deep"
+text = "Expression nesting is too deep to parse safely."
+description = "Reported when recursive expression parsing reaches its safety limit."
+diagnostic_codes = ["BMX2103"]
+placeholders = []
+
+[[message]]
+id = 2
+name = "parser.expected_expression"
+text = "Expected an expression."
+diagnostic_codes = ["BMX2101"]
+placeholders = []
+
+[[message]]
+id = 3
+name = "parser.unexpected_token_in_expression"
+text = "Unexpected token '{token}' in expression."
+diagnostic_codes = ["BMX2102"]
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 4
+name = "parser.expected_close_parenthesis"
+text = "Expected ')' to close expression."
+diagnostic_codes = ["BMX2100"]
+placeholders = []
+
+[[message]]
+id = 5
+name = "parser.expected_qualified_super_interface"
+text = "Expected an Interface type in qualified Super expression."
+diagnostic_codes = ["BMX2104"]
+placeholders = []
+
+[[message]]
+id = 6
+name = "parser.expected_expression_found_token"
+text = "Expected an expression but found '{token}'."
+diagnostic_codes = ["BMX2101"]
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 7
+name = "parser.expected_parenthesis_after_arguments"
+text = "Expected ')' after argument list."
+diagnostic_codes = ["BMX2100"]
+placeholders = []
+
+[[message]]
+id = 8
+name = "parser.expected_bracket_after_indexes"
+text = "Expected ']' after index list."
+diagnostic_codes = ["BMX2100"]
+placeholders = []
+
+[[message]]
+id = 9
+name = "constant.division_by_zero"
+text = "Division by zero in constant expression."
+diagnostic_codes = ["BMX3604"]
+placeholders = []
+
+[[message]]
+id = 10
+name = "type.expected_type_arguments"
+plural = "expected"
+forms = { one = "Type '{typeName}' expects one type argument, but {supplied} were supplied.", other = "Type '{typeName}' expects {expected} type arguments, but {supplied} were supplied." }
+diagnostic_codes = ["BMX3102"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "expected", type = "integer" }, { name = "supplied", type = "integer" }]
+
+[[message]]
+id = 11
+name = "conditional.expected_expression"
+text = "Expected a conditional-compilation expression."
+description = "Reported when a conditional-compilation directive has no expression."
+diagnostic_codes = ["BMX2440"]
+placeholders = []
+
+[[message]]
+id = 12
+name = "conditional.unexpected_token"
+text = "Unexpected token '{token}' in conditional-compilation expression."
+description = "Reported when tokens remain after parsing a conditional-compilation expression."
+diagnostic_codes = ["BMX2441"]
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 13
+name = "conditional.expected_close_parenthesis"
+text = "Expected ')' in conditional-compilation expression."
+description = "Reported when a parenthesised conditional-compilation expression is not closed."
+diagnostic_codes = ["BMX2443"]
+placeholders = []
+
+[[message]]
+id = 14
+name = "conditional.expected_operand"
+text = "Expected a target symbol, 'Not', or '('."
+description = "Reported when a conditional-compilation operator has no valid operand."
+diagnostic_codes = ["BMX2442"]
+placeholders = []
+
+[[message]]
+id = 15
+name = "parser.parenthesize_calculated_from_end_endpoint"
+text = "Parenthesize a calculated from-end Range endpoint as '^(expression)'."
+description = "Explains the required syntax when a calculated from-end Range endpoint would otherwise be ambiguous."
+diagnostic_codes = ["BMX2115"]
+placeholders = []
+
+[[message]]
+id = 16
+name = "parser.from_end_endpoint_requires_range"
+text = "A from-end endpoint requires a Range expression."
+description = "Reported when the from-end marker is used outside a Range expression or slice."
+diagnostic_codes = ["BMX2114"]
+placeholders = []
+
+[[message]]
+id = 17
+name = "parser.expected_bracket_after_slice"
+text = "Expected ']' after slice."
+description = "Reported when an indexed slice has no closing bracket."
+diagnostic_codes = ["BMX2100"]
+placeholders = []
+
+[[message]]
+id = 18
+name = "parser.postfix_type_requires_numeric_literal"
+text = "A postfix ':Type' is valid only on a numeric literal; use Type(expression) for an explicit conversion."
+description = "Explains that named postfix type ascription is restricted to numeric literals."
+diagnostic_codes = ["BMX2105"]
+placeholders = []
+
+[[message]]
+id = 19
+name = "parser.expected_type_after_new"
+text = "Expected a type after 'New'."
+description = "Reported when a New expression omits the type to construct."
+diagnostic_codes = ["BMX2110"]
+placeholders = []
+
+[[message]]
+id = 20
+name = "parser.expected_parenthesis_after_constructor_arguments"
+text = "Expected ')' after constructor arguments."
+description = "Reported when a constructor argument list has no closing parenthesis."
+diagnostic_codes = ["BMX2111"]
+placeholders = []
+
+[[message]]
+id = 21
+name = "parser.expected_bracket_after_array_literal"
+text = "Expected ']' after array literal."
+description = "Reported when an array literal has no closing bracket."
+diagnostic_codes = ["BMX2112"]
+placeholders = []
+
+[[message]]
+id = 22
+name = "parser.expected_parenthesis_after_cast"
+text = "Expected ')' after cast expression."
+description = "Reported when a cast expression has no closing parenthesis."
+diagnostic_codes = ["BMX2113"]
+placeholders = []
+
+[[message]]
+id = 23
+name = "parser.unexpected_token_after_source_mode"
+text = "Unexpected token '{token}' after '{mode}'."
+description = "Reported when extra text follows a Strict or SuperStrict declaration."
+diagnostic_codes = ["BMX2325"]
+placeholders = [{ name = "token", type = "string" }, { name = "mode", type = "string" }]
+
+[[message]]
+id = 24
+name = "parser.visibility_only_inside_type"
+text = "'{visibility}' visibility is only valid inside a type."
+description = "Reported when a type-member visibility is used at module scope."
+diagnostic_codes = ["BMX2326"]
+placeholders = [{ name = "visibility", type = "string" }]
+
+[[message]]
+id = 25
+name = "parser.visibility_not_valid_for_interface"
+text = "'{visibility}' visibility cannot be used with interfaces."
+description = "Reported when an interface member uses non-public visibility."
+diagnostic_codes = ["BMX2327"]
+placeholders = [{ name = "visibility", type = "string" }]
+
+[[message]]
+id = 26
+name = "parser.expected_enum_name"
+text = "Expected an enum name."
+description = "Reported when an Enum declaration omits its name."
+diagnostic_codes = ["BMX2010"]
+placeholders = []
+
+[[message]]
+id = 27
+name = "parser.expected_enum_underlying_type"
+text = "Expected an enum underlying type after ':'."
+description = "Reported when an Enum declaration has a colon but no underlying type."
+diagnostic_codes = ["BMX2011"]
+placeholders = []
+
+[[message]]
+id = 28
+name = "parser.expected_end_enum"
+text = "Expected 'End Enum' before end of file."
+description = "Reported when an Enum declaration reaches the end of the source without a terminator."
+diagnostic_codes = ["BMX2012"]
+placeholders = []
+
+[[message]]
+id = 29
+name = "parser.expected_enum_value_name"
+text = "Expected an enum value name."
+description = "Reported when an Enum value declaration omits its name."
+diagnostic_codes = ["BMX2013"]
+placeholders = []
+
+[[message]]
+id = 30
+name = "parser.expected_constant_expression_after_equals"
+text = "Expected a constant expression after '='."
+description = "Reported when an Enum value assignment has no expression."
+diagnostic_codes = ["BMX2014"]
+placeholders = []
+
+[[message]]
+id = 31
+name = "parser.expected_loop_label_name"
+text = "Expected a loop-label name after '#'."
+description = "Reported when a loop-label prefix omits its label name."
+diagnostic_codes = ["BMX2323"]
+placeholders = []
+
+[[message]]
+id = 32
+name = "parser.unexpected_token_after_loop_label"
+text = "Unexpected token '{token}' after loop label."
+description = "Reported when extra text occurs between a loop label and its statement."
+diagnostic_codes = ["BMX2324"]
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 33
+name = "parser.expected_end_if"
+text = "Expected 'End If' or 'EndIf'."
+description = "Reported when a multiline If statement has no closing terminator."
+diagnostic_codes = ["BMX2300"]
+placeholders = []
+
+[[message]]
+id = 34
+name = "parser.expected_end_while"
+text = "Expected 'Wend' or 'End While'."
+description = "Reported when a While statement has no closing terminator."
+diagnostic_codes = ["BMX2301"]
+placeholders = []
+
+[[message]]
+id = 35
+name = "parser.expected_repeat_terminator"
+text = "Expected 'Until' or 'Forever'."
+description = "Reported when a Repeat statement has no Until or Forever terminator."
+diagnostic_codes = ["BMX2302"]
+placeholders = []
+
+[[message]]
+id = 36
+name = "parser.expected_next"
+text = "Expected 'Next'."
+description = "Reported when a For statement has no Next terminator."
+diagnostic_codes = ["BMX2303"]
+placeholders = []
+
+[[message]]
+id = 37
+name = "parser.expected_for_loop_header"
+text = "Expected a For-loop header."
+description = "Reported when a For statement has an empty header."
+diagnostic_codes = ["BMX2310"]
+placeholders = []
+
+[[message]]
+id = 38
+name = "parser.expected_equals_in_for_loop_header"
+text = "Expected '=' in For-loop header."
+description = "Reported when a For-loop header omits the assignment operator."
+diagnostic_codes = ["BMX2311"]
+placeholders = []
+
+[[message]]
+id = 39
+name = "parser.expected_local_loop_variable_before_equals"
+text = "Expected a local loop variable before '='."
+description = "Reported when a Local For-loop declaration has no variable before its assignment."
+diagnostic_codes = ["BMX2312"]
+placeholders = []
+
+[[message]]
+id = 40
+name = "parser.expected_loop_target_before_equals"
+text = "Expected a loop target before '='."
+description = "Reported when a For-loop assignment has no target expression."
+diagnostic_codes = ["BMX2313"]
+placeholders = []
+
+[[message]]
+id = 41
+name = "parser.expected_for_loop_clause"
+text = "Expected 'EachIn', 'To', or 'Until' in For-loop header."
+description = "Reported when a For-loop header has no collection or range clause."
+diagnostic_codes = ["BMX2314"]
+placeholders = []
+
+[[message]]
+id = 42
+name = "parser.each_in_must_follow_equals"
+text = "'EachIn' must immediately follow '='."
+description = "Reported when an EachIn loop incorrectly supplies an initial value."
+diagnostic_codes = ["BMX2315"]
+placeholders = []
+
+[[message]]
+id = 43
+name = "parser.expected_collection_after_each_in"
+text = "Expected a collection after 'EachIn'."
+description = "Reported when an EachIn loop omits its collection expression."
+diagnostic_codes = ["BMX2316"]
+placeholders = []
+
+[[message]]
+id = 44
+name = "parser.multiple_for_bindings_require_each_in"
+text = "Multiple For-loop bindings are valid only with 'EachIn'."
+description = "Reported when a range-based For loop declares more than one loop variable."
+diagnostic_codes = ["BMX2319"]
+placeholders = []
+
+[[message]]
+id = 45
+name = "parser.expected_initial_value_before_range_clause"
+text = "Expected an initial value before '{clause}'."
+description = "Reported when a range-based For loop omits its initial value."
+diagnostic_codes = ["BMX2317"]
+placeholders = [{ name = "clause", type = "string" }]
+
+[[message]]
+id = 46
+name = "parser.expected_range_limit_after_clause"
+text = "Expected a range limit after '{clause}'."
+description = "Reported when a range-based For loop omits its limiting expression."
+diagnostic_codes = ["BMX2318"]
+placeholders = [{ name = "clause", type = "string" }]
+
+[[message]]
+id = 47
+name = "parser.expected_expression_after_step"
+text = "Expected an expression after 'Step'."
+description = "Reported when a For-loop Step clause omits its expression."
+diagnostic_codes = ["BMX2319"]
+placeholders = []
+
+[[message]]
+id = 48
+name = "parser.expected_local_loop_variable_between_commas"
+text = "Expected a local loop variable between commas."
+description = "Reported when a Local For-loop declaration contains an empty comma-separated binding."
+diagnostic_codes = ["BMX2312"]
+placeholders = []
+
+[[message]]
+id = 49
+name = "parser.case_cannot_follow_default"
+text = "A Case clause cannot follow Default."
+description = "Reported when an unconditional Default clause precedes a Case clause in a Select statement."
+diagnostic_codes = ["BMX2401"]
+placeholders = []
+
+[[message]]
+id = 50
+name = "parser.select_allows_single_default"
+text = "A Select statement can contain only one Default clause."
+description = "Reported when a Select statement contains more than one unconditional Default clause."
+diagnostic_codes = ["BMX2400"]
+placeholders = []
+
+[[message]]
+id = 51
+name = "parser.expected_select_clause_or_end"
+text = "Expected 'Case', 'Default', or 'End Select'."
+description = "Reported when an unexpected statement occurs where a Select clause or terminator is required."
+diagnostic_codes = ["BMX2402"]
+placeholders = []
+
+[[message]]
+id = 52
+name = "parser.expected_end_select"
+text = "Expected 'End Select' or 'EndSelect'."
+description = "Reported when a Select statement has no closing terminator."
+diagnostic_codes = ["BMX2403"]
+placeholders = []
+
+[[message]]
+id = 53
+name = "parser.expected_conditional_select_clause"
+text = "Expected 'Case', 'Default', or a conditional directive inside Select."
+description = "Reported when an invalid statement occurs among conditionally compiled Select clauses."
+diagnostic_codes = ["BMX2402"]
+placeholders = []
+
+[[message]]
+id = 54
+name = "parser.expected_conditional_select_end"
+text = "Expected '?' to end conditional Select clauses."
+description = "Reported when conditionally compiled Select clauses have no closing bare question-mark directive."
+diagnostic_codes = ["BMX2430"]
+placeholders = []
+
+[[message]]
+id = 55
+name = "parser.try_rejects_header_expression"
+text = "Try does not accept a header expression."
+description = "Reported when a Try statement is followed by an expression on its header line."
+diagnostic_codes = ["BMX2410"]
+placeholders = []
+
+[[message]]
+id = 56
+name = "parser.catch_cannot_follow_finally"
+text = "A Catch clause cannot follow Finally."
+description = "Reported when a Catch clause occurs after a Finally clause in a Try statement."
+diagnostic_codes = ["BMX2411"]
+placeholders = []
+
+[[message]]
+id = 57
+name = "parser.try_allows_single_finally"
+text = "A Try statement can contain only one Finally clause."
+description = "Reported when a Try statement contains more than one Finally clause."
+diagnostic_codes = ["BMX2416"]
+placeholders = []
+
+[[message]]
+id = 58
+name = "parser.try_requires_catch_or_finally"
+text = "A Try statement requires Catch or Finally."
+description = "Reported when a Try statement has neither a Catch nor a Finally clause."
+diagnostic_codes = ["BMX2412"]
+placeholders = []
+
+[[message]]
+id = 59
+name = "parser.expected_end_try"
+text = "Expected 'End Try' or 'EndTry'."
+description = "Reported when a Try statement has no closing terminator."
+diagnostic_codes = ["BMX2413"]
+placeholders = []
+
+[[message]]
+id = 60
+name = "parser.expected_caught_value_type"
+text = "Expected a caught value type."
+description = "Reported when a Catch declaration supplies a value name without its type."
+diagnostic_codes = ["BMX2417"]
+placeholders = []
+
+[[message]]
+id = 61
+name = "parser.expected_caught_value_name"
+text = "Expected a caught value name."
+description = "Reported when a Catch declaration omits its value name."
+diagnostic_codes = ["BMX2414"]
+placeholders = []
+
+[[message]]
+id = 62
+name = "parser.finally_rejects_header_expression"
+text = "Finally does not accept a header expression."
+description = "Reported when a Finally clause is followed by an expression on its header line."
+diagnostic_codes = ["BMX2415"]
+placeholders = []
+
+[[message]]
+id = 63
+name = "parser.expected_local_resource_after_using"
+text = "Expected a Local resource declaration after Using."
+description = "Reported when an inline Using resource is not a Local declaration."
+diagnostic_codes = ["BMX2420"]
+placeholders = []
+
+[[message]]
+id = 64
+name = "parser.using_requires_local_resources_before_do"
+text = "Using requires Local resource declarations before Do."
+description = "Reported when a statement before a Using block's Do marker is not a Local resource declaration."
+diagnostic_codes = ["BMX2421"]
+placeholders = []
+
+[[message]]
+id = 65
+name = "parser.using_requires_local_resource"
+text = "Using requires at least one Local resource declaration."
+description = "Reported when a Using statement declares no resources."
+diagnostic_codes = ["BMX2422"]
+placeholders = []
+
+[[message]]
+id = 66
+name = "parser.expected_do_after_using_resources"
+text = "Expected 'Do' after Using resources."
+description = "Reported when a Using statement has no Do marker after its resource declarations."
+diagnostic_codes = ["BMX2423"]
+placeholders = []
+
+[[message]]
+id = 67
+name = "parser.expected_end_using"
+text = "Expected 'End Using' or 'EndUsing'."
+description = "Reported when a Using statement has no closing terminator."
+diagnostic_codes = ["BMX2424"]
+placeholders = []
+
+[[message]]
+id = 68
+name = "binding.yielding_routine_requires_iterator_return"
+text = "A routine containing Yield must return IIterator<T>, ICloseableIterator<T>, or a compatible iterator Interface."
+description = "Reported when a yielding routine declares a return type that cannot represent an iterator."
+diagnostic_codes = ["BMX3332"]
+placeholders = []
+
+[[message]]
+id = 69
+name = "binding.array_dimension_requires_integral_type"
+text = "Type '{typeName}' is not valid for an array dimension; an integral type is required."
+description = "Reported when an array dimension expression has a non-integral type."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 70
+name = "binding.readonly_field_assignment_requires_constructor"
+text = "ReadOnly field '{fieldName}' can only be assigned in a constructor."
+description = "Reported when code assigns a ReadOnly field outside a permitted constructor context."
+diagnostic_codes = ["BMX3315"]
+placeholders = [{ name = "fieldName", type = "string" }]
+
+[[message]]
+id = 71
+name = "binding.yielding_routine_requires_bare_return"
+text = "A yielding routine can use only bare Return to complete the iterator."
+description = "Reported when a yielding routine returns an expression."
+diagnostic_codes = ["BMX3334"]
+placeholders = []
+
+[[message]]
+id = 72
+name = "binding.void_routine_return_rejects_expression"
+text = "{routineKind} '{routineName}' does not return a value, so Return cannot include an expression."
+description = "Reported when a void Function or Method returns an expression."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "routineKind", type = "string" }, { name = "routineName", type = "string" }]
+
+[[message]]
+id = 73
+name = "binding.module_entry_return_requires_value"
+text = "The module entry returns Int, so Return requires a value in SuperStrict code."
+description = "Reported when a bare Return occurs in a SuperStrict module body."
+diagnostic_codes = ["BMX3311"]
+placeholders = []
+
+[[message]]
+id = 74
+name = "binding.yield_requires_routine"
+text = "Yield is valid only inside a Function or Method."
+description = "Reported when Yield occurs in the module body rather than a routine."
+diagnostic_codes = ["BMX3333"]
+placeholders = []
+
+[[message]]
+id = 75
+name = "binding.release_requires_writable_integer"
+text = "Release requires a writable integer variable."
+description = "Reported when Release targets an expression that cannot be written."
+diagnostic_codes = ["BMX3311"]
+placeholders = []
+
+[[message]]
+id = 76
+name = "binding.release_requires_integer"
+text = "Release requires an integer variable, not '{typeName}'."
+description = "Reported when Release targets a writable value of a non-integral type."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 77
+name = "binding.select_allows_single_active_default"
+text = "A Select statement can contain only one active Default clause."
+description = "Reported after conditional evaluation when more than one Select Default clause is active."
+diagnostic_codes = ["BMX2400"]
+placeholders = []
+
+[[message]]
+id = 78
+name = "binding.active_case_cannot_follow_default"
+text = "An active Case clause cannot follow Default."
+description = "Reported after conditional evaluation when an active Case follows the active Default clause."
+diagnostic_codes = ["BMX2401"]
+placeholders = []
+
+[[message]]
+id = 79
+name = "binding.cannot_infer_empty_array_local"
+text = "The type of local '{localName}' cannot be inferred from an empty array literal; write an explicit array type."
+description = "Reported when an inferred Local is initialized with an empty array literal lacking an element type."
+diagnostic_codes = ["BMX3350"]
+placeholders = [{ name = "localName", type = "string" }]
+
+[[message]]
+id = 80
+name = "binding.cannot_infer_null_local"
+text = "The type of local '{localName}' cannot be inferred from Null; write an explicit reference type."
+description = "Reported when an inferred Local is initialized with Null and therefore has no concrete reference type."
+diagnostic_codes = ["BMX3351"]
+placeholders = [{ name = "localName", type = "string" }]
+
+[[message]]
+id = 81
+name = "binding.inferred_local_initializer_has_no_value"
+text = "The initializer for inferred local '{localName}' does not produce a value."
+description = "Reported when an inferred Local uses a void expression as its initializer."
+diagnostic_codes = ["BMX3352"]
+placeholders = [{ name = "localName", type = "string" }]
+
+[[message]]
+id = 82
+name = "binding.function_literal_requires_callable_target"
+text = "A Function literal requires an explicit callable target type."
+description = "Reported when a Function literal is bound without a contextual callable type."
+diagnostic_codes = ["BMX3340"]
+placeholders = []
+
+[[message]]
+id = 83
+name = "binding.qualified_super_requires_interface"
+text = "Qualified Super requires an Interface type."
+description = "Reported when the qualifier in a qualified Super expression does not resolve to an Interface."
+diagnostic_codes = ["BMX3324"]
+placeholders = []
+
+[[message]]
+id = 84
+name = "binding.interface_not_inherited_by_current_type"
+text = "Interface '{interfaceName}' is not inherited by the current type."
+description = "Reported when a qualified Super expression names an Interface not implemented by the enclosing type."
+diagnostic_codes = ["BMX3325"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 85
+name = "binding.bound_method_receiver_requires_reference_type"
+text = "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined."
+description = "Reported when a bound Method reference would need to capture a Struct receiver."
+diagnostic_codes = ["BMX3348"]
+placeholders = []
+
+[[message]]
+id = 86
+name = "binding.name_not_resolved_as_value"
+text = "Name '{name}' could not be resolved as a value."
+description = "Reported when a name does not resolve in the value namespace."
+diagnostic_codes = ["BMX3300"]
+placeholders = [{ name = "name", type = "string" }]
+
+[[message]]
+id = 87
+name = "binding.named_cast_requires_one_expression"
+text = "A named type cast requires exactly one expression."
+description = "Reported when a named type conversion is called with other than one argument."
+diagnostic_codes = ["BMX3313"]
+placeholders = []
+
+[[message]]
+id = 88
+name = "binding.explicit_conversion_not_available"
+text = "Type '{sourceType}' cannot be explicitly converted to '{targetType}'."
+description = "Reported when no explicit conversion exists between the source and target types."
+diagnostic_codes = ["BMX3312"]
+placeholders = [{ name = "sourceType", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 89
+name = "binding.qualified_super_requires_default_interface_method"
+text = "Qualified Super can call only a Default Interface method body."
+description = "Reported when qualified Super targets an Interface method without a Default body."
+diagnostic_codes = ["BMX3326"]
+placeholders = []
+
+[[message]]
+id = 90
+name = "binding.cannot_instantiate_abstract_type"
+text = "Cannot create an instance of abstract type '{typeName}'."
+description = "Reported when New is used to instantiate an abstract type."
+diagnostic_codes = ["BMX3316"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 91
+name = "binding.range_slicing_requires_one_dimensional_array"
+text = "Range slicing requires a one-dimensional heap Array."
+description = "Reported when a Range index is applied to a multidimensional heap Array."
+diagnostic_codes = ["BMX3310"]
+placeholders = []
+
+[[message]]
+id = 92
+name = "binding.range_slicing_rejects_static_array"
+text = "Range slicing requires a one-dimensional heap Array; StaticArray values are not supported."
+description = "Reported when a Range index is applied to a StaticArray."
+diagnostic_codes = ["BMX3310"]
+placeholders = []
+
+[[message]]
+id = 93
+name = "binding.type_has_no_applicable_indexing_operator"
+text = "Type '{typeName}' does not provide an applicable indexing operator."
+description = "Reported when a value is indexed but its type has no matching indexing operator."
+diagnostic_codes = ["BMX3304"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 94
+name = "binding.index_expression_requires_uint_conversion"
+text = "Type '{typeName}' is not valid for an index expression; conversion to UInt is required."
+description = "Reported when an index expression cannot be converted to UInt."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 95
+name = "binding.slice_bound_requires_int_conversion"
+text = "Type '{typeName}' is not valid for a slice bound; conversion to Int is required."
+description = "Reported when a lower or upper slice bound cannot be converted to Int."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 96
+name = "binding.type_does_not_support_slicing"
+text = "Type '{typeName}' does not support slicing."
+description = "Reported when slice syntax is applied to a type that is neither a String nor an Array."
+diagnostic_codes = ["BMX3304"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 97
+name = "binding.range_requires_brl_range"
+text = "Range expression syntax requires Import BRL.Range."
+description = "Reported when Range expression syntax is used without importing BRL.Range."
+diagnostic_codes = ["BMX3350"]
+placeholders = []
+
+[[message]]
+id = 98
+name = "binding.range_endpoint_requires_int_conversion"
+text = "Type '{typeName}' is not valid for a Range endpoint; conversion to Int is required."
+description = "Reported when a Range endpoint has a non-integral type."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 99
+name = "binding.bound_method_reference_ambiguous_for_target"
+text = "Bound Method reference is ambiguous for target type '{targetType}'."
+description = "Reported when more than one bound Method overload matches the contextual callable type."
+diagnostic_codes = ["BMX3349"]
+placeholders = [{ name = "targetType", type = "string" }]
+
+[[message]]
+id = 100
+name = "binding.function_literal_requires_super_strict"
+text = "Function literals require SuperStrict mode."
+description = "Reported when Function literal syntax is used outside SuperStrict source mode."
+diagnostic_codes = ["BMX3341"]
+placeholders = []
+
+[[message]]
+id = 101
+name = "binding.function_literal_parameter_count_mismatch"
+text = "Function literal has {actualCount} parameters but target type '{targetType}' requires {requiredCount}."
+description = "Reported when a Function literal and its contextual callable type have different parameter counts."
+diagnostic_codes = ["BMX3342"]
+placeholders = [{ name = "actualCount", type = "integer" }, { name = "targetType", type = "string" }, { name = "requiredCount", type = "integer" }]
+
+[[message]]
+id = 102
+name = "binding.function_literal_parameter_type_mismatch"
+text = "Function literal parameter '{parameterName}' has type '{actualType}' but target requires '{targetType}'."
+description = "Reported when an explicitly typed Function literal parameter differs from the contextual callable parameter type."
+diagnostic_codes = ["BMX3343"]
+placeholders = [{ name = "parameterName", type = "string" }, { name = "actualType", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 103
+name = "binding.function_literal_parameter_requires_var_mode"
+text = "Function literal parameter '{parameterName}' must match the target's Var passing mode."
+description = "Reported when a Function literal parameter uses Var but its contextual callable parameter does not."
+diagnostic_codes = ["BMX3344"]
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 104
+name = "binding.function_literal_parameters_reject_defaults"
+text = "Function literal parameters cannot declare default values."
+description = "Reported when a Function literal parameter declares a default argument."
+diagnostic_codes = ["BMX3347"]
+placeholders = []
+
+[[message]]
+id = 105
+name = "binding.function_literal_return_type_mismatch"
+text = "Function literal return type '{actualType}' does not match target return type '{targetType}'."
+description = "Reported when a Function literal's explicit return type differs from its contextual callable return type."
+diagnostic_codes = ["BMX3345"]
+placeholders = [{ name = "actualType", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 106
+name = "binding.thin_function_literal_cannot_capture"
+text = "Thin Function literal cannot capture '{name}'; captured lexical state requires managed Closure support."
+description = "Reported when a non-managed Function literal references lexical state that would need capturing."
+diagnostic_codes = ["BMX3346"]
+placeholders = [{ name = "name", type = "string" }]
+
+[[message]]
+id = 107
+name = "binding.managed_closure_cannot_capture"
+text = "Managed Closure cannot capture '{name}' in this phase: {reason}."
+description = "Reported when a managed Closure encounters lexical state whose capture is not yet supported."
+diagnostic_codes = ["BMX3346"]
+placeholders = [{ name = "name", type = "string" }, { name = "reason", type = "string" }]
+
+[[message]]
+id = 108
+name = "binding.member_not_resolved"
+text = "Member '{memberName}' could not be resolved."
+description = "Reported when member lookup finds no accessible value or routine with the requested name."
+diagnostic_codes = ["BMX3301"]
+placeholders = [{ name = "memberName", type = "string" }]
+
+[[message]]
+id = 109
+name = "binding.generic_routine_reference_has_no_specialization"
+text = "Generic routine reference '{referenceName}' has no specialization applicable to the supplied type arguments."
+description = "Reported when explicit type arguments produce no valid specialization of a generic routine reference."
+diagnostic_codes = ["BMX3341"]
+placeholders = [{ name = "referenceName", type = "string" }]
+
+[[message]]
+id = 110
+name = "binding.generic_routine_reference_is_ambiguous"
+text = "Generic routine reference '{referenceName}' is ambiguous between matching overloads."
+description = "Reported when explicit type arguments match more than one generic routine reference."
+diagnostic_codes = ["BMX3342"]
+placeholders = [{ name = "referenceName", type = "string" }]
+
+[[message]]
+id = 111
+name = "binding.default_constructor_inaccessible"
+text = "The default constructor for '{typeName}' is {visibility} and cannot be called from this scope."
+description = "Reported when construction would require a default constructor that is not accessible from the current scope."
+diagnostic_codes = ["BMX3317"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "visibility", type = "string" }]
+
+[[message]]
+id = 112
+name = "binding.implicit_conversion_not_available"
+text = "Type '{sourceType}' cannot be implicitly converted to '{targetType}' in {context}."
+description = "Reported when no implicit conversion exists for a value in its assignment context."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "sourceType", type = "string" }, { name = "targetType", type = "string" }, { name = "context", type = "string" }]
+
+[[message]]
+id = 113
+name = "binding.cannot_call_abstract_function"
+text = "Cannot call abstract Function {signature}."
+description = "Reported when code attempts to invoke an abstract Function body."
+diagnostic_codes = ["BMX3319"]
+placeholders = [{ name = "signature", type = "string" }]
+
+[[message]]
+id = 114
+name = "binding.routine_used_as_value"
+text = "{routineKind} '{routineName}' is being used as a value rather than called.\nAdd parentheses to call it: {invocation}()"
+description = "Reported when a routine name is used as a value where an invocation was intended."
+diagnostic_codes = ["BMX3314"]
+placeholders = [{ name = "routineKind", type = "string" }, { name = "routineName", type = "string" }, { name = "invocation", type = "string" }]
+
+[[message]]
+id = 115
+name = "binding.symbol_inaccessible_from_scope"
+text = "{category} '{qualifiedName}' is {visibility} and cannot be accessed from this scope."
+description = "Reported when a resolved member or name exists but its visibility excludes the current scope."
+diagnostic_codes = ["BMX3318"]
+placeholders = [{ name = "category", type = "string" }, { name = "qualifiedName", type = "string" }, { name = "visibility", type = "string" }]
+
+[[message]]
+id = 116
+name = "binding.generic_type_qualifier_not_resolved"
+text = "Generic type qualifier '{qualifier}' could not be resolved as a type."
+description = "Reported when a generic static-member qualifier does not resolve in the type namespace."
+diagnostic_codes = ["BMX3300"]
+placeholders = [{ name = "qualifier", type = "string" }]
+
+[[message]]
+id = 117
+name = "binding.generic_type_argument_count_mismatch"
+text = "Generic type '{typeName}' expects {expectedCount} type argument(s), but {suppliedCount} were supplied."
+description = "Reported when a generic type qualifier supplies the wrong number of type arguments."
+diagnostic_codes = ["BMX3306"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "expectedCount", type = "integer" }, { name = "suppliedCount", type = "integer" }]
+
+[[message]]
+id = 118
+name = "binding.asc_requires_string_conversion"
+text = "Type '{typeName}' cannot be converted to 'String' for Asc."
+description = "Reported when the operand of Asc cannot be converted to String."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 119
+name = "binding.chr_requires_int_conversion"
+text = "Type '{typeName}' cannot be converted to 'Int' for Chr."
+description = "Reported when the operand of Chr cannot be converted to Int."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 120
+name = "binding.stack_alloc_requires_size_t_conversion"
+text = "Type '{typeName}' cannot be converted to 'Size_T' for StackAlloc."
+description = "Reported when the size operand of StackAlloc cannot be converted to Size_T."
+diagnostic_codes = ["BMX3310"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 121
+name = "binding.var_ptr_requires_writable_storage"
+text = "VarPtr requires writable, addressable storage."
+description = "Reported when VarPtr is applied to an expression without writable addressable storage."
+diagnostic_codes = ["BMX3311"]
+placeholders = []
+
+[[message]]
+id = 122
+name = "binding.standard_range_missing_bound_resolution"
+text = "The standard Range type does not provide its required bound-resolution methods."
+description = "Reported when BRL.Range lacks the methods required to resolve slice bounds."
+diagnostic_codes = ["BMX3304"]
+placeholders = []
+
+[[message]]
+id = 123
+name = "binding.constructor_delegation_requires_new_syntax"
+text = "A constructor can only be delegated with New(...) or Super.New(...)."
+description = "Reported when a constructor is invoked as delegation through another expression form."
+diagnostic_codes = ["BMX3320"]
+placeholders = []
+
+[[message]]
+id = 124
+name = "binding.constructor_delegation_requires_new_method"
+text = "Constructor delegation is only valid inside a New method."
+description = "Reported when constructor delegation occurs outside a constructor body."
+diagnostic_codes = ["BMX3321"]
+placeholders = []
+
+[[message]]
+id = 125
+name = "binding.constructor_delegation_must_be_first"
+text = "Constructor delegation must be the first statement in a New method."
+description = "Reported when constructor delegation is preceded by another constructor statement."
+diagnostic_codes = ["BMX3322"]
+placeholders = []
+
+[[message]]
+id = 126
+name = "binding.constructor_cannot_delegate_to_itself"
+text = "A constructor cannot delegate directly to itself."
+description = "Reported when a constructor delegation resolves to the same constructor."
+diagnostic_codes = ["BMX3323"]
+placeholders = []
+
+[[message]]
+id = 127
+name = "binding.iteration_requires_supported_source"
+text = "{operationName} requires an Array, String, StaticArray, IIterable, IIterator, or suitable ObjectEnumerator method."
+description = "Reported when EachIn or Yield From is applied to a value without a supported iteration protocol."
+diagnostic_codes = ["BMX3330"]
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 128
+name = "binding.iterator_factory_return_type_unusable"
+text = "{operationName} iterator factory does not return a usable iterator type."
+description = "Reported when an iteration factory has no usable return type."
+diagnostic_codes = ["BMX3331"]
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 129
+name = "binding.iterator_missing_required_methods"
+text = "{operationName} iterator does not provide the required advance and current-value methods."
+description = "Reported when an iterator lacks its protocol's advance or current-value method."
+diagnostic_codes = ["BMX3331"]
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 130
+name = "binding.iterator_method_returns_invalid"
+text = "{operationName} iterator advance must return an integral value and its current-value method must return a value."
+description = "Reported when iterator protocol methods have invalid return types."
+diagnostic_codes = ["BMX3331"]
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 131
+name = "binding.each_in_deconstruction_requires_two_bindings"
+text = "EachIn deconstruction currently requires exactly two loop bindings for BRL.Blitz.IDeconstruct2<A, B>."
+description = "Reported when EachIn deconstruction uses other than two loop bindings."
+diagnostic_codes = ["BMX3335"]
+placeholders = []
+
+[[message]]
+id = 132
+name = "binding.each_in_element_requires_deconstruct2"
+text = "EachIn element type '{elementType}' must implement BRL.Blitz.IDeconstruct2<A, B> for two loop bindings."
+description = "Reported when a two-binding EachIn loop receives elements without the IDeconstruct2 contract."
+diagnostic_codes = ["BMX3336"]
+placeholders = [{ name = "elementType", type = "string" }]
+
+[[message]]
+id = 133
+name = "binding.deconstruct2_requires_method_contract"
+text = "BRL.Blitz.IDeconstruct2<A, B> must provide Method Deconstruct(first:A Var, second:B Var)."
+description = "Reported when the standard IDeconstruct2 Interface does not provide its required Method contract."
+diagnostic_codes = ["BMX3337"]
+placeholders = []
+
+[[message]]
+id = 134
+name = "binding.each_in_deconstruction_binding_type_mismatch"
+text = "EachIn binding '{bindingName}' has type '{bindingType}', but IDeconstruct2 component {componentIndex} has type '{componentType}'."
+description = "Reported when an explicitly typed EachIn binding differs from its IDeconstruct2 component type."
+diagnostic_codes = ["BMX3338"]
+placeholders = [{ name = "bindingName", type = "string" }, { name = "bindingType", type = "string" }, { name = "componentIndex", type = "integer" }, { name = "componentType", type = "string" }]
+
+[[message]]
+id = 135
+name = "binding.each_in_element_conversion_not_available"
+text = "EachIn element type '{elementType}' cannot be converted to {targetDescription} of type '{targetType}'."
+description = "Reported when an EachIn element cannot be converted to its loop target or declared loop variable."
+diagnostic_codes = ["BMX3339"]
+placeholders = [{ name = "elementType", type = "string" }, { name = "targetDescription", type = "string" }, { name = "targetType", type = "string" }]
+
+[[message]]
+id = 136
+name = "data.duplicate_label"
+text = "Duplicate data label '{labelName}'."
+description = "Reported when more than one DefData declaration uses the same case-insensitive label."
+diagnostic_codes = ["BMX3500"]
+placeholders = [{ name = "labelName", type = "string" }]
+
+[[message]]
+id = 137
+name = "data.item_requires_constant_numeric_or_string"
+text = "Data items must be constant numeric or string expressions."
+description = "Reported when a DefData item is not a supported compile-time numeric or string constant."
+diagnostic_codes = ["BMX3503"]
+placeholders = []
+
+[[message]]
+id = 138
+name = "data.item_missing_between_separators"
+text = "A data item is missing between separators."
+description = "Reported when a DefData list contains an empty item between separators."
+diagnostic_codes = ["BMX3503"]
+placeholders = []
+
+[[message]]
+id = 139
+name = "data.restore_requires_label_name"
+text = "RestoreData requires a data-label name."
+description = "Reported when RestoreData is given an expression instead of a data-label name."
+diagnostic_codes = ["BMX3501"]
+placeholders = []
+
+[[message]]
+id = 140
+name = "data.label_not_found"
+text = "Data label '{labelName}' could not be found."
+description = "Reported when RestoreData refers to a data label that is not present in the active source."
+diagnostic_codes = ["BMX3502"]
+placeholders = [{ name = "labelName", type = "string" }]
+
+[[message]]
+id = 141
+name = "data.read_target_requires_writable_storage"
+text = "ReadData target must be a writable variable, field, or indexed element."
+description = "Reported when a ReadData target is not writable addressable storage."
+diagnostic_codes = ["BMX3510"]
+placeholders = []
+
+[[message]]
+id = 142
+name = "data.read_target_type_unsupported"
+text = "ReadData does not support target type '{typeName}'."
+description = "Reported when ReadData cannot convert a data item to the target's semantic type."
+diagnostic_codes = ["BMX3511"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 143
+name = "data.read_target_missing_between_separators"
+text = "A ReadData target is missing between separators."
+description = "Reported when a ReadData target list contains an empty item between separators."
+diagnostic_codes = ["BMX3510"]
+placeholders = []
+
+[[message]]
+id = 144
+name = "constant.definition_cycle"
+text = "Constant definition cycle involving '{constantName}'."
+description = "Reported when evaluating a Const or Enum value reaches the same definition recursively."
+diagnostic_codes = ["BMX3600"]
+placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 145
+name = "constant.requires_initializer"
+text = "Const '{constantName}' requires a constant initializer."
+description = "Reported when a Const initializer is absent or cannot be evaluated as a compile-time constant."
+diagnostic_codes = ["BMX3601"]
+placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 146
+name = "constant.imported_enum_value_unusable"
+text = "Imported enum value '{valueName}' has no usable integral constant."
+description = "Reported when an Enum value imported from a compiler interface lacks a valid integral representation."
+diagnostic_codes = ["BMX3602"]
+placeholders = [{ name = "valueName", type = "string" }]
+
+[[message]]
+id = 147
+name = "constant.enum_value_out_of_range"
+text = "Enum value '{valueName}' is outside the range of '{underlyingType}'."
+description = "Reported when an Enum value cannot be represented by the Enum's underlying integral type."
+diagnostic_codes = ["BMX3603"]
+placeholders = [{ name = "valueName", type = "string" }, { name = "underlyingType", type = "string" }]
+
+[[message]]
+id = 148
+name = "constant.enum_value_requires_integral_expression"
+text = "Enum value '{valueName}' requires an integral constant expression."
+description = "Reported when an Enum value expression cannot be evaluated to an integer constant."
+diagnostic_codes = ["BMX3602"]
+placeholders = [{ name = "valueName", type = "string" }]
+
+[[message]]
+id = 149
+name = "constant.value_out_of_range"
+text = "Constant value is outside the range of '{targetType}'."
+description = "Reported when a constant conversion cannot be represented by its target type."
+diagnostic_codes = ["BMX3603"]
+placeholders = [{ name = "targetType", type = "string" }]
+
+[[message]]
+id = 150
+name = "compile_time.enum_constant_value_invalid"
+text = "The value {value} is not valid for Enum '{enumType}'."
+description = "Reported when an integral constant cast does not name an ordinary Enum value or a valid combination of Flags values."
+diagnostic_codes = ["BMX3630"]
+placeholders = [{ name = "value", type = "integer" }, { name = "enumType", type = "string" }]
+
+[[message]]
+id = 151
+name = "compile_time.static_array_element_type_unsupported"
+text = "StaticArray element type '{elementType}' must be numeric, an Enum, a Pointer, a managed reference, or a Struct."
+description = "Reported when a StaticArray element type has no supported inline storage representation."
+diagnostic_codes = ["BMX3621"]
+placeholders = [{ name = "elementType", type = "string" }]
+
+[[message]]
+id = 152
+name = "compile_time.static_array_length_requires_integral_constant"
+text = "StaticArray length must be an integral constant."
+description = "Reported when a StaticArray bound cannot be evaluated as an integer constant."
+diagnostic_codes = ["BMX3620"]
+placeholders = []
+
+[[message]]
+id = 153
+name = "compile_time.static_array_length_out_of_range"
+text = "StaticArray length must be between 1 and 2147483647."
+description = "Reported when a constant StaticArray bound is outside the supported positive 32-bit range."
+diagnostic_codes = ["BMX3620"]
+placeholders = []
+
+[[message]]
+id = 154
+name = "compile_time.parameter_default_requires_constant"
+text = "Default value for parameter '{parameterName}' must be constant."
+description = "Reported when a routine parameter default cannot be evaluated as a compile-time constant."
+diagnostic_codes = ["BMX3610"]
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 155
+name = "compile_time.parameter_constant_default_incompatible"
+text = "Constant default for parameter '{parameterName}' is incompatible with '{parameterType}' in routine '{routineName}' at parameter {parameterIndex} (declared type '{declaredType}')."
+description = "Reported when a constant parameter default cannot be converted to the parameter's resolved semantic type."
+diagnostic_codes = ["BMX3611"]
+placeholders = [{ name = "parameterName", type = "string" }, { name = "parameterType", type = "string" }, { name = "routineName", type = "string" }, { name = "parameterIndex", type = "integer" }, { name = "declaredType", type = "string" }]
+
+[[message]]
+id = 156
+name = "compile_time.semantic_parameter_missing"
+text = "Internal semantic parameter mismatch in routine '{routineName}': syntax parameter {parameterIndex} ('{syntaxName}') has no semantic parameter."
+description = "Internal diagnostic reported when a syntax parameter has no corresponding semantic parameter during compile-time analysis."
+diagnostic_codes = ["BMX3690"]
+placeholders = [{ name = "routineName", type = "string" }, { name = "parameterIndex", type = "integer" }, { name = "syntaxName", type = "string" }]
+
+[[message]]
+id = 157
+name = "compile_time.semantic_parameter_identity_mismatch"
+text = "Internal semantic parameter mismatch in routine '{routineName}' at parameter {parameterIndex}: syntax '{syntaxName}' (declared type '{declaredType}'), semantic symbol '{semanticName}' (type '{semanticType}')."
+description = "Internal diagnostic reported when syntax and semantic parameter identities disagree during compile-time analysis."
+diagnostic_codes = ["BMX3690"]
+placeholders = [{ name = "routineName", type = "string" }, { name = "parameterIndex", type = "integer" }, { name = "syntaxName", type = "string" }, { name = "declaredType", type = "string" }, { name = "semanticName", type = "string" }, { name = "semanticType", type = "string" }]
+
+[[message]]
+id = 158
+name = "control_flow.implicit_default_return_reachable"
+text = "Routine '{routineName}' can reach its implicit default return."
+description = "Optional warning reported when a value-returning routine can reach its end and use BlitzMax's implicit default return value."
+diagnostic_codes = ["BMX3400"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 159
+name = "control_flow.loop_control_requires_loop"
+text = "{operationName} can be used only inside a loop."
+description = "Reported when an unlabeled Exit or Continue statement is used without an enclosing loop."
+diagnostic_codes = ["BMX3402", "BMX3403"]
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 160
+name = "control_flow.loop_control_requires_label_name"
+text = "{operationName} requires a loop-label name."
+description = "Reported when a labeled Exit or Continue statement is followed by an expression that is not a label name."
+diagnostic_codes = ["BMX3404"]
+placeholders = [{ name = "operationName", type = "string" }]
+
+[[message]]
+id = 161
+name = "control_flow.loop_label_not_found"
+text = "Loop label '{labelName}' could not be found for {operationName}."
+description = "Reported when an Exit or Continue statement names no enclosing labeled loop."
+diagnostic_codes = ["BMX3404"]
+placeholders = [{ name = "labelName", type = "string" }, { name = "operationName", type = "string" }]
+
+[[message]]
+id = 162
+name = "control_flow.unreachable_statement"
+text = "Unreachable statement."
+description = "Warning reported for the first runtime statement in an unreachable region."
+diagnostic_codes = ["BMX3401"]
+placeholders = []
+
+[[message]]
+id = 163
+name = "inheritance.public_contract_exposes_hidden_type"
+text = "Public {publicKind} '{publicName}' exposes {visibility} {hiddenKind} '{hiddenName}' through its {role}."
+description = "Reported when a public module declaration exposes a non-public type through part of its published contract."
+diagnostic_codes = ["BMX3217"]
+placeholders = [{ name = "publicKind", type = "string" }, { name = "publicName", type = "string" }, { name = "visibility", type = "string" }, { name = "hiddenKind", type = "string" }, { name = "hiddenName", type = "string" }, { name = "role", type = "string" }]
+
+[[message]]
+id = 164
+name = "inheritance.override_method_not_found"
+text = "Method '{methodName}' is marked Override but does not override a method from a base type."
+description = "Reported when an Override method has no matching inherited method."
+diagnostic_codes = ["BMX3211"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 165
+name = "inheritance.override_reduces_visibility"
+text = "Method '{methodName}' cannot reduce inherited visibility from '{inheritedVisibility}' to '{declaredVisibility}'."
+description = "Reported when an overriding method is less accessible than the inherited method it replaces."
+diagnostic_codes = ["BMX3212"]
+placeholders = [{ name = "methodName", type = "string" }, { name = "inheritedVisibility", type = "string" }, { name = "declaredVisibility", type = "string" }]
+
+[[message]]
+id = 166
+name = "inheritance.default_requires_interface_instance_method"
+text = "Default is valid only on an instance Method declared by an Interface."
+description = "Reported when the Default modifier is used outside an Interface instance Method declaration."
+diagnostic_codes = ["BMX3213"]
+placeholders = []
+
+[[message]]
+id = 167
+name = "inheritance.interface_default_cannot_be_abstract"
+text = "Interface method '{methodName}' cannot be both Default and Abstract."
+description = "Reported when an Interface method combines the mutually exclusive Default and Abstract modifiers."
+diagnostic_codes = ["BMX3214"]
+placeholders = [{ name = "methodName", type = "string" }]
+
+[[message]]
+id = 168
+name = "inheritance.generic_constraint_parameter_undeclared"
+text = "Generic constraint refers to undeclared type parameter '{parameterName}'."
+description = "Reported when a Where clause names no type parameter declared by the generic declaration."
+diagnostic_codes = ["BMX3207"]
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 169
+name = "inheritance.generic_constraint_duplicate_clause"
+text = "Type parameter '{parameterName}' has more than one constraint clause."
+description = "Reported when a generic type parameter is the subject of multiple Where clauses."
+diagnostic_codes = ["BMX3208"]
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 170
+name = "inheritance.generic_constraint_bound_invalid"
+text = "Generic constraint bound '{boundType}' is not a declared reference type or type parameter."
+description = "Reported when a generic constraint bound is not Object, a declared reference type, or another type parameter."
+diagnostic_codes = ["BMX3210"]
+placeholders = [{ name = "boundType", type = "string" }]
+
+[[message]]
+id = 171
+name = "inheritance.struct_cannot_inherit"
+text = "Struct '{structName}' cannot extend or implement another type."
+description = "Reported when a Struct declaration contains an Extends or Implements clause."
+diagnostic_codes = ["BMX3202"]
+placeholders = [{ name = "structName", type = "string" }]
+
+[[message]]
+id = 172
+name = "inheritance.type_allows_single_base"
+text = "Type '{typeName}' can extend only one base type."
+description = "Reported when a Type declaration lists more than one base type."
+diagnostic_codes = ["BMX3200"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 173
+name = "inheritance.interface_base_requires_interface"
+text = "Interface '{interfaceName}' can extend only interfaces."
+description = "Reported when an Interface attempts to extend a non-Interface declaration."
+diagnostic_codes = ["BMX3201"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 174
+name = "inheritance.external_managed_interface_mismatch"
+text = "External and managed interfaces cannot extend one another."
+description = "Reported when inheritance crosses between native External and managed Interface declarations."
+diagnostic_codes = ["BMX3218"]
+placeholders = []
+
+[[message]]
+id = 175
+name = "inheritance.type_base_requires_reference_type"
+text = "Type '{typeName}' can extend only another reference type."
+description = "Reported when a Type attempts to extend a declaration that is not a reference Type."
+diagnostic_codes = ["BMX3200"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 176
+name = "inheritance.final_type_cannot_be_extended"
+text = "Type '{typeName}' is Final and cannot be extended."
+description = "Reported when a Type declaration attempts to extend a Final Type."
+diagnostic_codes = ["BMX3205"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 177
+name = "inheritance.interface_cannot_use_implements"
+text = "Interface '{interfaceName}' cannot use Implements; extend interfaces instead."
+description = "Reported when an Interface uses Implements rather than Extends for its parent interfaces."
+diagnostic_codes = ["BMX3203"]
+placeholders = [{ name = "interfaceName", type = "string" }]
+
+[[message]]
+id = 178
+name = "inheritance.implements_target_not_interface"
+text = "'{targetName}' is not an interface."
+description = "Reported when an Implements clause names a declaration that is not an Interface."
+diagnostic_codes = ["BMX3203"]
+placeholders = [{ name = "targetName", type = "string" }]
+
+[[message]]
+id = 179
+name = "inheritance.interface_selector_return_types_incompatible"
+text = "Type '{typeName}' inherits Interface method selector '{methodName}' with incompatible return types '{firstReturnType}' and '{secondReturnType}'."
+description = "Reported when inherited Interface methods share a selector but have return types with no compatible subtype relationship."
+diagnostic_codes = ["BMX3216"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "methodName", type = "string" }, { name = "firstReturnType", type = "string" }, { name = "secondReturnType", type = "string" }]
+
+[[message]]
+id = 180
+name = "inheritance.unrelated_interface_defaults"
+text = "Type '{typeName}' inherits unrelated default Interface methods {origins}; declare an overriding Method to resolve the conflict."
+description = "Reported when unrelated inherited Interface defaults compete for the same selector; origins is a formatted list of qualified methods."
+diagnostic_codes = ["BMX3215"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "origins", type = "string" }]
+
+[[message]]
+id = 181
+name = "inheritance.interface_listed_more_than_once"
+text = "Interface '{interfaceType}' is listed more than once."
+description = "Reported when the same constructed Interface appears repeatedly in an inheritance list."
+diagnostic_codes = ["BMX3206"]
+placeholders = [{ name = "interfaceType", type = "string" }]
+
+[[message]]
+id = 182
+name = "inheritance.cycle"
+text = "Inheritance cycle involving '{typeName}' and '{relatedTypeName}'."
+description = "Reported when following base-type edges reaches a Type already being validated."
+diagnostic_codes = ["BMX3204"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "relatedTypeName", type = "string" }]
+
+[[message]]
+id = 183
+name = "inheritance.type_argument_constraint_unsatisfied"
+text = "Type argument '{argumentType}' does not satisfy constraint '{requiredType}' for '{parameterName}'."
+description = "Reported when a constructed generic type argument is not a subtype of one of its required bounds."
+diagnostic_codes = ["BMX3209"]
+placeholders = [{ name = "argumentType", type = "string" }, { name = "requiredType", type = "string" }, { name = "parameterName", type = "string" }]
+
+[[message]]
+id = 184
+name = "type_resolution.symbol_requires_explicit_type"
+text = "{symbolKind} '{symbolName}' requires an explicit type in SuperStrict code."
+description = "Reported when a declaration omits its type in SuperStrict source; symbolKind identifies the declaration category."
+diagnostic_codes = ["BMX3103"]
+placeholders = [{ name = "symbolKind", type = "string" }, { name = "symbolName", type = "string" }]
+
+[[message]]
+id = 185
+name = "type_resolution.calling_convention_unrecognized"
+text = "Unrecognized calling convention '{callingConvention}'."
+description = "Reported when a callable type specifies a calling convention name the compiler does not recognize."
+diagnostic_codes = ["BMX3119"]
+placeholders = [{ name = "callingConvention", type = "string" }]
+
+[[message]]
+id = 186
+name = "type_resolution.callable_parameter_requires_explicit_type"
+text = "Callable parameter '{parameterName}' requires an explicit type in SuperStrict code."
+description = "Reported when a parameter within a thin callable type omits its explicit type in SuperStrict source."
+diagnostic_codes = ["BMX3103"]
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 187
+name = "type_resolution.routine_constraint_parameter_undeclared"
+text = "Generic constraint refers to undeclared routine type parameter '{parameterName}'."
+description = "Reported when a routine Where clause names no type parameter declared by that routine."
+diagnostic_codes = ["BMX3110"]
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 188
+name = "type_resolution.closure_requires_superstrict"
+text = "Closure types require SuperStrict mode."
+description = "Reported when the compiler-intrinsic managed Closure type is used outside SuperStrict source."
+diagnostic_codes = ["BMX3120"]
+placeholders = []
+
+[[message]]
+id = 189
+name = "type_resolution.closure_requires_explicit_signature"
+text = "The compiler-intrinsic Closure type requires an explicit signature, for example Closure<Int(value:Int)> or Closure<()>."
+description = "Reported when Closure is used without its required return and parameter signature."
+diagnostic_codes = ["BMX3121"]
+placeholders = []
+
+[[message]]
+id = 190
+name = "type_resolution.closure_parameter_requires_name_and_type"
+text = "Closure parameters require an explicit name and type."
+description = "Reported when a managed Closure signature contains a parameter without both a name and an explicit type."
+diagnostic_codes = ["BMX3122"]
+placeholders = []
+
+[[message]]
+id = 191
+name = "type_resolution.closure_signature_rejects_default"
+text = "Closure signatures cannot declare default parameter values."
+description = "Reported when a managed Closure type signature assigns a default value to a parameter."
+diagnostic_codes = ["BMX3123"]
+placeholders = []
+
+[[message]]
+id = 192
+name = "type_resolution.closure_signature_rejects_native_calling_convention"
+text = "Closure signatures cannot specify a native calling convention."
+description = "Reported when a managed Closure signature requests a non-C native calling convention."
+diagnostic_codes = ["BMX3124"]
+placeholders = []
+
+[[message]]
+id = 193
+name = "type_resolution.ambiguous_type_name"
+text = "Type name '{typeName}' is ambiguous. Candidates:{candidates}"
+description = "Reported when type lookup finds multiple declarations; candidates is a newline-prefixed formatted list including origins when known."
+diagnostic_codes = ["BMX3101"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "candidates", type = "string" }]
+
+[[message]]
+id = 194
+name = "type_resolution.type_parameter_rejects_type_arguments"
+text = "Type parameter '{parameterName}' cannot have type arguments."
+description = "Reported when generic arguments are applied to a name that already denotes a type parameter."
+diagnostic_codes = ["BMX3102"]
+placeholders = [{ name = "parameterName", type = "string" }]
+
+[[message]]
+id = 195
+name = "type_resolution.type_not_resolved"
+text = "Type '{typeName}' could not be resolved in the available scopes."
+description = "Reported when an enabled unresolved-type check cannot find a named type in lexical or imported scopes."
+diagnostic_codes = ["BMX3100"]
+placeholders = [{ name = "typeName", type = "string" }]
+
+[[message]]
+id = 196
+name = "snapshot.dependencies_unresolved"
+text = "The compiler could not resolve source and module dependencies."
+description = "Reported when snapshot construction has no resolver with which to load source and module dependencies."
+diagnostic_codes = ["BMX4000"]
+placeholders = []
+
+[[message]]
+id = 197
+name = "snapshot.implicit_runtime_interface_unavailable"
+text = "Compiler interface for implicit runtime module 'brl.blitz' is unavailable."
+description = "Reported when the required implicit BRL.Blitz compiler interface cannot be resolved."
+diagnostic_codes = ["BMX4003"]
+placeholders = []
+
+[[message]]
+id = 198
+name = "snapshot.implicit_application_interface_unavailable"
+text = "Compiler interface for implicit application module '{moduleName}' is unavailable."
+description = "Reported when a configured implicit application module has no resolvable compiler interface."
+diagnostic_codes = ["BMX4003"]
+placeholders = [{ name = "moduleName", type = "string" }]
+
+[[message]]
+id = 199
+name = "snapshot.core_interface_missing"
+text = "The core class interface is missing for target '{targetPlatform}'."
+description = "Reported when the target platform's core class compiler interface cannot be resolved."
+diagnostic_codes = ["BMX4001"]
+placeholders = [{ name = "targetPlatform", type = "string" }]
+
+[[message]]
+id = 200
+name = "snapshot.include_cycle"
+text = "Include cycle reaches '{includedPath}'."
+description = "Reported when recursively loading Include directives reaches a source document that is already being loaded."
+diagnostic_codes = ["BMX4004"]
+placeholders = [{ name = "includedPath", type = "string" }]
+
+[[message]]
+id = 201
+name = "snapshot.included_source_not_found"
+text = "Included source '{sourcePath}' could not be found."
+description = "Reported when an Include directive's source path cannot be resolved."
+diagnostic_codes = ["BMX4002"]
+placeholders = [{ name = "sourcePath", type = "string" }]
+
+[[message]]
+id = 202
+name = "snapshot.compiler_interface_unavailable"
+text = "Compiler interface for '{targetName}' is unavailable."
+description = "Reported when a source or transitive Interface import cannot be resolved."
+diagnostic_codes = ["BMX4003"]
+placeholders = [{ name = "targetName", type = "string" }]
+
+[[message]]
+id = 203
+name = "snapshot.generic_template_format_unsupported"
+text = "Generic template reference for '{recordName}' uses unsupported format {formatVersion}."
+description = "Reported when a compiler-interface generic template reference uses a format outside the supported read range."
+diagnostic_codes = ["BMX4010"]
+placeholders = [{ name = "recordName", type = "string" }, { name = "formatVersion", type = "integer" }]
+
+[[message]]
+id = 204
+name = "snapshot.generic_template_artifact_unavailable"
+text = "Generic template artifact '{artifactReference}' for '{recordName}' is unavailable from the compiler interface."
+description = "Reported when a referenced generic template artifact cannot be resolved beside its compiler interface."
+diagnostic_codes = ["BMX4011"]
+placeholders = [{ name = "artifactReference", type = "string" }, { name = "recordName", type = "string" }]
+
+[[message]]
+id = 205
+name = "snapshot.generic_template_artifact_invalid"
+text = "Generic template artifact '{artifactPath}' for '{recordName}' is invalid.{detail}"
+description = "Reported when a generic template artifact cannot be decoded or validated; detail is empty or begins with a space and contains the first codec diagnostic."
+diagnostic_codes = ["BMX4012"]
+placeholders = [{ name = "artifactPath", type = "string" }, { name = "recordName", type = "string" }, { name = "detail", type = "string" }]
+
+[[message]]
+id = 206
+name = "snapshot.generic_template_identity_mismatch"
+text = "Generic template artifact identity '{artifactIdentity}' does not match interface identity '{interfaceIdentity}'."
+description = "Reported when a decoded generic template artifact has a different stable identity from its compiler-interface reference."
+diagnostic_codes = ["BMX4013"]
+placeholders = [{ name = "artifactIdentity", type = "string" }, { name = "interfaceIdentity", type = "string" }]
+
+[[message]]
+id = 207
+name = "snapshot.generic_template_language_revision_mismatch"
+text = "Generic template artifact language revision does not match its interface reference."
+description = "Reported when a generic template artifact was written for a different language-linkage revision from its compiler-interface reference."
+diagnostic_codes = ["BMX4014"]
+placeholders = []
+
+[[message]]
+id = 208
+name = "lexer.numeric_exponent_requires_digit"
+text = "A numeric exponent requires at least one digit."
+description = "Reported when an exponent marker is not followed by a decimal digit."
+diagnostic_codes = ["BMX1003"]
+placeholders = []
+
+[[message]]
+id = 209
+name = "lexer.unterminated_multiline_string"
+text = "Unterminated multiline string literal."
+description = "Reported when a multiline string reaches the end of the source without its closing delimiter."
+diagnostic_codes = ["BMX1001"]
+placeholders = []
+
+[[message]]
+id = 210
+name = "lexer.unterminated_string"
+text = "Unterminated string literal."
+description = "Reported when a string reaches the end of its line or source without a closing quote."
+diagnostic_codes = ["BMX1000"]
+placeholders = []
+
+[[message]]
+id = 211
+name = "lexer.bad_string_escape"
+text = "Bad escape sequence in string literal."
+description = "Reported when a string literal contains an unsupported escape sequence."
+diagnostic_codes = ["BMX1004"]
+placeholders = []
+
+[[message]]
+id = 212
+name = "lexer.unterminated_rem_comment"
+text = "Unterminated Rem comment."
+description = "Reported when a Rem block comment has no matching End Rem terminator."
+diagnostic_codes = ["BMX1002"]
+placeholders = []
+
+[[message]]
+id = 213
+name = "parser.expected_conditional_region_end"
+text = "Expected '?' to end conditional region."
+description = "Reported when a conditional-compilation region has no closing question-mark directive."
+diagnostic_codes = ["BMX2430"]
+placeholders = []
+
+[[message]]
+id = 214
+name = "parser.inferred_local_syntax_required"
+text = "The ':=' syntax is only valid in an inferred Local declaration; use '=' for assignment."
+description = "Reported when inferred-local assignment syntax is used outside an inferred Local declaration."
+diagnostic_codes = ["BMX2053"]
+placeholders = []
+
+[[message]]
+id = 215
+name = "parser.expected_routine_name"
+text = "Expected a routine name."
+description = "Reported when a Function or Method declaration has no name."
+diagnostic_codes = ["BMX2000"]
+placeholders = []
+
+[[message]]
+id = 216
+name = "parser.interface_method_rejects_body"
+text = "Interface method declarations cannot contain a body."
+description = "Reported when a non-default Interface method declaration contains statements."
+diagnostic_codes = ["BMX2332"]
+placeholders = []
+
+[[message]]
+id = 217
+name = "parser.expected_type_name"
+text = "Expected a type name."
+description = "Reported when a Type, Struct, Interface, or related declaration has no name."
+diagnostic_codes = ["BMX2003"]
+placeholders = []
+
+[[message]]
+id = 218
+name = "parser.expected_block_end_before_eof"
+text = "Expected 'End {blockKind}' before end of file."
+description = "Reported when the source ends before a named block is terminated."
+diagnostic_codes = ["BMX2001"]
+placeholders = [{ name = "blockKind", type = "string" }]
+
+[[message]]
+id = 219
+name = "parser.mismatched_block_end"
+text = "Expected 'End {expectedKind}' but found '{terminator}'."
+description = "Reported when a block is closed by a terminator belonging to another block kind."
+diagnostic_codes = ["BMX2002"]
+placeholders = [{ name = "expectedKind", type = "string" }, { name = "terminator", type = "string" }]
+
+[[message]]
+id = 220
+name = "parser.expected_import_target"
+text = "Expected a module name or file path after '{keyword}'."
+description = "Reported when an Import-like directive has no module name or quoted path."
+diagnostic_codes = ["BMX2440"]
+placeholders = [{ name = "keyword", type = "string" }]
+
+[[message]]
+id = 221
+name = "parser.unexpected_token_after_import_path"
+text = "Unexpected token '{token}' after import file path."
+description = "Reported when an import file path is followed by an extra token."
+diagnostic_codes = ["BMX2441"]
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 222
+name = "parser.expected_include_path"
+text = "Expected a quoted source path after 'Include'."
+description = "Reported when Include is not followed by a quoted source path."
+diagnostic_codes = ["BMX2442"]
+placeholders = []
+
+[[message]]
+id = 223
+name = "parser.unexpected_token_after_include_path"
+text = "Unexpected token '{token}' after include path."
+description = "Reported when an Include path is followed by an extra token."
+diagnostic_codes = ["BMX2443"]
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 224
+name = "parser.expected_expression_after_yield_from"
+text = "Expected an expression after 'Yield From'."
+description = "Reported when Yield From has no source expression."
+diagnostic_codes = ["BMX2328"]
+placeholders = []
+
+[[message]]
+id = 225
+name = "parser.expected_expression_after_yield"
+text = "Expected an expression after 'Yield'."
+description = "Reported when Yield has no value expression."
+diagnostic_codes = ["BMX2324"]
+placeholders = []
+
+[[message]]
+id = 226
+name = "parser.expected_expression_after_throw"
+text = "Expected an expression after 'Throw'."
+description = "Reported when Throw has no exception expression."
+diagnostic_codes = ["BMX2320"]
+placeholders = []
+
+[[message]]
+id = 227
+name = "parser.expected_integer_variable_after_release"
+text = "Expected an integer variable after 'Release'."
+description = "Reported when Release has no integer variable operand."
+diagnostic_codes = ["BMX2323"]
+placeholders = []
+
+[[message]]
+id = 228
+name = "parser.defdata_requires_value"
+text = "DefData requires at least one value."
+description = "Reported when a DefData statement contains no data values."
+diagnostic_codes = ["BMX2330"]
+placeholders = []
+
+[[message]]
+id = 229
+name = "parser.restoredata_requires_label"
+text = "RestoreData requires a data label."
+description = "Reported when RestoreData has no label operand."
+diagnostic_codes = ["BMX2331"]
+placeholders = []
+
+[[message]]
+id = 230
+name = "parser.expected_condition_after_assert"
+text = "Expected a condition after 'Assert'."
+description = "Reported when Assert has no condition expression."
+diagnostic_codes = ["BMX2321"]
+placeholders = []
+
+[[message]]
+id = 231
+name = "parser.expected_assert_message"
+text = "Expected a message after '{separator}'."
+description = "Reported when an Assert message separator is not followed by an expression."
+diagnostic_codes = ["BMX2322"]
+placeholders = [{ name = "separator", type = "string" }]
+
+[[message]]
+id = 232
+name = "parser.inference_requires_local"
+text = "Type inference with ':=' is only valid for Local declarations."
+description = "Reported when type inference syntax is used for a non-local declaration."
+diagnostic_codes = ["BMX2050"]
+placeholders = []
+
+[[message]]
+id = 233
+name = "parser.inferred_local_requires_single_declarator"
+text = "An inferred Local declaration must contain exactly one declarator."
+description = "Reported when one inferred Local declaration attempts to declare multiple variables."
+diagnostic_codes = ["BMX2051"]
+placeholders = []
+
+[[message]]
+id = 234
+name = "parser.expected_variable_name"
+text = "Expected a variable name."
+description = "Reported when a variable declaration has no identifier."
+diagnostic_codes = ["BMX2004"]
+placeholders = []
+
+[[message]]
+id = 235
+name = "parser.inferred_local_requires_initializer"
+text = "An inferred Local declaration requires an initializer after ':='."
+description = "Reported when an inferred Local declaration omits its initializer."
+diagnostic_codes = ["BMX2052"]
+placeholders = []
+
+[[message]]
+id = 236
+name = "parser.static_array_requires_bracketed_length"
+text = "StaticArray declaration requires a fixed length in brackets."
+description = "Reported when a StaticArray declaration has no bracketed fixed length."
+diagnostic_codes = ["BMX2015"]
+placeholders = []
+
+[[message]]
+id = 237
+name = "parser.static_array_requires_length_expression"
+text = "StaticArray declaration requires a fixed length expression."
+description = "Reported when a StaticArray declaration contains empty length brackets."
+diagnostic_codes = ["BMX2015"]
+placeholders = []
+
+[[message]]
+id = 238
+name = "parser.expected_case_value_after_comma"
+text = "Expected a Case value after ','."
+description = "Reported when a Case value list ends with a comma or has an empty item."
+diagnostic_codes = ["BMX2405"]
+placeholders = []
+
+[[message]]
+id = 239
+name = "parser.expected_case_value"
+text = "Expected a Case value."
+description = "Reported when a Case clause has no value."
+diagnostic_codes = ["BMX2405"]
+placeholders = []
+
+[[message]]
+id = 240
+name = "parser.expected_parenthesis_in_function_literal"
+text = "Expected '(' in Function literal."
+description = "Reported when a Function literal has no opening parameter parenthesis."
+diagnostic_codes = ["BMX2450"]
+placeholders = []
+
+[[message]]
+id = 241
+name = "parser.expected_close_parenthesis_in_function_literal"
+text = "Expected ')' in Function literal."
+description = "Reported when a Function literal parameter list is unterminated."
+diagnostic_codes = ["BMX2451"]
+placeholders = []
+
+[[message]]
+id = 242
+name = "parser.unexpected_token_after_function_literal_parameters"
+text = "Unexpected token '{token}' after Function literal parameters."
+description = "Reported when an unsupported token follows a Function literal parameter list."
+diagnostic_codes = ["BMX2452"]
+placeholders = [{ name = "token", type = "string" }]
+
+[[message]]
+id = 243
+name = "signature.expected_generic_parameter_end"
+text = "Expected '>' after routine generic parameters."
+description = "Reported when a routine generic-parameter list has no closing angle bracket."
+diagnostic_codes = ["BMX2203"]
+placeholders = []
+
+[[message]]
+id = 244
+name = "signature.expected_routine_parenthesis"
+text = "Expected '(' in routine declaration."
+description = "Reported when a routine declaration has no opening parameter parenthesis."
+diagnostic_codes = ["BMX2200"]
+placeholders = []
+
+[[message]]
+id = 245
+name = "signature.expected_routine_close_parenthesis"
+text = "Expected ')' in routine declaration."
+description = "Reported when a routine parameter list has no closing parenthesis."
+diagnostic_codes = ["BMX2201"]
+placeholders = []
+
+[[message]]
+id = 246
+name = "signature.expected_parameter_name"
+text = "Expected a parameter name."
+description = "Reported when a routine parameter has no identifier."
+diagnostic_codes = ["BMX2202"]
+placeholders = []
+
+[[message]]
+id = 247
+name = "signature.static_array_parameter_requires_bracketed_length"
+text = "StaticArray parameter requires a fixed length in brackets."
+description = "Reported when a StaticArray parameter has no bracketed fixed length."
+diagnostic_codes = ["BMX2210"]
+placeholders = []
+
+[[message]]
+id = 248
+name = "signature.static_array_parameter_requires_length_expression"
+text = "StaticArray parameter requires a fixed length expression."
+description = "Reported when a StaticArray parameter contains empty length brackets."
+diagnostic_codes = ["BMX2210"]
+placeholders = []
+
+[[message]]
+id = 249
+name = "signature.expected_callable_close_parenthesis"
+text = "Expected ')' in callable type."
+description = "Reported when a callable type's parameter list has no closing parenthesis."
+diagnostic_codes = ["BMX2204"]
+placeholders = []
+
+[[message]]
+id = 250
+name = "declaration.duplicate"
+text = "Duplicate {symbolKind} declaration '{symbolName}'."
+description = "Reported when a scope contains another non-routine declaration in the same namespace."
+diagnostic_codes = ["BMX3000"]
+placeholders = [{ name = "symbolKind", type = "string" }, { name = "symbolName", type = "string" }]
+
+[[message]]
+id = 251
+name = "declaration.nomangle_requires_function"
+text = "Only functions can specify NoMangle."
+description = "Reported when a Method declaration specifies NoMangle metadata."
+diagnostic_codes = ["BMX3014"]
+placeholders = []
+
+[[message]]
+id = 252
+name = "declaration.nomangle_overload_conflict"
+text = "NoMangle routine '{routineName}' conflicts with another overload."
+description = "Reported when overloads cannot be assigned distinct external names because NoMangle is in effect."
+diagnostic_codes = ["BMX3015"]
+placeholders = [{ name = "routineName", type = "string" }]
+
+[[message]]
+id = 253
+name = "metadata.expected_key"
+text = "Expected a metadata key."
+description = "Reported when a declaration metadata entry does not begin with an identifier or keyword."
+diagnostic_codes = ["BMX3010"]
+placeholders = []
+
+[[message]]
+id = 254
+name = "metadata.expected_literal_value"
+text = "Expected a literal metadata value after '='."
+description = "Reported when a declaration metadata assignment has no supported literal value."
+diagnostic_codes = ["BMX3011"]
+placeholders = []
+
+[[message]]
+id = 255
+name = "metadata.duplicate_key"
+text = "Duplicate metadata key '{key}'."
+description = "Reported when a declaration metadata block assigns the same case-insensitive key more than once."
+diagnostic_codes = ["BMX3012"]
+placeholders = [{ name = "key", type = "string" }]
+
+[[message]]
+id = 256
+name = "metadata.expected_close_brace"
+text = "Expected '}}' after declaration metadata."
+description = "Reported when a declaration metadata block has no closing brace."
+diagnostic_codes = ["BMX3013"]
+placeholders = []
+
+[[message]]
+id = 257
+name = "interface.unterminated_record"
+text = "Unterminated {recordKind} record '{recordName}'."
+description = "Reported when a compiler-interface type or enum record has no trailer."
+diagnostic_codes = ["BMXI100"]
+placeholders = [{ name = "recordKind", type = "string" }, { name = "recordName", type = "string" }]
+
+[[message]]
+id = 258
+name = "interface.generic_template_requires_declaration"
+text = "Generic template reference does not follow a Type, Function, or Method record."
+description = "Reported when compiler-interface generic-template metadata is not attached to a supported declaration record."
+diagnostic_codes = ["BMXI110"]
+placeholders = []
+
+[[message]]
+id = 259
+name = "interface.generic_template_reference_invalid"
+text = "Generic template reference requires format, identity, revision, artifact and language revision."
+description = "Reported when compiler-interface generic-template metadata does not contain its five required fields."
+diagnostic_codes = ["BMXI111"]
+placeholders = []
+
+[[message]]
+id = 260
+name = "binding.dynamic_new_instance_deprecated"
+text = "Use of New <Object instance> is deprecated, and support will be removed in a future update."
+description = "Reported when legacy dynamic New syntax constructs through an Object instance."
+diagnostic_codes = ["BMX3410"]
+placeholders = []
+
+[[message]]
+id = 261
+name = "binding.call_ambiguous"
+text = "Call '{callName}' is ambiguous between applicable overloads.{candidates}"
+description = "Reported when overload resolution finds equally applicable routines; candidates is empty or a newline-prefixed formatted list."
+diagnostic_codes = ["BMX3303"]
+placeholders = [{ name = "callName", type = "string" }, { name = "candidates", type = "string" }]
+
+[[message]]
+id = 262
+name = "binding.no_applicable_overload"
+text = "No applicable overload was found for call '{callName}'.~nArgument types: ({argumentTypes}){candidates}"
+description = "Reported when overload resolution finds no applicable routine; argumentTypes is a formatted list and candidates is empty or a newline-prefixed formatted list."
+diagnostic_codes = ["BMX3302"]
+placeholders = [{ name = "callName", type = "string" }, { name = "argumentTypes", type = "string" }, { name = "candidates", type = "string" }]
+
+[[message]]
+id = 263
+name = "binding.variable_assigned_to_itself"
+text = "Variable '{variableName}' is assigned to itself.{suggestion}"
+description = "Reported when an assignment has the same storage on both sides; suggestion is empty or recommends a same-named field."
+diagnostic_codes = ["BMX3411"]
+placeholders = [{ name = "variableName", type = "string" }, { name = "suggestion", type = "string" }]

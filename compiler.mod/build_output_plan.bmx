@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.Base64
 Import BRL.FileSystem
 Import BlitzMax.Language
+Import "bcc_messages.generated.bmx"
 Import "compiler_diagnostic.bmx"
 Import "generic_application_plan.bmx"
 Import "ir_model.bmx"
@@ -41,13 +42,13 @@ Type TCompilerBuildOutputPlan
 	Method AddFile(file:TCompilerBuildOutputFile, diagnostics:TCompilerDiagnostic[] Var)
 		If Not file Then Return
 		If Not TCompilerBuildOutputPlanner.IsSafeRelativePath(file.relativePath) Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3060", "Generated output path must be a bounded relative path: '" + file.relativePath + "'")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3060", TBccMessages.BuildOutputPathMustBeBoundedRelative(file.relativePath))]
 			Return
 		End If
 		For Local existing:TCompilerBuildOutputFile = EachIn files
 			If existing.relativePath.ToLower() <> file.relativePath.ToLower() Then Continue
 			If existing.contentDigest <> file.contentDigest Or existing.role <> file.role Then
-				diagnostics :+ [TCompilerDiagnostic.Create("BMXC3061", "Generated output path collision for '" + file.relativePath + "'")]
+				diagnostics :+ [TCompilerDiagnostic.Create("BMXC3061", TBccMessages.BuildOutputPathCollision(file.relativePath))]
 			End If
 			Return
 		Next
@@ -92,7 +93,7 @@ Type TCompilerBuildOutputPlanner
 		Local plan:TCompilerBuildOutputPlan = New TCompilerBuildOutputPlan
 		diagnostics = New TCompilerDiagnostic[0]
 		If Not analysis Or Not analysis.Succeeded() Or Not ir Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3062", "Successful compiler IR is required before build-output planning")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3062", TBccMessages.BuildOutputRequiresSuccessfulIr())]
 			Return plan
 		End If
 		' Application-owned ordinary Struct layouts can cross into a separate
@@ -181,7 +182,7 @@ Type TCompilerBuildOutputPlanner
 			Next
 			For Local input:TCompilerGenericLinkInput = EachIn genericPlan.linkInputs
 				If Not IsSafeRelativePath(input.sourcePath) Or Not IsSafeRelativePath(input.objectPath) Then
-					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3063", "Generic link input contains an unsafe generated path")]
+					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3063", TBccMessages.BuildOutputGenericLinkPathUnsafe())]
 					Continue
 				End If
 				Local plannedInput:TCompilerGenericLinkInput = New TCompilerGenericLinkInput
@@ -316,7 +317,7 @@ Type TCompilerBuildOutputPlanner
 		diagnostics = New TCompilerDiagnostic[0]
 		Local lines:String[] = content.Replace("~r~n", "~n").Replace("~r", "~n").Split("~n")
 		If Not lines.length Or lines[0] <> "BMXBUILD " + COMPILER_BUILD_OUTPUT_VERSION Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3072", "Unsupported or missing compiler build manifest version")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3072", TBccMessages.BuildManifestVersionUnsupportedOrMissing())]
 			Return result
 		End If
 		For Local index:Int = 1 Until lines.length
@@ -325,7 +326,7 @@ Type TCompilerBuildOutputPlanner
 			Local parts:String[] = line.Split(" ")
 			If parts.length = 6 And parts[0] = "file" Then
 				If Not ValidRole(parts[1]) Or Not IsHexDigest(parts[2]) Or (parts[3] <> "-" And Not IsHexDigest(parts[3])) Then
-					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3073", "Malformed file record in compiler build manifest")]
+					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3073", TBccMessages.BuildManifestFileRecordMalformed())]
 					Return result
 				End If
 				Local record:TCompilerBuildManifestFile = New TCompilerBuildManifestFile
@@ -336,19 +337,19 @@ Type TCompilerBuildOutputPlanner
 				record.relativePath = Dec(parts[5], diagnostics)
 				If diagnostics.length Then Return result
 				If Not IsSafeRelativePath(record.relativePath) Then
-					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3074", "Unsafe file path in compiler build manifest")]
+					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3074", TBccMessages.BuildManifestFilePathUnsafe())]
 					Return result
 				End If
 				For Local existing:TCompilerBuildManifestFile = EachIn result.files
 					If existing.relativePath.ToLower() = record.relativePath.ToLower() Then
-						diagnostics :+ [TCompilerDiagnostic.Create("BMXC3075", "Duplicate file path in compiler build manifest")]
+						diagnostics :+ [TCompilerDiagnostic.Create("BMXC3075", TBccMessages.BuildManifestFilePathDuplicate())]
 						Return result
 					End If
 				Next
 				result.files :+ [record]
 			Else If parts.length = 5 And parts[0] = "link" Then
 				If Not IsHexDigest(parts[1]) Or Not IsHexDigest(parts[2]) Then
-					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3076", "Malformed link identity in compiler build manifest")]
+					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3076", TBccMessages.BuildManifestLinkIdentityMalformed())]
 					Return result
 				End If
 				Local input:TCompilerGenericLinkInput = New TCompilerGenericLinkInput
@@ -358,18 +359,18 @@ Type TCompilerBuildOutputPlanner
 				input.objectPath = Dec(parts[4], diagnostics)
 				If diagnostics.length Then Return result
 				If Not IsSafeRelativePath(input.sourcePath) Or Not IsSafeRelativePath(input.objectPath) Then
-					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3077", "Unsafe link path in compiler build manifest")]
+					diagnostics :+ [TCompilerDiagnostic.Create("BMXC3077", TBccMessages.BuildManifestLinkPathUnsafe())]
 					Return result
 				End If
 				For Local existing:TCompilerGenericLinkInput = EachIn result.linkInputs
 					If existing.specializationIdentity = input.specializationIdentity Or existing.objectPath.ToLower() = input.objectPath.ToLower() Then
-						diagnostics :+ [TCompilerDiagnostic.Create("BMXC3078", "Duplicate specialization link input in compiler build manifest")]
+						diagnostics :+ [TCompilerDiagnostic.Create("BMXC3078", TBccMessages.BuildManifestLinkInputDuplicate())]
 						Return result
 					End If
 				Next
 				result.linkInputs :+ [input]
 			Else
-				diagnostics :+ [TCompilerDiagnostic.Create("BMXC3079", "Unknown or malformed compiler build manifest record")]
+				diagnostics :+ [TCompilerDiagnostic.Create("BMXC3079", TBccMessages.BuildManifestRecordUnknownOrMalformed())]
 				Return result
 			End If
 		Next
@@ -382,7 +383,7 @@ Type TCompilerBuildOutputPlanner
 			Local bytes:Byte[] = TBase64.Decode(value)
 			Return String.FromUTF8Bytes(bytes, bytes.length)
 		Catch exception:Object
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3080", "Malformed encoded field in compiler build manifest")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3080", TBccMessages.BuildManifestEncodedFieldMalformed())]
 			Return ""
 		End Try
 	End Function
@@ -418,23 +419,23 @@ Type TCompilerBuildOutputMaterializer
 		Local result:TCompilerBuildMaterializationResult = New TCompilerBuildMaterializationResult
 		diagnostics = New TCompilerDiagnostic[0]
 		If Not plan Or Not plan.manifest.length Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3064", "A valid build-output plan is required before materialization")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3064", TBccMessages.BuildMaterializationPlanRequired())]
 			Return result
 		End If
 		If Not rootPath.length Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3065", "Build-output root must not be empty")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3065", TBccMessages.BuildMaterializationRootRequired())]
 			Return result
 		End If
 		If Not TCompilerBuildOutputPlanner.IsSafeRelativePath(manifestRelativePath) Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3066", "Build manifest path must be a bounded relative path")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3066", TBccMessages.BuildMaterializationManifestPathMustBeBoundedRelative())]
 			Return result
 		End If
 		If FileType(rootPath) = FILETYPE_NONE And Not CreateDir(rootPath, True) Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3067", "Unable to create build-output root '" + rootPath + "'")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3067", TBccMessages.BuildMaterializationRootCreationFailed(rootPath))]
 			Return result
 		End If
 		If FileType(rootPath) <> FILETYPE_DIR Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3068", "Build-output root is not a directory: '" + rootPath + "'")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3068", TBccMessages.BuildMaterializationRootNotDirectory(rootPath))]
 			Return result
 		End If
 
@@ -449,7 +450,7 @@ Type TCompilerBuildOutputMaterializer
 
 	Function WriteIfChanged(rootPath:String, relativePath:String, content:String, result:TCompilerBuildMaterializationResult, diagnostics:TCompilerDiagnostic[] Var, referenceRootPath:String = "")
 		If Not TCompilerBuildOutputPlanner.IsSafeRelativePath(relativePath) Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3069", "Refusing to materialize unsafe output path '" + relativePath + "'")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3069", TBccMessages.BuildMaterializationOutputPathUnsafe(relativePath))]
 			Return
 		End If
 		Local fullPath:String = rootPath.Replace("\", "/") + "/" + relativePath
@@ -466,18 +467,18 @@ Type TCompilerBuildOutputMaterializer
 		End If
 		Local directory:String = ExtractDir(fullPath)
 		If FileType(directory) = FILETYPE_NONE And Not CreateDir(directory, True) Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3070", "Unable to create generated-output directory '" + directory + "'")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3070", TBccMessages.BuildMaterializationDirectoryCreationFailed(directory))]
 			Return
 		End If
 		Local temporaryPath:String = bmx_compiler_temporary_output_path(fullPath)
 		DeleteFile temporaryPath
 		If Not SaveText(content, temporaryPath) Then
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3071", "Unable to write generated output '" + fullPath + "'")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3071", TBccMessages.BuildMaterializationOutputWriteFailed(fullPath))]
 			Return
 		End If
 		If Not bmx_compiler_atomic_replace(temporaryPath, fullPath) Then
 			DeleteFile temporaryPath
-			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3072", "Unable to publish generated output '" + fullPath + "'")]
+			diagnostics :+ [TCompilerDiagnostic.Create("BMXC3072", TBccMessages.BuildMaterializationOutputPublishFailed(fullPath))]
 			Return
 		End If
 		result.writtenPaths :+ [relativePath]

@@ -5,6 +5,7 @@ SuperStrict
 
 Import BRL.LinkedList
 
+Import "language_messages.generated.bmx"
 Import "conditional_parser.bmx"
 Import "expression_parser.bmx"
 Import "lexer.bmx"
@@ -113,7 +114,7 @@ Type TBlitzMaxSyntaxParser
 		node.sourceMode = SOURCE_MODE_STRICT
 		If TextEquals(node.modeToken.text, "superstrict") Then node.sourceMode = SOURCE_MODE_SUPERSTRICT
 		node.span = SpanOfTokens(values)
-		If values.length > 1 Then AddDiagnostic("BMX2325", "Unexpected token '" + values[1].text + "' after '" + node.modeToken.text + "'.", values[1].span)
+		If values.length > 1 Then AddDiagnostic("BMX2325", TLanguageMessages.ParserUnexpectedTokenAfterSourceMode(values[1].text, node.modeToken.text), values[1].span)
 		sourceMode = node.sourceMode
 		sourceModeDeclaration = node
 		Return node
@@ -200,10 +201,10 @@ Type TBlitzMaxSyntaxParser
 		Local visibilityText:String = node.visibilityToken.text
 		If node.internalToken Then visibilityText :+ " " + node.internalToken.text
 		If typeDepth = 0 And node.visibility <> VISIBILITY_PUBLIC And node.visibility <> VISIBILITY_PRIVATE Then
-			AddDiagnostic("BMX2326", "'" + visibilityText + "' visibility is only valid inside a type.", node.span)
+			AddDiagnostic("BMX2326", TLanguageMessages.ParserVisibilityOnlyInsideType(visibilityText), node.span)
 		End If
 		If interfaceDepth > 0 And node.visibility <> VISIBILITY_PUBLIC Then
-			AddDiagnostic("BMX2327", "'" + visibilityText + "' visibility cannot be used with interfaces.", node.span)
+			AddDiagnostic("BMX2327", TLanguageMessages.ParserVisibilityNotValidForInterface(visibilityText), node.span)
 		End If
 		Return node
 	End Method
@@ -218,7 +219,7 @@ Type TBlitzMaxSyntaxParser
 			node.nameToken = Current()
 			Advance()
 		Else
-			AddDiagnostic("BMX2010", "Expected an enum name.", Current().span)
+			AddDiagnostic("BMX2010", TLanguageMessages.ParserExpectedEnumName(), Current().span)
 		End If
 
 		Local typeList:TList = New TList
@@ -230,7 +231,7 @@ Type TBlitzMaxSyntaxParser
 				typeList.AddLast(Current())
 				Advance()
 			Else If marker = ":" Then
-				AddDiagnostic("BMX2011", "Expected an enum underlying type after ':'.", Current().span)
+				AddDiagnostic("BMX2011", TLanguageMessages.ParserExpectedEnumUnderlyingType(), Current().span)
 			End If
 		End If
 		node.typeTokens = TokensFromList(typeList)
@@ -251,7 +252,7 @@ Type TBlitzMaxSyntaxParser
 		If IsEnumTerminator() Then
 			node.terminator = ParseBlockTerminator("enum")
 		Else
-			AddDiagnostic("BMX2012", "Expected 'End Enum' before end of file.", Current().span)
+			AddDiagnostic("BMX2012", TLanguageMessages.ParserExpectedEndEnum(), Current().span)
 		End If
 		' During live editing an unfinished Rem immediately after the header can
 		' hide every value and the terminator from the lexer. Keep the recovered
@@ -276,7 +277,7 @@ Type TBlitzMaxSyntaxParser
 			node.nameToken = Current()
 			Advance()
 		Else
-			AddDiagnostic("BMX2013", "Expected an enum value name.", Current().span)
+			AddDiagnostic("BMX2013", TLanguageMessages.ParserExpectedEnumValueName(), Current().span)
 			Advance()
 			node.span = TSourceSpan.Create(start, Current().span.start - start)
 			Return node
@@ -293,7 +294,7 @@ Type TBlitzMaxSyntaxParser
 					Advance()
 				Next
 			Else
-				AddDiagnostic("BMX2014", "Expected a constant expression after '='.", node.assignmentToken.span)
+				AddDiagnostic("BMX2014", TLanguageMessages.ParserExpectedConstantExpressionAfterEquals(), node.assignmentToken.span)
 			End If
 		End If
 		If Current().text = "," Then
@@ -346,9 +347,9 @@ Type TBlitzMaxSyntaxParser
 		If values.length > 1 And IsNameToken(values[1]) Then
 			label.nameToken = values[1]
 		Else
-			AddDiagnostic("BMX2323", "Expected a loop-label name after '#'.", label.hashToken.span)
+			AddDiagnostic("BMX2323", TLanguageMessages.ParserExpectedLoopLabelName(), label.hashToken.span)
 		End If
-		If values.length > 2 Then AddDiagnostic("BMX2324", "Unexpected token '" + values[2].text + "' after loop label.", values[2].span)
+		If values.length > 2 Then AddDiagnostic("BMX2324", TLanguageMessages.ParserUnexpectedTokenAfterLoopLabel(values[2].text), values[2].span)
 		SkipSeparators()
 
 		Local lower:String = Current().text.ToLower()
@@ -562,7 +563,7 @@ Type TBlitzMaxSyntaxParser
 			RegisterConditionalIfHeader(node)
 			conditionalOpenIfBoundary = True
 		Else
-			AddDiagnostic("BMX2300", "Expected 'End If' or 'EndIf'.", Current().span)
+			AddDiagnostic("BMX2300", TLanguageMessages.ParserExpectedEndIf(), Current().span)
 		End If
 		Local endOffset:Int = node.thenBlock.span.EndOffset()
 		If node.elseIfClauses.length Then endOffset = node.elseIfClauses[node.elseIfClauses.length - 1].span.EndOffset()
@@ -602,7 +603,7 @@ Type TBlitzMaxSyntaxParser
 		node.condition = TBlitzMaxExpressionParser.Parse(TokensFromList(CollectUntilSeparator()), diagnostics)
 		SkipSeparators()
 		node.body = ParseBoundaryBlock(BOUNDARY_WHILE)
-		If IsWhileTerminator() Then node.terminator = ParseControlTerminator("while") Else AddDiagnostic("BMX2301", "Expected 'Wend' or 'End While'.", Current().span)
+		If IsWhileTerminator() Then node.terminator = ParseControlTerminator("while") Else AddDiagnostic("BMX2301", TLanguageMessages.ParserExpectedEndWhile(), Current().span)
 		Local endOffset:Int = node.body.span.EndOffset()
 		If node.terminator Then endOffset = node.terminator.span.EndOffset()
 		node.span = TSourceSpan.Create(start, endOffset - start)
@@ -622,7 +623,7 @@ Type TBlitzMaxSyntaxParser
 			Advance()
 			If TextEquals(node.terminationToken.text, "until") Then node.condition = TBlitzMaxExpressionParser.Parse(TokensFromList(CollectUntilSeparator()), diagnostics)
 		Else
-			AddDiagnostic("BMX2302", "Expected 'Until' or 'Forever'.", Current().span)
+			AddDiagnostic("BMX2302", TLanguageMessages.ParserExpectedRepeatTerminator(), Current().span)
 		End If
 		Local endOffset:Int = node.body.span.EndOffset()
 		If node.condition Then endOffset = node.condition.span.EndOffset() Else If node.terminationToken Then endOffset = node.terminationToken.span.EndOffset()
@@ -646,7 +647,7 @@ Type TBlitzMaxSyntaxParser
 			RegisterConditionalForHeader(node)
 			conditionalOpenForBoundary = True
 		Else
-			AddDiagnostic("BMX2303", "Expected 'Next'.", Current().span)
+			AddDiagnostic("BMX2303", TLanguageMessages.ParserExpectedNext(), Current().span)
 		End If
 		Local endOffset:Int = node.body.span.EndOffset()
 		If node.terminator Then endOffset = node.terminator.span.EndOffset()
@@ -659,7 +660,7 @@ Type TBlitzMaxSyntaxParser
 		node.kind = SYNTAX_FOR_HEADER
 		If values.length = 0 Then
 			node.span = TSourceSpan.Create(Current().span.start, 0)
-			AddDiagnostic("BMX2310", "Expected a For-loop header.", node.span)
+			AddDiagnostic("BMX2310", TLanguageMessages.ParserExpectedForLoopHeader(), node.span)
 			Return node
 		End If
 		' A declared loop variable can end in a constructed generic type. With
@@ -671,7 +672,7 @@ Type TBlitzMaxSyntaxParser
 
 		Local assignmentIndex:Int = FindTopLevelToken(values, "=", 0)
 		If assignmentIndex < 0 Then
-			AddDiagnostic("BMX2311", "Expected '=' in For-loop header.", node.span)
+			AddDiagnostic("BMX2311", TLanguageMessages.ParserExpectedEqualsInForLoopHeader(), node.span)
 			Return node
 		End If
 		node.assignmentToken = values[assignmentIndex]
@@ -682,15 +683,15 @@ Type TBlitzMaxSyntaxParser
 				node.declarations = ParseForDeclarators(values[1..assignmentIndex])
 				If node.declarations.length Then node.declaration = node.declarations[0]
 			Else
-				AddDiagnostic("BMX2312", "Expected a local loop variable before '='.", node.assignmentToken.span)
+				AddDiagnostic("BMX2312", TLanguageMessages.ParserExpectedLocalLoopVariableBeforeEquals(), node.assignmentToken.span)
 			End If
 		Else
-			If assignmentIndex > 0 Then node.target = TBlitzMaxExpressionParser.Parse(values[..assignmentIndex], diagnostics) Else AddDiagnostic("BMX2313", "Expected a loop target before '='.", node.assignmentToken.span)
+			If assignmentIndex > 0 Then node.target = TBlitzMaxExpressionParser.Parse(values[..assignmentIndex], diagnostics) Else AddDiagnostic("BMX2313", TLanguageMessages.ParserExpectedLoopTargetBeforeEquals(), node.assignmentToken.span)
 		End If
 
 		Local clauseIndex:Int = FindTopLevelForClause(values, assignmentIndex + 1)
 		If clauseIndex < 0 Then
-			AddDiagnostic("BMX2314", "Expected 'EachIn', 'To', or 'Until' in For-loop header.", node.span)
+			AddDiagnostic("BMX2314", TLanguageMessages.ParserExpectedForLoopClause(), node.span)
 			If assignmentIndex + 1 < values.length Then node.initialValue = TBlitzMaxExpressionParser.Parse(values[assignmentIndex + 1..], diagnostics)
 			Return node
 		End If
@@ -698,21 +699,21 @@ Type TBlitzMaxSyntaxParser
 		Local clause:String = values[clauseIndex].text.ToLower()
 		If clause = "eachin" Then
 			node.eachInToken = values[clauseIndex]
-			If clauseIndex <> assignmentIndex + 1 Then AddDiagnostic("BMX2315", "'EachIn' must immediately follow '='.", node.eachInToken.span)
+			If clauseIndex <> assignmentIndex + 1 Then AddDiagnostic("BMX2315", TLanguageMessages.ParserEachInMustFollowEquals(), node.eachInToken.span)
 			If clauseIndex + 1 < values.length Then
 				node.collection = TBlitzMaxExpressionParser.Parse(values[clauseIndex + 1..], diagnostics)
 			Else
-				AddDiagnostic("BMX2316", "Expected a collection after 'EachIn'.", node.eachInToken.span)
+				AddDiagnostic("BMX2316", TLanguageMessages.ParserExpectedCollectionAfterEachIn(), node.eachInToken.span)
 			End If
 			Return node
 		End If
-		If node.declarations.length > 1 Then AddDiagnostic("BMX2319", "Multiple For-loop bindings are valid only with 'EachIn'.", node.declarations[1].span)
+		If node.declarations.length > 1 Then AddDiagnostic("BMX2319", TLanguageMessages.ParserMultipleForBindingsRequireEachIn(), node.declarations[1].span)
 
 		node.rangeToken = values[clauseIndex]
 		If clauseIndex > assignmentIndex + 1 Then
 			node.initialValue = TBlitzMaxExpressionParser.Parse(values[assignmentIndex + 1..clauseIndex], diagnostics)
 		Else
-			AddDiagnostic("BMX2317", "Expected an initial value before '" + values[clauseIndex].text + "'.", node.rangeToken.span)
+			AddDiagnostic("BMX2317", TLanguageMessages.ParserExpectedInitialValueBeforeRangeClause(values[clauseIndex].text), node.rangeToken.span)
 		End If
 		Local stepIndex:Int = FindTopLevelKeyword(values, "step", clauseIndex + 1)
 		Local limitEnd:Int = values.length
@@ -720,11 +721,11 @@ Type TBlitzMaxSyntaxParser
 		If limitEnd > clauseIndex + 1 Then
 			node.limit = TBlitzMaxExpressionParser.Parse(values[clauseIndex + 1..limitEnd], diagnostics)
 		Else
-			AddDiagnostic("BMX2318", "Expected a range limit after '" + values[clauseIndex].text + "'.", node.rangeToken.span)
+			AddDiagnostic("BMX2318", TLanguageMessages.ParserExpectedRangeLimitAfterClause(values[clauseIndex].text), node.rangeToken.span)
 		End If
 		If stepIndex >= 0 Then
 			node.stepToken = values[stepIndex]
-			If stepIndex + 1 < values.length Then node.stepExpression = TBlitzMaxExpressionParser.Parse(values[stepIndex + 1..], diagnostics) Else AddDiagnostic("BMX2319", "Expected an expression after 'Step'.", node.stepToken.span)
+			If stepIndex + 1 < values.length Then node.stepExpression = TBlitzMaxExpressionParser.Parse(values[stepIndex + 1..], diagnostics) Else AddDiagnostic("BMX2319", TLanguageMessages.ParserExpectedExpressionAfterStep(), node.stepToken.span)
 		End If
 		Return node
 	End Method
@@ -756,7 +757,7 @@ Type TBlitzMaxSyntaxParser
 				Else
 					Local span:TSourceSpan
 					If index < values.length Then span = values[index].span Else If values.length Then span = values[values.length - 1].span
-					AddDiagnostic("BMX2312", "Expected a local loop variable between commas.", span)
+					AddDiagnostic("BMX2312", TLanguageMessages.ParserExpectedLocalLoopVariableBetweenCommas(), span)
 				End If
 				start = index + 1
 			End If
@@ -779,20 +780,20 @@ Type TBlitzMaxSyntaxParser
 		While Current().kind <> TOKEN_EOF And Not IsSelectTerminator()
 			Local lower:String = Current().text.ToLower()
 			If lower = "case" Then
-				If unconditionalDefault Then AddDiagnostic("BMX2401", "A Case clause cannot follow Default.", Current().span)
+				If unconditionalDefault Then AddDiagnostic("BMX2401", TLanguageMessages.ParserCaseCannotFollowDefault(), Current().span)
 				clauses.AddLast(ParseCaseClause())
 			Else If ConditionalDirectiveStartsSelectClause() Then
 				ParseConditionalSelectClauses(node, clauses, defaults)
 			Else If lower = "default" Then
 				Local clause:TDefaultClauseSyntax = ParseDefaultClause()
 				If unconditionalDefault Then
-					AddDiagnostic("BMX2400", "A Select statement can contain only one Default clause.", clause.defaultToken.span)
+					AddDiagnostic("BMX2400", TLanguageMessages.ParserSelectAllowsSingleDefault(), clause.defaultToken.span)
 				Else
 					unconditionalDefault = clause
 				End If
 				defaults.AddLast(clause)
 			Else
-				AddDiagnostic("BMX2402", "Expected 'Case', 'Default', or 'End Select'.", Current().span)
+				AddDiagnostic("BMX2402", TLanguageMessages.ParserExpectedSelectClauseOrEnd(), Current().span)
 				ParseMember()
 				SkipSeparators()
 			End If
@@ -800,7 +801,7 @@ Type TBlitzMaxSyntaxParser
 		node.cases = CasesToArray(clauses)
 		node.defaultClauses = DefaultsToArray(defaults)
 		If node.defaultClauses.length Then node.defaultClause = node.defaultClauses[0]
-		If IsSelectTerminator() Then node.terminator = ParseControlTerminator("select") Else AddDiagnostic("BMX2403", "Expected 'End Select' or 'EndSelect'.", Current().span)
+		If IsSelectTerminator() Then node.terminator = ParseControlTerminator("select") Else AddDiagnostic("BMX2403", TLanguageMessages.ParserExpectedEndSelect(), Current().span)
 		Local endOffset:Int = node.selectToken.span.EndOffset()
 		If node.expression Then endOffset = node.expression.span.EndOffset()
 		If node.cases.length Then endOffset = node.cases[node.cases.length - 1].span.EndOffset()
@@ -833,7 +834,7 @@ Type TBlitzMaxSyntaxParser
 					defaults.AddLast(defaultClause)
 					conditionalDefaults.AddLast(defaultClause)
 				Else
-					AddDiagnostic("BMX2402", "Expected 'Case', 'Default', or a conditional directive inside Select.", Current().span)
+					AddDiagnostic("BMX2402", TLanguageMessages.ParserExpectedConditionalSelectClause(), Current().span)
 					ParseMember()
 					SkipSeparators()
 				End If
@@ -858,7 +859,7 @@ Type TBlitzMaxSyntaxParser
 				Next
 			End If
 		Else
-			AddDiagnostic("BMX2430", "Expected '?' to end conditional Select clauses.", Current().span)
+			AddDiagnostic("BMX2430", TLanguageMessages.ParserExpectedConditionalSelectEnd(), Current().span)
 		End If
 	End Method
 
@@ -907,7 +908,7 @@ Type TBlitzMaxSyntaxParser
 		Local start:Int = Current().span.start
 		Advance()
 		Local unexpected:TSyntaxToken[] = TokensFromList(CollectUntilSeparator())
-		If unexpected.length Then AddDiagnostic("BMX2410", "Try does not accept a header expression.", SpanOfTokens(unexpected))
+		If unexpected.length Then AddDiagnostic("BMX2410", TLanguageMessages.ParserTryRejectsHeaderExpression(), SpanOfTokens(unexpected))
 		SkipSeparators()
 		node.body = ParseBoundaryBlock(BOUNDARY_TRY)
 
@@ -918,17 +919,17 @@ Type TBlitzMaxSyntaxParser
 		node.catches = CatchesToArray(catches)
 		If TextEquals(Current().text, "finally") Then node.finallyClause = ParseFinallyClause()
 		If TextEquals(Current().text, "catch") Then
-			AddDiagnostic("BMX2411", "A Catch clause cannot follow Finally.", Current().span)
+			AddDiagnostic("BMX2411", TLanguageMessages.ParserCatchCannotFollowFinally(), Current().span)
 			While TextEquals(Current().text, "catch")
 				ParseCatchClause()
 			Wend
 		End If
 		While TextEquals(Current().text, "finally")
-			AddDiagnostic("BMX2416", "A Try statement can contain only one Finally clause.", Current().span)
+			AddDiagnostic("BMX2416", TLanguageMessages.ParserTryAllowsSingleFinally(), Current().span)
 			ParseFinallyClause()
 		Wend
-		If node.catches.length = 0 And Not node.finallyClause Then AddDiagnostic("BMX2412", "A Try statement requires Catch or Finally.", node.tryToken.span)
-		If IsTryTerminator() Then node.terminator = ParseControlTerminator("try") Else AddDiagnostic("BMX2413", "Expected 'End Try' or 'EndTry'.", Current().span)
+		If node.catches.length = 0 And Not node.finallyClause Then AddDiagnostic("BMX2412", TLanguageMessages.ParserTryRequiresCatchOrFinally(), node.tryToken.span)
+		If IsTryTerminator() Then node.terminator = ParseControlTerminator("try") Else AddDiagnostic("BMX2413", TLanguageMessages.ParserExpectedEndTry(), Current().span)
 		Local endOffset:Int = node.body.span.EndOffset()
 		If node.catches.length Then endOffset = node.catches[node.catches.length - 1].span.EndOffset()
 		If node.finallyClause Then endOffset = node.finallyClause.span.EndOffset()
@@ -949,10 +950,10 @@ Type TBlitzMaxSyntaxParser
 			If node.headerTokens.length > 1 Then
 				node.declaredType = TBlitzMaxTypeParser.Parse(node.headerTokens[1..])
 			Else
-				AddDiagnostic("BMX2417", "Expected a caught value type.", node.nameToken.span)
+				AddDiagnostic("BMX2417", TLanguageMessages.ParserExpectedCaughtValueType(), node.nameToken.span)
 			End If
 		Else
-			AddDiagnostic("BMX2414", "Expected a caught value name.", node.catchToken.span)
+			AddDiagnostic("BMX2414", TLanguageMessages.ParserExpectedCaughtValueName(), node.catchToken.span)
 		End If
 		SkipSeparators()
 		node.body = ParseBoundaryBlock(BOUNDARY_TRY)
@@ -970,7 +971,7 @@ Type TBlitzMaxSyntaxParser
 		Local start:Int = Current().span.start
 		Advance()
 		Local unexpected:TSyntaxToken[] = TokensFromList(CollectUntilSeparator())
-		If unexpected.length Then AddDiagnostic("BMX2415", "Finally does not accept a header expression.", SpanOfTokens(unexpected))
+		If unexpected.length Then AddDiagnostic("BMX2415", TLanguageMessages.ParserFinallyRejectsHeaderExpression(), SpanOfTokens(unexpected))
 		SkipSeparators()
 		node.body = ParseBoundaryBlock(BOUNDARY_TRY)
 		Local endOffset:Int = node.finallyToken.span.EndOffset()
@@ -991,7 +992,7 @@ Type TBlitzMaxSyntaxParser
 			If TextEquals(inlineResource[0].text, "local") Then
 				resources.AddLast(ParseVariableDeclaration(inlineResource, SpanOfTokens(inlineResource)))
 			Else
-				AddDiagnostic("BMX2420", "Expected a Local resource declaration after Using.", SpanOfTokens(inlineResource))
+				AddDiagnostic("BMX2420", TLanguageMessages.ParserExpectedLocalResourceAfterUsing(), SpanOfTokens(inlineResource))
 			End If
 		End If
 		SkipSeparators()
@@ -1002,21 +1003,21 @@ Type TBlitzMaxSyntaxParser
 			If declaration And TextEquals(declaration.declarationToken.text, "local") Then
 				resources.AddLast(declaration)
 			Else
-				AddDiagnostic("BMX2421", "Using requires Local resource declarations before Do.", resource.span)
+				AddDiagnostic("BMX2421", TLanguageMessages.ParserUsingRequiresLocalResourcesBeforeDo(), resource.span)
 			End If
 			SkipSeparators()
 		Wend
 		node.resources = ResourceDeclarationsToArray(resources)
-		If node.resources.length = 0 Then AddDiagnostic("BMX2422", "Using requires at least one Local resource declaration.", node.usingToken.span)
+		If node.resources.length = 0 Then AddDiagnostic("BMX2422", TLanguageMessages.ParserUsingRequiresLocalResource(), node.usingToken.span)
 		If TextEquals(Current().text, "do") Then
 			node.doToken = Current()
 			Advance()
 		Else
-			AddDiagnostic("BMX2423", "Expected 'Do' after Using resources.", Current().span)
+			AddDiagnostic("BMX2423", TLanguageMessages.ParserExpectedDoAfterUsingResources(), Current().span)
 		End If
 		SkipSeparators()
 		node.body = ParseBoundaryBlock(BOUNDARY_USING)
-		If IsUsingTerminator() Then node.terminator = ParseControlTerminator("using") Else AddDiagnostic("BMX2424", "Expected 'End Using' or 'EndUsing'.", Current().span)
+		If IsUsingTerminator() Then node.terminator = ParseControlTerminator("using") Else AddDiagnostic("BMX2424", TLanguageMessages.ParserExpectedEndUsing(), Current().span)
 		Local endOffset:Int = node.usingToken.span.EndOffset()
 		If node.resources.length Then endOffset = node.resources[node.resources.length - 1].span.EndOffset()
 		If node.body.statements.length Then endOffset = node.body.span.EndOffset()
@@ -1079,7 +1080,7 @@ Type TBlitzMaxSyntaxParser
 			sharedConditionalEndToken = Null
 			sharedConditionalEndDepth = 0
 		Else If Current().kind <> TOKEN_EOF And Not node.sharedControlTerminator
-			AddDiagnostic("BMX2430", "Expected '?' to end conditional region.", Current().span)
+			AddDiagnostic("BMX2430", TLanguageMessages.ParserExpectedConditionalRegionEnd(), Current().span)
 		End If
 		conditionalDepth :- 1
 		Local routineHeaders:TList = conditionalRoutineHeaders
@@ -1120,7 +1121,7 @@ Type TBlitzMaxSyntaxParser
 			SkipSeparators()
 			Local sharedForBody:TBlockSyntax = ParseBoundaryBlock(BOUNDARY_FOR)
 			Local sharedForTerminator:TBlockTerminatorSyntax
-			If TextEquals(Current().text, "next") Then sharedForTerminator = ParseControlTerminator("for") Else AddDiagnostic("BMX2303", "Expected 'Next'.", Current().span)
+			If TextEquals(Current().text, "next") Then sharedForTerminator = ParseControlTerminator("for") Else AddDiagnostic("BMX2303", TLanguageMessages.ParserExpectedNext(), Current().span)
 			For Local header:TForStatementSyntax = EachIn forGroup.headers
 				header.body = BlockWithTrailingStatements(header.body, sharedForBody)
 				header.terminator = sharedForTerminator
@@ -1149,7 +1150,7 @@ Type TBlitzMaxSyntaxParser
 				sharedElseClause.span = TSourceSpan.Create(elseStart, sharedElseClause.block.span.EndOffset() - elseStart)
 			End If
 			Local sharedIfTerminator:TBlockTerminatorSyntax
-			If IsIfTerminator() Then sharedIfTerminator = ParseControlTerminator("if") Else AddDiagnostic("BMX2300", "Expected 'End If' or 'EndIf'.", Current().span)
+			If IsIfTerminator() Then sharedIfTerminator = ParseControlTerminator("if") Else AddDiagnostic("BMX2300", TLanguageMessages.ParserExpectedEndIf(), Current().span)
 			Local sharedElseIfArray:TElseIfClauseSyntax[] = ElseIfToArray(sharedElseIfClauses)
 			For Local headerIf:TIfStatementSyntax = EachIn ifGroup.headers
 				headerIf.thenBlock = BlockWithTrailingStatements(headerIf.thenBlock, sharedIfBody)
@@ -1491,7 +1492,7 @@ Type TBlitzMaxSyntaxParser
 			assignment.kind = SYNTAX_ASSIGNMENT_STATEMENT
 			assignment.span = span
 			assignment.operatorToken = values[assignmentIndex]
-			If assignment.operatorToken.text = ":=" Then AddDiagnostic("BMX2053", "The ':=' syntax is only valid in an inferred Local declaration; use '=' for assignment.", assignment.operatorToken.span)
+			If assignment.operatorToken.text = ":=" Then AddDiagnostic("BMX2053", TLanguageMessages.ParserInferredLocalSyntaxRequired(), assignment.operatorToken.span)
 			assignment.left = TBlitzMaxExpressionParser.Parse(values[..assignmentIndex], diagnostics)
 			assignment.right = TBlitzMaxExpressionParser.Parse(values[assignmentIndex + 1..], diagnostics)
 			Return assignment
@@ -1732,13 +1733,13 @@ Type TBlitzMaxSyntaxParser
 		If node.signature And node.signature.nameToken And IsNameToken(node.signature.nameToken) Then
 			node.nameToken = node.signature.nameToken
 		Else
-			AddDiagnostic("BMX2000", "Expected a routine name.", Current().span)
+			AddDiagnostic("BMX2000", TLanguageMessages.ParserExpectedRoutineName(), Current().span)
 		End If
 		SkipSeparators()
 		Local interfaceDefault:Int = interfaceDepth > 0 And node.signature And ContainsToken(node.signature.modifierTokens, "default")
 		If node.signature And (ContainsToken(node.signature.modifierTokens, "abstract") Or StartsWithToken(node.signature.modifierTokens, "=") Or (interfaceDepth > 0 And Not interfaceDefault) Or externDepth > 0) Then
 			If interfaceDepth > 0 And TextEquals(Current().text, "return") Then
-				AddDiagnostic("BMX2332", "Interface method declarations cannot contain a body.", Current().span)
+				AddDiagnostic("BMX2332", TLanguageMessages.ParserInterfaceMethodRejectsBody(), Current().span)
 			End If
 			Local headerEndOffset:Int = node.declarationToken.span.EndOffset()
 			If node.headerTokens.length Then headerEndOffset = node.headerTokens[node.headerTokens.length - 1].span.EndOffset()
@@ -1922,7 +1923,7 @@ Type TBlitzMaxSyntaxParser
 		If node.headerTokens.length And IsNameToken(node.headerTokens[0]) Then
 			node.nameToken = node.headerTokens[0]
 		Else
-			AddDiagnostic("BMX2003", "Expected a type name.", Current().span)
+			AddDiagnostic("BMX2003", TLanguageMessages.ParserExpectedTypeName(), Current().span)
 		End If
 		SkipSeparators()
 
@@ -1962,7 +1963,7 @@ Type TBlitzMaxSyntaxParser
 		Wend
 
 		If Not terminator Then
-			AddDiagnostic("BMX2001", "Expected 'End " + Capitalize(expected) + "' before end of file.", Current().span)
+			AddDiagnostic("BMX2001", TLanguageMessages.ParserExpectedBlockEndBeforeEof(Capitalize(expected)), Current().span)
 		End If
 
 		Local block:TBlockSyntax = New TBlockSyntax
@@ -2005,7 +2006,7 @@ Type TBlitzMaxSyntaxParser
 		node.span = TSourceSpan.Create(start, endOffset - start)
 
 		If node.actualBlockKind <> expected Then
-			AddDiagnostic("BMX2002", "Expected 'End " + Capitalize(expected) + "' but found '" + TerminatorText(node) + "'.", node.span)
+			AddDiagnostic("BMX2002", TLanguageMessages.ParserMismatchedBlockEnd(Capitalize(expected), TerminatorText(node)), node.span)
 		End If
 		Return node
 	End Method
@@ -2057,7 +2058,7 @@ Type TBlitzMaxSyntaxParser
 			assignment.kind = SYNTAX_ASSIGNMENT_STATEMENT
 			assignment.span = span
 			assignment.operatorToken = values[assignmentIndex]
-			If assignment.operatorToken.text = ":=" Then AddDiagnostic("BMX2053", "The ':=' syntax is only valid in an inferred Local declaration; use '=' for assignment.", assignment.operatorToken.span)
+			If assignment.operatorToken.text = ":=" Then AddDiagnostic("BMX2053", TLanguageMessages.ParserInferredLocalSyntaxRequired(), assignment.operatorToken.span)
 			assignment.left = TBlitzMaxExpressionParser.Parse(values[..assignmentIndex], diagnostics)
 			assignment.right = TBlitzMaxExpressionParser.Parse(values[assignmentIndex + 1..], diagnostics)
 			Return assignment
@@ -2081,7 +2082,7 @@ Type TBlitzMaxSyntaxParser
 		node.importToken = values[0]
 		node.isFramework = TextEquals(values[0].text, "framework")
 		If values.length < 2 Then
-			AddDiagnostic("BMX2440", "Expected a module name or file path after '" + values[0].text + "'.", values[0].span)
+			AddDiagnostic("BMX2440", TLanguageMessages.ParserExpectedImportTarget(values[0].text), values[0].span)
 			Return node
 		End If
 		node.targetTokens = values[1..]
@@ -2090,7 +2091,7 @@ Type TBlitzMaxSyntaxParser
 			node.targetText = StringLiteralValue(values[1].text)
 			node.isSourceImport = node.targetText.ToLower().EndsWith(".bmx")
 			node.isNativeImport = Not node.isSourceImport
-			If values.length > 2 Then AddDiagnostic("BMX2441", "Unexpected token '" + values[2].text + "' after import file path.", values[2].span)
+			If values.length > 2 Then AddDiagnostic("BMX2441", TLanguageMessages.ParserUnexpectedTokenAfterImportPath(values[2].text), values[2].span)
 		Else
 			For Local token:TSyntaxToken = EachIn node.targetTokens
 				node.targetText :+ token.text
@@ -2105,12 +2106,12 @@ Type TBlitzMaxSyntaxParser
 		node.span = span
 		node.includeToken = values[0]
 		If values.length < 2 Or values[1].kind <> TOKEN_STRING_LITERAL Then
-			AddDiagnostic("BMX2442", "Expected a quoted source path after 'Include'.", values[0].span)
+			AddDiagnostic("BMX2442", TLanguageMessages.ParserExpectedIncludePath(), values[0].span)
 			Return node
 		End If
 		node.pathToken = values[1]
 		node.pathText = StringLiteralValue(values[1].text)
-		If values.length > 2 Then AddDiagnostic("BMX2443", "Unexpected token '" + values[2].text + "' after include path.", values[2].span)
+		If values.length > 2 Then AddDiagnostic("BMX2443", TLanguageMessages.ParserUnexpectedTokenAfterIncludePath(values[2].text), values[2].span)
 		Return node
 	End Method
 
@@ -2136,9 +2137,9 @@ Type TBlitzMaxSyntaxParser
 				If values.length > expressionStart Then
 					node.expression = TBlitzMaxExpressionParser.Parse(values[expressionStart..], diagnostics)
 				Else If node.fromToken Then
-					AddDiagnostic("BMX2328", "Expected an expression after 'Yield From'.", node.fromToken.span)
+					AddDiagnostic("BMX2328", TLanguageMessages.ParserExpectedExpressionAfterYieldFrom(), node.fromToken.span)
 				Else
-					AddDiagnostic("BMX2324", "Expected an expression after 'Yield'.", node.yieldToken.span)
+					AddDiagnostic("BMX2324", TLanguageMessages.ParserExpectedExpressionAfterYield(), node.yieldToken.span)
 				End If
 				Return node
 			Case "return"
@@ -2153,7 +2154,7 @@ Type TBlitzMaxSyntaxParser
 				node.kind = SYNTAX_THROW_STATEMENT
 				node.span = span
 				node.throwToken = values[0]
-				If values.length > 1 Then node.expression = TBlitzMaxExpressionParser.Parse(values[1..], diagnostics) Else AddDiagnostic("BMX2320", "Expected an expression after 'Throw'.", node.throwToken.span)
+				If values.length > 1 Then node.expression = TBlitzMaxExpressionParser.Parse(values[1..], diagnostics) Else AddDiagnostic("BMX2320", TLanguageMessages.ParserExpectedExpressionAfterThrow(), node.throwToken.span)
 				Return node
 			Case "exit"
 				Local node:TExitStatementSyntax = New TExitStatementSyntax
@@ -2176,7 +2177,7 @@ Type TBlitzMaxSyntaxParser
 				node.kind = SYNTAX_RELEASE_STATEMENT
 				node.span = span
 				node.releaseToken = values[0]
-				If values.length > 1 Then node.expression = TBlitzMaxExpressionParser.Parse(values[1..], diagnostics) Else AddDiagnostic("BMX2323", "Expected an integer variable after 'Release'.", node.releaseToken.span)
+				If values.length > 1 Then node.expression = TBlitzMaxExpressionParser.Parse(values[1..], diagnostics) Else AddDiagnostic("BMX2323", TLanguageMessages.ParserExpectedIntegerVariableAfterRelease(), node.releaseToken.span)
 				Return node
 		End Select
 		Return Null
@@ -2191,7 +2192,7 @@ Type TBlitzMaxSyntaxParser
 				node.span = span
 				node.defDataToken = values[0]
 				node.values = ParseDataExpressionSlots(values, 1)
-				If node.values.length = 0 Then AddDiagnostic("BMX2330", "DefData requires at least one value.", node.defDataToken.span)
+				If node.values.length = 0 Then AddDiagnostic("BMX2330", TLanguageMessages.ParserDefdataRequiresValue(), node.defDataToken.span)
 				Return node
 			Case "readdata"
 				Local node:TReadDataStatementSyntax = New TReadDataStatementSyntax
@@ -2205,7 +2206,7 @@ Type TBlitzMaxSyntaxParser
 				node.kind = SYNTAX_RESTOREDATA_STATEMENT
 				node.span = span
 				node.restoreDataToken = values[0]
-				If values.length > 1 Then node.label = TBlitzMaxExpressionParser.Parse(values[1..], diagnostics) Else AddDiagnostic("BMX2331", "RestoreData requires a data label.", node.restoreDataToken.span)
+				If values.length > 1 Then node.label = TBlitzMaxExpressionParser.Parse(values[1..], diagnostics) Else AddDiagnostic("BMX2331", TLanguageMessages.ParserRestoredataRequiresLabel(), node.restoreDataToken.span)
 				Return node
 		End Select
 		Return Null
@@ -2255,11 +2256,11 @@ Type TBlitzMaxSyntaxParser
 		If conditionEnd > 1 Then
 			node.condition = TBlitzMaxExpressionParser.Parse(values[1..conditionEnd], diagnostics)
 		Else
-			AddDiagnostic("BMX2321", "Expected a condition after 'Assert'.", node.assertToken.span)
+			AddDiagnostic("BMX2321", TLanguageMessages.ParserExpectedConditionAfterAssert(), node.assertToken.span)
 		End If
 		If separatorIndex >= 0 Then
 			node.separatorToken = values[separatorIndex]
-			If separatorIndex + 1 < values.length Then node.message = TBlitzMaxExpressionParser.Parse(values[separatorIndex + 1..], diagnostics) Else AddDiagnostic("BMX2322", "Expected a message after '" + node.separatorToken.text + "'.", node.separatorToken.span)
+			If separatorIndex + 1 < values.length Then node.message = TBlitzMaxExpressionParser.Parse(values[separatorIndex + 1..], diagnostics) Else AddDiagnostic("BMX2322", TLanguageMessages.ParserExpectedAssertMessage(node.separatorToken.text), node.separatorToken.span)
 		End If
 		Return node
 	End Method
@@ -2427,9 +2428,9 @@ Type TBlitzMaxSyntaxParser
 			For Local declarator:TVariableDeclaratorSyntax = EachIn node.declarators
 				If Not declarator.inferenceToken Then Continue
 				If Not firstInferenceToken Then firstInferenceToken = declarator.inferenceToken
-				If Not isLocal Then AddDiagnostic("BMX2050", "Type inference with ':=' is only valid for Local declarations.", declarator.inferenceToken.span)
+				If Not isLocal Then AddDiagnostic("BMX2050", TLanguageMessages.ParserInferenceRequiresLocal(), declarator.inferenceToken.span)
 			Next
-			If node.declarators.length <> 1 Then AddDiagnostic("BMX2051", "An inferred Local declaration must contain exactly one declarator.", firstInferenceToken.span)
+			If node.declarators.length <> 1 Then AddDiagnostic("BMX2051", TLanguageMessages.ParserInferredLocalRequiresSingleDeclarator(), firstInferenceToken.span)
 		End If
 		Return node
 	End Method
@@ -2475,7 +2476,7 @@ Type TBlitzMaxSyntaxParser
 		If values.length And keywordIsUsable Then
 			node.nameToken = values[0]
 		Else
-			AddDiagnostic("BMX2004", "Expected a variable name.", node.span)
+			AddDiagnostic("BMX2004", TLanguageMessages.ParserExpectedVariableName(), node.span)
 		End If
 
 		Local metadataIndex:Int = FindTopLevelToken(values, "{", 1)
@@ -2509,7 +2510,7 @@ Type TBlitzMaxSyntaxParser
 			node.assignmentToken = values[assignmentIndex]
 			If node.assignmentToken.text = ":=" Then node.inferenceToken = node.assignmentToken
 			node.initializer = TBlitzMaxExpressionParser.Parse(values[assignmentIndex + 1..valueEnd], diagnostics)
-			If node.inferenceToken And Not node.initializer Then AddDiagnostic("BMX2052", "An inferred Local declaration requires an initializer after ':='.", node.inferenceToken.span)
+			If node.inferenceToken And Not node.initializer Then AddDiagnostic("BMX2052", TLanguageMessages.ParserInferredLocalRequiresInitializer(), node.inferenceToken.span)
 		End If
 		Return node
 	End Method
@@ -2564,7 +2565,7 @@ Type TBlitzMaxSyntaxParser
 		Local tokens:TSyntaxToken[] = node.typeTokens
 		Local closeIndex:Int = tokens.length - 1
 		If closeIndex < 2 Or tokens[closeIndex].text <> "]" Then
-			AddDiagnostic("BMX2015", "StaticArray declaration requires a fixed length in brackets.", node.span)
+			AddDiagnostic("BMX2015", TLanguageMessages.ParserStaticArrayRequiresBracketedLength(), node.span)
 			Return
 		End If
 		Local openIndex:Int = closeIndex - 1
@@ -2572,7 +2573,7 @@ Type TBlitzMaxSyntaxParser
 			openIndex :- 1
 		Wend
 		If openIndex < 0 Or openIndex + 1 = closeIndex Then
-			AddDiagnostic("BMX2015", "StaticArray declaration requires a fixed length expression.", node.span)
+			AddDiagnostic("BMX2015", TLanguageMessages.ParserStaticArrayRequiresLengthExpression(), node.span)
 			Return
 		End If
 		Local bound:TStaticArrayBoundSyntax = New TStaticArrayBoundSyntax
@@ -2595,12 +2596,12 @@ Type TBlitzMaxSyntaxParser
 			cursor :+ parsed.consumed
 			If cursor < values.length And values[cursor].text = "," Then
 				cursor :+ 1
-				If cursor = values.length Then AddDiagnostic("BMX2405", "Expected a Case value after ','.", values[cursor - 1].span)
+				If cursor = values.length Then AddDiagnostic("BMX2405", TLanguageMessages.ParserExpectedCaseValueAfterComma(), values[cursor - 1].span)
 				Continue
 			End If
 			Exit
 		Wend
-		If expressions.Count() = 0 Then AddDiagnostic("BMX2405", "Expected a Case value.", IfExpressionListSpan(values, cursor))
+		If expressions.Count() = 0 Then AddDiagnostic("BMX2405", TLanguageMessages.ParserExpectedCaseValue(), IfExpressionListSpan(values, cursor))
 		Local result:TParsedCaseHeader = New TParsedCaseHeader
 		result.values = ExpressionsToArray(expressions)
 		If cursor < values.length Then result.inlineTokens = values[cursor..] Else result.inlineTokens = New TSyntaxToken[0]
@@ -2721,7 +2722,7 @@ Type TBlitzMaxSyntaxParser
 		node.headerTokens = TokensFromList(CollectUntilSeparator())
 		Local openIndex:Int = TBlitzMaxSignatureParser.FindToken(node.headerTokens, "(", 0)
 		If openIndex < 0 Then
-			AddDiagnostic("BMX2450", "Expected '(' in Function literal.", node.functionToken.span)
+			AddDiagnostic("BMX2450", TLanguageMessages.ParserExpectedParenthesisInFunctionLiteral(), node.functionToken.span)
 			node.parameters = New TParameterSyntax[0]
 		Else
 			node.openParenToken = node.headerTokens[openIndex]
@@ -2729,13 +2730,13 @@ Type TBlitzMaxSyntaxParser
 			Local closeIndex:Int = TBlitzMaxSignatureParser.FindMatchingParen(node.headerTokens, openIndex)
 			If closeIndex < 0 Then
 				closeIndex = node.headerTokens.length
-				AddDiagnostic("BMX2451", "Expected ')' in Function literal.", TSourceSpan.Create(node.headerTokens[node.headerTokens.length - 1].span.EndOffset(), 0))
+				AddDiagnostic("BMX2451", TLanguageMessages.ParserExpectedCloseParenthesisInFunctionLiteral(), TSourceSpan.Create(node.headerTokens[node.headerTokens.length - 1].span.EndOffset(), 0))
 			Else
 				node.closeParenToken = node.headerTokens[closeIndex]
 			End If
 			node.parameters = TBlitzMaxSignatureParser.ParseParameters(node.headerTokens[openIndex + 1..closeIndex], diagnostics)
 			If closeIndex + 1 < node.headerTokens.length Then
-				AddDiagnostic("BMX2452", "Unexpected token '" + node.headerTokens[closeIndex + 1].text + "' after Function literal parameters.", node.headerTokens[closeIndex + 1].span)
+				AddDiagnostic("BMX2452", TLanguageMessages.ParserUnexpectedTokenAfterFunctionLiteralParameters(node.headerTokens[closeIndex + 1].text), node.headerTokens[closeIndex + 1].span)
 			End If
 		End If
 
@@ -2770,6 +2771,10 @@ Type TBlitzMaxSyntaxParser
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, DIAGNOSTIC_ERROR, span))
 	End Method
 

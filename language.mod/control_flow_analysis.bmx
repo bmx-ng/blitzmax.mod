@@ -5,6 +5,7 @@ SuperStrict
 
 Import BRL.LinkedList
 
+Import "language_messages.generated.bmx"
 Import "semantic_model.bmx"
 
 Type TLoopFlowContext
@@ -59,7 +60,7 @@ Type TControlFlowAnalyzer
 			model.controlFlowGraphMap.Insert(routine, graph)
 			If analyzer.options.reportImplicitDefaultReturns And analyzer.RequiresReturn(routine) And graph.canFallThrough Then
 				Local declaration:TRoutineDeclarationSyntax = TRoutineDeclarationSyntax(routine.declaration)
-				analyzer.AddDiagnostic("BMX3400", "Routine '" + routine.name + "' can reach its implicit default return.", declaration.span, analyzer.options.implicitDefaultReturnSeverity, routine.originPath)
+				analyzer.AddDiagnostic("BMX3400", TLanguageMessages.ControlFlowImplicitDefaultReturnReachable(routine.name), declaration.span, analyzer.options.implicitDefaultReturnSeverity, routine.originPath)
 			End If
 		Next
 		model.diagnostics = MergeControlFlowDiagnostics(model.diagnostics, ControlFlowDiagnosticsToArray(analyzer.diagnostics))
@@ -79,6 +80,11 @@ Type TControlFlowAnalyzer
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan, severity:Int, path:String = "")
+		If Not path.length And model.syntaxTree Then path = model.syntaxTree.source.path
+		diagnostics.AddLast(TDiagnostic.Create(code, message, severity, span, path))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan, severity:Int, path:String = "")
 		If Not path.length And model.syntaxTree Then path = model.syntaxTree.source.path
 		diagnostics.AddLast(TDiagnostic.Create(code, message, severity, span, path))
 	End Method
@@ -344,13 +350,13 @@ Type TControlFlowBuilder
 			If Not context Then
 				Local code:String = "BMX3403"
 				If operation = "Exit" Then code = "BMX3402"
-				AddDiagnostic(code, operation + " can be used only inside a loop.", span, DIAGNOSTIC_ERROR)
+				AddDiagnostic(code, TLanguageMessages.ControlFlowLoopControlRequiresLoop(operation), span, DIAGNOSTIC_ERROR)
 			End If
 			Return context
 		End If
 		Local name:TNameExpressionSyntax = TNameExpressionSyntax(labelExpression)
 		If Not name Or Not name.nameToken Then
-			AddDiagnostic("BMX3404", operation + " requires a loop-label name.", labelExpression.span, DIAGNOSTIC_ERROR)
+			AddDiagnostic("BMX3404", TLanguageMessages.ControlFlowLoopControlRequiresLabelName(operation), labelExpression.span, DIAGNOSTIC_ERROR)
 			Return Null
 		End If
 		Local normalized:String = name.nameToken.text.ToLower()
@@ -358,7 +364,7 @@ Type TControlFlowBuilder
 			If context.label = normalized Then Return context
 			context = context.parent
 		Wend
-		AddDiagnostic("BMX3404", "Loop label '" + name.nameToken.text + "' could not be found for " + operation + ".", name.nameToken.span, DIAGNOSTIC_ERROR)
+		AddDiagnostic("BMX3404", TLanguageMessages.ControlFlowLoopLabelNotFound(name.nameToken.text, operation), name.nameToken.span, DIAGNOSTIC_ERROR)
 		Return Null
 	End Method
 
@@ -473,7 +479,7 @@ Type TControlFlowBuilder
 	Method ReportUnreachable()
 		For Local block:TControlFlowBlock = EachIn graph.blocks
 			If block.statement And Not block.isReachable And Not HasReachableCopy(block.statement) And StartsUnreachableRegion(block, 0) Then
-				AddDiagnostic("BMX3401", "Unreachable statement.", block.statement.syntax.span, DIAGNOSTIC_WARNING)
+				AddDiagnostic("BMX3401", TLanguageMessages.ControlFlowUnreachableStatement(), block.statement.syntax.span, DIAGNOSTIC_WARNING)
 			End If
 		Next
 	End Method
@@ -496,6 +502,10 @@ Type TControlFlowBuilder
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, span:TSourceSpan, severity:Int)
+		diagnostics.AddLast(TDiagnostic.Create(code, message, severity, span, originPath))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, span:TSourceSpan, severity:Int)
 		diagnostics.AddLast(TDiagnostic.Create(code, message, severity, span, originPath))
 	End Method
 

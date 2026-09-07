@@ -7,6 +7,7 @@ Import BRL.LinkedList
 Import BRL.Base64
 Import Archive.ZLib
 
+Import "language_messages.generated.bmx"
 Import "interface_model.bmx"
 Import "interface_signature_decoder.bmx"
 
@@ -38,7 +39,7 @@ Type TInterfaceFileParser
 			If raw.EndsWith("~r") Then raw = raw[..raw.length - 1]
 			ParseLine(raw, index + 1)
 		Next
-		If current Then AddDiagnostic("BMXI100", "Unterminated " + current.KindName().ToLower() + " record '" + current.name + "'.", current.line)
+		If current Then AddDiagnostic("BMXI100", TLanguageMessages.InterfaceUnterminatedRecord(current.KindName().ToLower(), current.name), current.line)
 	End Method
 
 	Method ParseLine(raw:String, line:Int)
@@ -141,12 +142,12 @@ Type TInterfaceFileParser
 
 	Method ParseGenericTemplateReference(text:String, line:Int)
 		If Not lastDeclaration Or (lastDeclaration.kind <> INTERFACE_RECORD_TYPE And lastDeclaration.kind <> INTERFACE_RECORD_FUNCTION And lastDeclaration.kind <> INTERFACE_RECORD_METHOD And lastDeclaration.kind <> INTERFACE_RECORD_TYPE_FUNCTION) Then
-			AddDiagnostic("BMXI110", "Generic template reference does not follow a Type, Function, or Method record.", line)
+			AddDiagnostic("BMXI110", TLanguageMessages.InterfaceGenericTemplateRequiresDeclaration(), line)
 			Return
 		End If
 		Local parts:String[] = SplitQuoted(text[19..], ",")
 		If parts.length <> 5 Then
-			AddDiagnostic("BMXI111", "Generic template reference requires format, identity, revision, artifact and language revision.", line)
+			AddDiagnostic("BMXI111", TLanguageMessages.InterfaceGenericTemplateReferenceInvalid(), line)
 			Return
 		End If
 		lastDeclaration.genericTemplateFormat = Int(parts[0].Trim())
@@ -294,6 +295,10 @@ Type TInterfaceFileParser
 	End Method
 
 	Method AddDiagnostic(code:String, message:String, line:Int)
+		diagnostics.AddLast(TInterfaceDiagnostic.Create(code, message, line))
+	End Method
+
+	Method AddDiagnostic(code:String, message:TLocalisedMessage, line:Int)
 		diagnostics.AddLast(TInterfaceDiagnostic.Create(code, message, line))
 	End Method
 
