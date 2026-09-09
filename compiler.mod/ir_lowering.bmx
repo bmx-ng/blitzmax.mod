@@ -3001,7 +3001,7 @@ Type TCompilerIrLowerer
 				If overridden Then slot = TCompilerIrClassFunctionSlot(slotsByRoutineSymbol.ValueForKey(overridden))
 				If overridden And Not slot And owner.baseImportedClassId.length Then
 					Local importedBase:TCompilerIrImportedClass = ImportedClassById(owner.baseImportedClassId)
-					Local importedOverride:TCompilerIrImportedMethod = GenericImportedMethod(importedBase, overridden)
+					Local importedOverride:TCompilerIrImportedMethod = GenericImportedMethod(importedBase, symbol)
 					If importedOverride Then
 						For Local importedSlot:TCompilerIrClassFunctionSlot = EachIn importedBase.functionSlots
 							If importedSlot.slotName = importedOverride.slotName Then slot = importedSlot; Exit
@@ -6876,11 +6876,7 @@ Type TCompilerIrLowerer
 			If call.resolvedCall And receiverInterface Then
 				Local methodMap:TMap = TMap(interfaceMethodsByInterface.ValueForKey(receiverInterface))
 				If methodMap Then interfaceMethod = TCompilerIrInterfaceMethod(methodMap.ValueForKey(call.resolvedCall.routine))
-				If Not interfaceMethod And call.resolvedCall.routine Then
-					For Local candidate:TCompilerIrInterfaceMethod = EachIn receiverInterface.methods
-						If candidate.name.ToLower() = call.resolvedCall.routine.name.ToLower() Then interfaceMethod = candidate; Exit
-					Next
-				End If
+				If Not interfaceMethod And call.resolvedCall.routine Then interfaceMethod = GenericInterfaceMethodForCall(receiverInterface, call.resolvedCall)
 				' A closed generic Interface can inherit an ordinary Interface whose
 				' method table remains independently owned. Dispatch an inherited
 				' selector through that declaring Interface rather than requiring the
@@ -6892,11 +6888,7 @@ Type TCompilerIrLowerer
 						If declaringInterface Then
 							Local declaringMethodMap:TMap = TMap(interfaceMethodsByInterface.ValueForKey(declaringInterface))
 							If declaringMethodMap Then interfaceMethod = TCompilerIrInterfaceMethod(declaringMethodMap.ValueForKey(call.resolvedCall.routine))
-							If Not interfaceMethod Then
-								For Local candidate:TCompilerIrInterfaceMethod = EachIn declaringInterface.methods
-									If candidate.name.ToLower() = call.resolvedCall.routine.name.ToLower() Then interfaceMethod = candidate; Exit
-								Next
-							End If
+							If Not interfaceMethod Then interfaceMethod = GenericInterfaceMethodForCall(declaringInterface, call.resolvedCall)
 							If interfaceMethod Then receiverInterface = declaringInterface
 						End If
 					End If
@@ -6930,7 +6922,7 @@ Type TCompilerIrLowerer
 					If call.receiver Then genericReceiverStruct = TCompilerIrImportedStruct(genericStructsByTypeName.ValueForKey(TypeName(call.receiver.semanticType).ToLower()))
 					If Not genericReceiverStruct And call.staticReceiverType Then genericReceiverStruct = TCompilerIrImportedStruct(genericStructsByTypeName.ValueForKey(TypeName(call.staticReceiverType).ToLower()))
 					If genericReceiverStruct Then
-						importedStructTarget = GenericImportedStructRoutine(genericReceiverStruct, call.resolvedCall.routine)
+						importedStructTarget = GenericImportedStructRoutine(genericReceiverStruct, call.resolvedCall.routine, call.resolvedCall)
 					Else If resolvedOwner.isImported Then
 						importedStructTarget = ImportedStructRoutine(call.resolvedCall.routine, bound.syntax)
 					End If
@@ -9280,7 +9272,7 @@ Type TCompilerIrLowerer
 		Local matchCount:Int
 		For Local importedMethod:TCompilerIrImportedMethod = EachIn importedClass.methods
 			If Not importedMethod.isTypeFunction Or importedMethod.name.ToLower() <> routine.name.ToLower() Then Continue
-			If importedMethod.returnType.ToLower() <> TypeName(callableType.returnType).ToLower() Or importedMethod.parameters.length <> callableType.parameterTypes.length Then Continue
+			If Not GenericIrSemanticTypeMatches(importedMethod.returnType, callableType.returnType) Or importedMethod.parameters.length <> callableType.parameterTypes.length Then Continue
 			Local matches:Int = True
 			For Local index:Int = 0 Until importedMethod.parameters.length
 				If Not GenericImportedParameterShapeMatches(importedMethod.parameters[index], callableType.parameterTypes[index]) Then matches = False; Exit
@@ -9294,14 +9286,28 @@ Type TCompilerIrLowerer
 		Return Null
 	End Method
 
-	Method GenericImportedStructRoutine:TCompilerIrImportedStructRoutine(importedStruct:TCompilerIrImportedStruct, symbol:TSymbol)
+	Method GenericImportedStructRoutine:TCompilerIrImportedStructRoutine(importedStruct:TCompilerIrImportedStruct, symbol:TSymbol, resolvedCall:TResolvedCall = Null)
 		If Not importedStruct Then Return Null
 		If Not symbol Then Return Null
+		Local arityMatch:TCompilerIrImportedStructRoutine
+		Local arityMatchCount:Int
 		For Local routine:TCompilerIrImportedStructRoutine = EachIn importedStruct.routines
 			If routine.name.ToLower() <> symbol.name.ToLower() Then Continue
 			If routine.isMethod <> IsInstanceMethodSymbol(symbol) Then Continue
-			If routine.parameters.length = symbol.parameters.length Then Return routine
+			Local parameterCount:Int = symbol.parameters.length
+			If resolvedCall Then parameterCount = resolvedCall.parameterTypes.length
+			If routine.parameters.length <> parameterCount Then Continue
+			If Not resolvedCall Then Return routine
+			arityMatch = routine
+			arityMatchCount :+ 1
+			Local matches:Int = True
+			For Local index:Int = 0 Until routine.parameters.length
+				If Not GenericImportedParameterShapeMatches(routine.parameters[index], resolvedCall.parameterTypes[index]) Then matches = False
+				If index < resolvedCall.routine.parameters.length And routine.parameters[index].passingMode <> resolvedCall.routine.parameters[index].passingMode Then matches = False
+			Next
+			If matches Then Return routine
 		Next
+		If arityMatchCount = 1 Then Return arityMatch
 		Return Null
 	End Method
 
@@ -9896,11 +9902,41 @@ Type TCompilerIrLowerer
 
 	Method GenericImportedMethod:TCompilerIrImportedMethod(importedClass:TCompilerIrImportedClass, symbol:TSymbol)
 		If Not importedClass Or Not symbol Then Return Null
+		Local arityMatch:TCompilerIrImportedMethod
+		Local arityMatchCount:Int
 		For Local importedMethod:TCompilerIrImportedMethod = EachIn importedClass.methods
 			If importedMethod.name.ToLower() <> symbol.name.ToLower() Then Continue
 			If importedMethod.parameters.length <> symbol.parameters.length Then Continue
-			Return importedMethod
+			arityMatch = importedMethod
+			arityMatchCount :+ 1
+			Local matches:Int = True
+			For Local index:Int = 0 Until importedMethod.parameters.length
+				If Not GenericImportedParameterShapeMatches(importedMethod.parameters[index], symbol.parameters[index].semanticType) Then matches = False
+				If importedMethod.parameters[index].passingMode <> symbol.parameters[index].passingMode Then matches = False
+			Next
+			If matches Then Return importedMethod
 		Next
+		If arityMatchCount = 1 Then Return arityMatch
+		Return Null
+	End Method
+
+	Method GenericInterfaceMethodForCall:TCompilerIrInterfaceMethod(irInterface:TCompilerIrInterface, resolvedCall:TResolvedCall)
+		If Not irInterface Or Not resolvedCall Or Not resolvedCall.routine Then Return Null
+		Local arityMatch:TCompilerIrInterfaceMethod
+		Local arityMatchCount:Int
+		For Local interfaceMethod:TCompilerIrInterfaceMethod = EachIn irInterface.methods
+			If interfaceMethod.name.ToLower() <> resolvedCall.routine.name.ToLower() Then Continue
+			If interfaceMethod.parameters.length <> resolvedCall.parameterTypes.length Then Continue
+			arityMatch = interfaceMethod
+			arityMatchCount :+ 1
+			Local matches:Int = True
+			For Local index:Int = 0 Until interfaceMethod.parameters.length
+				If Not GenericImportedParameterShapeMatches(interfaceMethod.parameters[index], resolvedCall.parameterTypes[index]) Then matches = False
+				If index < resolvedCall.routine.parameters.length And interfaceMethod.parameters[index].passingMode <> resolvedCall.routine.parameters[index].passingMode Then matches = False
+			Next
+			If matches Then Return interfaceMethod
+		Next
+		If arityMatchCount = 1 Then Return arityMatch
 		Return Null
 	End Method
 
@@ -9941,16 +9977,21 @@ Type TCompilerIrLowerer
 		If Not parameter Or Not semanticType Then Return False
 		Local callable:TCallableSemanticType = TCallableSemanticType(semanticType)
 		If callable Then
-			If Not parameter.callableReturnType.length Or parameter.callableReturnType.ToLower() <> TypeName(callable.returnType).ToLower() Or parameter.callableParameters.length <> callable.parameterTypes.length Then Return False
+			If Not parameter.callableReturnType.length Or Not GenericIrSemanticTypeMatches(parameter.callableReturnType, callable.returnType) Or parameter.callableParameters.length <> callable.parameterTypes.length Then Return False
 			For Local index:Int = 0 Until callable.parameterTypes.length
-				If parameter.callableParameters[index].semanticType.ToLower() <> TypeName(callable.parameterTypes[index]).ToLower() Then Return False
+				If Not GenericIrSemanticTypeMatches(parameter.callableParameters[index].semanticType, callable.parameterTypes[index]) Then Return False
 				Local mode:Int = PARAMETER_PASS_VALUE
 				If index < callable.parameterModes.length Then mode = callable.parameterModes[index]
 				If parameter.callableParameters[index].passingMode <> mode Then Return False
 			Next
 			Return parameter.callableCallingConvention.ToLower() = callable.callingConvention.ToLower()
 		End If
-		Return parameter.semanticType.ToLower() = TypeName(semanticType).ToLower()
+		' A specialization records application-local nominal arguments by stable
+		' runtime identity (for example @runtime-class:...), while overload
+		' resolution retains the source-facing semantic Type. Use the same
+		' identity-aware comparison as specialized constructor selection so
+		' same-arity overloads remain distinguishable for those arguments.
+		Return GenericIrSemanticTypeMatches(parameter.semanticType, semanticType)
 	End Method
 
 	Function GenericImportedParameterCategoryMatches:Int(parameter:TCompilerIrParameter, semanticType:TSemanticType)
@@ -10847,14 +10888,7 @@ Type TCompilerIrLowerer
 			Local methodMap:TMap = TMap(interfaceMethodsByInterface.ValueForKey(receiverInterface))
 			Local interfaceMethod:TCompilerIrInterfaceMethod
 			If methodMap Then interfaceMethod = TCompilerIrInterfaceMethod(methodMap.ValueForKey(resolved.routine))
-			If Not interfaceMethod Then
-				For Local candidate:TCompilerIrInterfaceMethod = EachIn receiverInterface.methods
-					If candidate.name.ToLower() = resolved.routine.name.ToLower() And candidate.parameters.length = resolved.routine.parameters.length Then
-						interfaceMethod = candidate
-						Exit
-					End If
-				Next
-			End If
+			If Not interfaceMethod Then interfaceMethod = GenericInterfaceMethodForCall(receiverInterface, resolved)
 			If Not interfaceMethod Then
 				AddUnsupported("BMXC1020", TBccMessages.IrLoweringInterfaceInstanceMethodDispatchSlotMissing(), syntax)
 				Return Null
@@ -10876,7 +10910,7 @@ Type TCompilerIrLowerer
 		If importedReceiver Then
 			Local protocolMethod:TCompilerIrImportedMethod
 			If importedReceiver.isGenericSpecialization Then
-				protocolMethod = GenericImportedMethod(importedReceiver, resolved.routine)
+				protocolMethod = GenericImportedMethodForCall(importedReceiver, resolved)
 			Else
 				protocolMethod = ImportedMethod(resolved.routine, syntax)
 			End If
@@ -11426,7 +11460,7 @@ Type TCompilerIrLowerer
 				If overridden Then slot = TCompilerIrClassFunctionSlot(slotsByRoutineSymbol.ValueForKey(overridden))
 				If overridden And Not slot Then
 					Local importedBase:TCompilerIrImportedClass = ImportedClassById(importedClass.baseImportedClassId)
-					Local importedOverride:TCompilerIrImportedMethod = GenericImportedMethod(importedBase, overridden)
+					Local importedOverride:TCompilerIrImportedMethod = GenericImportedMethod(importedBase, symbol)
 					If importedOverride Then
 						For Local importedSlot:TCompilerIrClassFunctionSlot = EachIn importedBase.functionSlots
 							If importedSlot.slotName = importedOverride.slotName Then slot = importedSlot; Exit
