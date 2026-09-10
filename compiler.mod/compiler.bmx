@@ -43,6 +43,7 @@ Import BlitzMax.Locale
 
 Import "bcc_messages.generated.bmx"
 Import "compiler_diagnostic.bmx"
+Import "compiler_target_profile.bmx"
 Import "compiler_options.bmx"
 Import "file_snapshot_resolver.bmx"
 Import "ir_model.bmx"

@@ -8,6 +8,7 @@ Import BRL.FileSystem
 Import BlitzMax.Language
 Import "bcc_messages.generated.bmx"
 Import "compiler_diagnostic.bmx"
+Import "compiler_target_profile.bmx"
 Import "generic_application_plan.bmx"
 Import "ir_model.bmx"
 Import "c_backend.bmx"
@@ -115,7 +116,7 @@ Type TCompilerBuildOutputPlanner
 		Local runtimeHeaderDigest:String
 		Local started:Int = MilliSecs()
 		Local applicationContent:String
-		If ir.targetPlatform.ToLower() = "pico" Then
+		If CompilerEmbeddedTarget(ir.targetPlatform) Then
 			applicationContent = TCompilerCBackend.Emit(ir, backendDiagnostics)
 		Else
 			applicationContent = TCompilerCBackend.EmitRuntime(ir, backendDiagnostics)

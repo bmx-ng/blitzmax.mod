@@ -14,8 +14,8 @@ Import "generic_specialization.bmx"
 
 Const COMPILER_GENERIC_LANGUAGE_LINKAGE_REVISION:String = "bmx-language-1"
 Const COMPILER_GENERIC_IR_REVISION:String = "compiler-ir-1"
-Const COMPILER_GENERIC_RUNTIME_ABI_REVISION:String = "blitzmax-ng-runtime-1"
-Const COMPILER_GENERIC_BACKEND_REVISION:String = "bcc2-c-11"
+Const COMPILER_GENERIC_RUNTIME_ABI_REVISION:String = "blitzmax-embedded-runtime-2"
+Const COMPILER_GENERIC_BACKEND_REVISION:String = "bcc2-c-12"
 
 Type TCompilerGenericUnit
 	Field specialization:TGenericSpecializationNode
@@ -1373,9 +1373,9 @@ Type TCompilerGenericApplicationPlanner
 			Next
 			If loweringDiagnostics.length Or Not ir Then Continue
 			Local picoUnsupportedReason:String
-			If options And options.targetPlatform.ToLower() = "pico" Then picoUnsupportedReason = TCompilerGenericCUnitEmitter.PicoBaselineUnsupportedReason(ir)
+			If options And CompilerEmbeddedTarget(options.targetPlatform) Then picoUnsupportedReason = TCompilerGenericCUnitEmitter.EmbeddedBaselineUnsupportedReason(ir)
 			If picoUnsupportedReason.length Then
-				AddMessageDiagnostic("BMXC3092 Pico generic specialization uses an ABI shape or operation that the embedded backend does not yet support: " + picoUnsupportedReason, node.artifact.identity)
+				AddMessageDiagnostic("BMXC3092 Embedded generic specialization uses an ABI shape or operation that the embedded backend does not yet support: " + picoUnsupportedReason, node.artifact.identity)
 				Continue
 			End If
 			Local unit:TCompilerGenericUnit = New TCompilerGenericUnit

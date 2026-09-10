@@ -6,6 +6,7 @@ SuperStrict
 Import BRL.MaxUtil
 Import BRL.FileSystem
 Import BlitzMax.Language
+Import "compiler_target_profile.bmx"
 
 Rem
 bbdoc: Configures source analysis, target selection, instrumentation, and emission for the compiler pipeline.
@@ -72,7 +73,7 @@ Type TCompilerOptions
 		result.targetPlatform = targetPlatform.ToLower()
 		result.conditionalSymbols = conditionalSymbols[..]
 		result.parseConfiguredConditionals = True
-		If targetPlatform.ToLower() = "pico" And Not sourceModuleName.length Then
+		If CompilerEmbeddedTarget(targetPlatform) And Not sourceModuleName.length Then
 			result.implicitImports = ["brl.blitz"]
 			If frameworkModule.length And frameworkModule.ToLower() <> "brl.blitz" Then result.implicitImports :+ [frameworkModule.ToLower()]
 		Else If applicationBuild Then
@@ -153,6 +154,7 @@ Function CompilerDefaultConditionalSymbols:String[](platform:String, architectur
 	AddCompilerConditional(result, architectureName)
 	AddCompilerConditional(result, "bmxng")
 	AddCompilerConditional(result, "bmxng2")
+	If CompilerEmbeddedTarget(platformName) Then AddCompilerConditional(result, "embedded")
 	If buildMode.ToLower() = "debug" Then AddCompilerConditional(result, "debug")
 	If threaded Then AddCompilerConditional(result, "threaded")
 	If coverage Then AddCompilerConditional(result, "coverage")
@@ -206,7 +208,7 @@ Function CompilerDefaultConditionalSymbols:String[](platform:String, architectur
 	If pointer64 Then AddCompilerConditional(result, "ptr64") Else AddCompilerConditional(result, "ptr32")
 	' LongInt follows the selected native C long ABI: Windows, Pico's ILP32 Arm
 	' ABI, and the legacy 32-bit x86/PPC targets use four bytes.
-	Local longInt8:Int = platformName <> "win32" And platformName <> "win64" And platformName <> "pico" And architectureName <> "x86" And architectureName <> "ppc"
+	Local longInt8:Int = platformName <> "win32" And platformName <> "win64" And Not CompilerEmbeddedTarget(platformName) And architectureName <> "x86" And architectureName <> "ppc"
 	If longInt8 Then
 		AddCompilerConditional(result, "longint8")
 		AddCompilerConditional(result, "ulongint8")
