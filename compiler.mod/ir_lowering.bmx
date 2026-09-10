@@ -7030,7 +7030,7 @@ Type TCompilerIrLowerer
 						End If
 					Else
 						Local receiverClass:TCompilerIrClass = ClassForType(call.receiver.semanticType)
-						If options And options.targetPlatform.ToLower() = "pico" And (target.isFinal Or (receiverClass And receiverClass.isFinal)) Then
+						If options And CompilerEmbeddedTarget(options.targetPlatform) And (target.isFinal Or (receiverClass And receiverClass.isFinal)) Then
 							resultCall.dispatchKind = IR_CALL_DISPATCH_EXACT
 						Else
 							resultCall.dispatchKind = IR_CALL_DISPATCH_VIRTUAL
@@ -10012,7 +10012,7 @@ Type TCompilerIrLowerer
 		constructor.declaringImportedClassId = importedClass.importedClassId
 		constructor.source = SourceOf(useSyntax)
 		constructor.parameters = New TCompilerIrParameter[0]
-		If options And options.targetPlatform.ToLower() = "pico" And importedClass.abiName.length Then
+		If options And CompilerEmbeddedTarget(options.targetPlatform) And importedClass.abiName.length Then
 			constructor.objectNewAbiName = "_" + importedClass.abiName + "_New_ObjectNew"
 		End If
 		importedClass.constructors :+ [constructor]
