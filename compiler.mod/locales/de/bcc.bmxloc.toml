@@ -1,6 +1,6 @@
 format = 1
 domain = "bcc"
-locale = "de-de"
+locale = "de"
 
 [[message]]
 id = 1
@@ -11,3002 +11,3003 @@ placeholders = []
 [[message]]
 id = 2
 name = "compiler.module_declaration_mismatch"
-translated = false
-text = "Module declaration '{declaredName}' does not match path-derived module name '{expectedName}'"
+translated = true
+text = "Moduldeklaration '{declaredName}' stimmt nicht mit dem aus dem Pfad abgeleiteten Modulnamen '{expectedName}' überein"
 placeholders = [{ name = "declaredName", type = "string" }, { name = "expectedName", type = "string" }]
 
 [[message]]
 id = 3
 name = "compiler.conditional_directives_remained"
-translated = false
-text = "Conditional directives remained after source configuration was applied"
+translated = true
+text = "Nach Anwendung der Quellkonfiguration sind bedingte Direktiven verblieben"
 placeholders = []
 
 [[message]]
 id = 4
 name = "emission.c_requires_successful_ir"
-translated = false
-text = "Successful compiler IR is required before C emission"
+translated = true
+text = "Eine erfolgreiche Compiler-IR ist erforderlich, bevor C-Code ausgegeben werden kann"
 placeholders = []
 
 [[message]]
 id = 5
 name = "emission.runtime_c_requires_successful_ir"
-translated = false
-text = "Successful compiler IR is required before runtime-compatible C emission"
+translated = true
+text = "Eine erfolgreiche Compiler-IR ist erforderlich, bevor laufzeitkompatibler C-Code ausgegeben werden kann"
 placeholders = []
 
 [[message]]
 id = 6
 name = "emission.runtime_header_requires_successful_ir"
-translated = false
-text = "Successful compiler IR is required before runtime header emission"
+translated = true
+text = "Eine erfolgreiche Compiler-IR ist erforderlich, bevor der Laufzeit-Header ausgegeben werden kann"
 placeholders = []
 
 [[message]]
 id = 7
 name = "emission.interface_requires_successful_ir"
-translated = false
-text = "Successful compiler IR is required before compact interface emission"
+translated = true
+text = "Eine erfolgreiche Compiler-IR ist erforderlich, bevor das kompakte Interface ausgegeben werden kann"
 placeholders = []
 
 [[message]]
 id = 8
 name = "generic.template_artifacts_require_plan"
-translated = false
-text = "Compiler generic application plan is required before template artifact emission"
+translated = true
+text = "Der Compiler-Plan für die Anwendung von Generics ist erforderlich, bevor Template-Artefakte ausgegeben werden können"
 placeholders = []
 
 [[message]]
 id = 9
 name = "generic.manifest_requires_plan"
-translated = false
-text = "Compiler generic application plan is required before manifest emission"
+translated = true
+text = "Der Compiler-Plan für die Anwendung von Generics ist erforderlich, bevor das Manifest ausgegeben werden kann"
 placeholders = []
 
 [[message]]
 id = 10
 name = "build_output.requires_successful_ir"
-translated = false
-text = "Successful compiler IR is required before build-output planning"
+translated = true
+text = "Eine erfolgreiche Compiler-IR ist erforderlich, bevor die Build-Ausgabe geplant werden kann"
 placeholders = []
 
 [[message]]
 id = 11
 name = "build_output.path_must_be_bounded_relative"
-translated = false
-text = "Generated output path must be a bounded relative path: '{path}'"
+translated = true
+text = "Der generierte Ausgabepfad muss ein begrenzter, relativer Pfad sein: '{path}'"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 12
 name = "build_output.path_collision"
-translated = false
-text = "Generated output path collision for '{path}'"
+translated = true
+text = "Kollision des generierten Ausgabepfads: '{path}'"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 13
 name = "build_output.generic_link_path_unsafe"
-translated = false
-text = "Generic link input contains an unsafe generated path"
+translated = true
+text = "Generischer Link enthält einen unsicheren generierten Pfad"
 placeholders = []
 
 [[message]]
 id = 14
 name = "build_manifest.version_unsupported_or_missing"
-translated = false
-text = "Unsupported or missing compiler build manifest version"
+translated = true
+text = "Nicht unterstützte oder fehlende Version des Compiler Build Manifests"
 placeholders = []
 
 [[message]]
 id = 15
 name = "build_manifest.file_record_malformed"
-translated = false
-text = "Malformed file record in compiler build manifest"
+translated = true
+text = "Fehlerhafter Dateieintrag im Compiler Build Manifest"
 placeholders = []
 
 [[message]]
 id = 16
 name = "build_manifest.file_path_unsafe"
-translated = false
-text = "Unsafe file path in compiler build manifest"
+translated = true
+text = "Unsicherer Dateipfad im Compiler Build Manifest"
 placeholders = []
 
 [[message]]
 id = 17
 name = "build_manifest.file_path_duplicate"
-translated = false
-text = "Duplicate file path in compiler build manifest"
+translated = true
+text = "Doppelter Dateipfad im Compiler Build Manifest"
 placeholders = []
 
 [[message]]
 id = 18
 name = "build_manifest.link_identity_malformed"
-translated = false
-text = "Malformed link identity in compiler build manifest"
+translated = true
+text = "Fehlerhafte Linkidentität im Compiler Build Manifest"
 placeholders = []
 
 [[message]]
 id = 19
 name = "build_manifest.link_path_unsafe"
-translated = false
-text = "Unsafe link path in compiler build manifest"
+translated = true
+text = "Unsicher Linkpfad im Compiler Build Manifest"
 placeholders = []
 
 [[message]]
 id = 20
 name = "build_manifest.link_input_duplicate"
-translated = false
-text = "Duplicate specialization link input in compiler build manifest"
+translated = true
+text = "Doppelte Spezialisierungslink-Eingabe im Compiler Build Manifest"
 placeholders = []
 
 [[message]]
 id = 21
 name = "build_manifest.record_unknown_or_malformed"
-translated = false
-text = "Unknown or malformed compiler build manifest record"
+translated = true
+text = "Unbekannter oder fehlerhafter Eintrag im Compiler Build Manifest"
 placeholders = []
 
 [[message]]
 id = 22
 name = "build_manifest.encoded_field_malformed"
-translated = false
-text = "Malformed encoded field in compiler build manifest"
+translated = true
+text = "Fehlerhaft enkodiertes Feld im Compiler Build Manifest"
 placeholders = []
 
 [[message]]
 id = 23
 name = "build_materialization.plan_required"
-translated = false
-text = "A valid build-output plan is required before materialization"
+translated = true
+text = "Ein gültiger Build-Ausgabeplan ist vor der Materialisierung erforderlich."
 placeholders = []
 
 [[message]]
 id = 24
 name = "build_materialization.root_required"
-translated = false
-text = "Build-output root must not be empty"
+translated = true
+text = "Das Stammverzeichnis der Build-Ausgabe darf nicht leer/undefiniert sein"
 placeholders = []
 
 [[message]]
 id = 25
 name = "build_materialization.manifest_path_must_be_bounded_relative"
-translated = false
-text = "Build manifest path must be a bounded relative path"
+translated = true
+text = "Der Pfad für das Build Manifest muss begrenzt und relativ sein"
 placeholders = []
 
 [[message]]
 id = 26
 name = "build_materialization.root_creation_failed"
-translated = false
-text = "Unable to create build-output root '{path}'"
+translated = true
+text = "Anlegen des Stammverzeichnis für die Build-Ausgabe nicht möglich: '{path}'"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 27
 name = "build_materialization.root_not_directory"
-translated = false
-text = "Build-output root is not a directory: '{path}'"
+translated = true
+text = "Stammverzeichnis für die Build-Ausgabe ist ungültig: '{path}'"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 28
 name = "build_materialization.output_path_unsafe"
-translated = false
-text = "Refusing to materialize unsafe output path '{path}'"
+translated = true
+text = "Lehne das Materialisieren des Ausgabepfads ab: '{path}'"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 29
 name = "build_materialization.directory_creation_failed"
-translated = false
-text = "Unable to create generated-output directory '{path}'"
+translated = true
+text = "Anlegen des Verzeichnisses für generierten  nicht möglich: '{path}'"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 30
 name = "build_materialization.output_write_failed"
-translated = false
-text = "Unable to write generated output '{path}'"
+translated = true
+text = "Beschreiben des generierten Ausgabe-Verzeichnisses nicht möglich: '{path}'"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 31
 name = "build_materialization.output_publish_failed"
-translated = false
-text = "Unable to publish generated output '{path}'"
+translated = true
+text = "Veröffentlichung der generierten Ausgabe nicht möglich: '{path}'"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 32
 name = "generic.routine_reference_type_arguments_incomplete"
-translated = false
-text = "Generic routine reference has no complete canonical type-argument binding"
+translated = true
+text = "Generische Routinen-Referenz hat keine vollständige kanonische Typ-Argument-Bindung"
 placeholders = []
 
 [[message]]
 id = 33
 name = "generic.routine_reference_arguments_unsupported"
-translated = false
-text = "Generic routine-reference specialization arguments are outside the supported canonical value/reference slice"
+translated = true
+text = "Spezialisierungs-Argumente der Generische Routinen-Referenz liegen außerhalb des unterstützten kanonischen Wert/Referenz-Slices"
 placeholders = []
 
 [[message]]
 id = 34
 name = "generic.routine_reference_containing_type_arguments_incomplete"
-translated = false
-text = "Generic routine reference has no complete containing-Type argument binding"
+translated = true
+text = "Generische Routinen-Referenz hat keine vollständige Argument-Bindung für den enthaltenden Typ"
 placeholders = []
 
 [[message]]
 id = 35
 name = "generic.routine_reference_containing_type_arguments_unsupported"
-translated = false
-text = "Generic routine-reference containing-Type arguments are outside the supported canonical value/reference slice"
+translated = true
+text = "Argumente des enthaltenden Typs der generischen Routinen-Referenz liegen außerhalb des unterstützten kanonischen Wert/Referenzbereichs"
 placeholders = []
 
 [[message]]
 id = 36
 name = "generic.routine_call_type_arguments_incomplete"
-translated = false
-text = "Generic routine call has no complete canonical type-argument binding"
+translated = true
+text = "Generischer Routinen-Aufruf hat keine vollständige kanonische Typ-Argument-Bindung"
 placeholders = []
 
 [[message]]
 id = 37
 name = "generic.routine_specialization_arguments_unsupported"
-translated = false
-text = "Generic routine specialization arguments are outside the supported canonical value/reference slice"
+translated = true
+text = "Generische Routinen-Spezialisierungs-Argumente liegen außerhalb des unterstützten kanonischen Wert/Referenzbereichs"
 placeholders = []
 
 [[message]]
 id = 38
 name = "generic.method_containing_type_arguments_incomplete"
-translated = false
-text = "Generic method call has no complete containing-Type argument binding"
+translated = true
+text = "Generischer Methoden-Aufruf hat keine vollständige Argument-Bindung für den enthaltenden Typ"
 placeholders = []
 
 [[message]]
 id = 39
 name = "generic.method_containing_type_arguments_unsupported"
-translated = false
-text = "Generic method containing-Type arguments are outside the supported canonical value/reference slice"
+translated = true
+text = "Argumente des enthaltenden Typs der generischen Methode liegen außerhalb des unterstützten kanonischen Wert/Referenzbereichs"
 placeholders = []
 
 [[message]]
 id = 40
 name = "generic.specialization_argument_identity_unsupported"
-translated = false
-text = "Generic specialization argument '{typeName}' has no supported canonical value or published reference identity"
+translated = true
+text = "Generisches Spezialisierungs-Argument '{typeName}' hat keine unterstützte kanonische Wert- oder veröffentlichte Referenz-Identität"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 41
 name = "generic.imported_type_template_missing"
-translated = false
-text = "Imported generic Type '{typeName}' has no canonical template artifact; rebuild its defining module"
+translated = true
+text = "Importierter generischer Typ '{typeName}' hat kein kanonisches Template-Artefakt; bauen Sie sein definierendes Modul neu"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 42
 name = "generic.imported_type_language_revision_incompatible"
-translated = false
-text = "Imported generic Type '{typeName}' uses incompatible language/linkage revision '{revision}'"
+translated = true
+text = "Importierter generischer Typ '{typeName}' verwendet eine inkompatible Sprach-/Linkage-Revision '{revision}'"
 placeholders = [{ name = "typeName", type = "string" }, { name = "revision", type = "string" }]
 
 [[message]]
 id = 43
 name = "interface_emission.module_compilation_required"
-translated = false
-text = "Compact interface emission requires a module compilation"
+translated = true
+text = "Kompakte Interface-Ausgabe erfordert eine Modulkompilierung"
 placeholders = []
 
 [[message]]
 id = 44
 name = "interface_emission.global_type_unsupported"
-translated = false
-text = "Public Global type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Öffentlicher globaler Typ '{typeName}' liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 45
 name = "interface_emission.callable_array_global_unsupported"
-translated = false
-text = "Callable-array Global '{globalName}' is outside the compact interface slice"
+translated = true
+text = "Aufrufbares globales Array '{globalName}' liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "globalName", type = "string" }]
 
 [[message]]
 id = 46
 name = "interface_emission.callable_global_return_type_unsupported"
-translated = false
-text = "Callable Global return type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Rückgabetyp '{typeName}' der aufrufbaren Globalen liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 47
 name = "interface_emission.callable_global_parameters_unsupported"
-translated = false
-text = "Callable Global '{globalName}' has parameters outside the compact interface slice"
+translated = true
+text = "Aufrufbare Globale '{globalName}' hat Parameter außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "globalName", type = "string" }]
 
 [[message]]
 id = 48
 name = "interface_emission.quoted_source_boundaries_invalid"
-translated = false
-text = "Quoted-source interface '{path}' has invalid declaration boundaries"
+translated = true
+text = "Quoted-Source-Interface '{path}' hat ungültige Deklarationsgrenzen"
 placeholders = [{ name = "path", type = "string" }]
 
 [[message]]
 id = 49
 name = "interface_emission.generic_routine_signature_invalid"
-translated = false
-text = "Generic routine template '{routineName}' has an invalid canonical signature"
+translated = true
+text = "Generisches Routinen-Template '{routineName}' hat eine ungültige kanonische Signatur"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 50
 name = "interface_emission.generic_base_unpublishable"
-translated = false
-text = "Generic template '{templateName}' has a base outside canonical interface publication"
+translated = true
+text = "Generisches Template '{templateName}' hat eine Basisklasse außerhalb der kanonischen Interface-Veröffentlichung"
 placeholders = [{ name = "templateName", type = "string" }]
 
 [[message]]
 id = 51
 name = "interface_emission.generic_interface_unpublishable"
-translated = false
-text = "Generic template '{templateName}' has an Interface outside canonical interface publication"
+translated = true
+text = "Generisches Template '{templateName}' hat ein Interface außerhalb der kanonischen Interface-Veröffentlichung"
 placeholders = [{ name = "templateName", type = "string" }]
 
 [[message]]
 id = 52
 name = "interface_emission.generic_member_type_unpublishable"
-translated = false
-text = "Generic template member '{memberName}' has a type outside canonical interface publication"
+translated = true
+text = "Generisches Template-Member '{memberName}' hat einen Typ außerhalb der kanonischen Interface-Veröffentlichung"
 placeholders = [{ name = "memberName", type = "string" }]
 
 [[message]]
 id = 53
 name = "interface_emission.generic_parameter_type_unpublishable"
-translated = false
-text = "Generic template parameter '{parameterName}' has a type outside canonical interface publication"
+translated = true
+text = "Generischer Template-Parameter '{parameterName}' hat einen Typ außerhalb der kanonischen Interface-Veröffentlichung"
 placeholders = [{ name = "parameterName", type = "string" }]
 
 [[message]]
 id = 54
 name = "interface_emission.generic_method_signature_invalid"
-translated = false
-text = "Generic method template '{methodName}' has an invalid canonical signature"
+translated = true
+text = "Generisches Methoden-Template '{methodName}' hat eine ungültige kanonische Signatur"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 55
 name = "interface_emission.enum_abi_identity_missing"
-translated = false
-text = "Public Enum has no canonical ABI identity"
+translated = true
+text = "Öffentliches (public) Enum hat keine kanonische ABI-Identität"
 placeholders = []
 
 [[message]]
 id = 56
 name = "interface_emission.enum_underlying_type_unsupported"
-translated = false
-text = "Public Enum '{enumName}' has unsupported underlying type '{typeName}'"
+translated = true
+text = "Öffentliches (public) Enum '{enumName}' hat einen nicht unterstützten zugrundeliegenden Typ '{typeName}'"
 placeholders = [{ name = "enumName", type = "string" }, { name = "typeName", type = "string" }]
 
 [[message]]
 id = 57
 name = "interface_emission.interface_inheritance_cycle"
-translated = false
-text = "Public Interface inheritance cycle reaches '{interfaceName}'"
+translated = true
+text = "Vererbungskreislauf des öffentlichen (public) Interfaces erreicht '{interfaceName}'"
 placeholders = [{ name = "interfaceName", type = "string" }]
 
 [[message]]
 id = 58
 name = "interface_emission.interface_base_layout_missing"
-translated = false
-text = "Public Interface '{interfaceName}' has no retained base Interface layout"
+translated = true
+text = "Öffentliches (public) Interface '{interfaceName}' hat kein beibehaltenes Basis-Interface-Layout"
 placeholders = [{ name = "interfaceName", type = "string" }]
 
 [[message]]
 id = 59
 name = "interface_emission.interface_base_not_public"
-translated = false
-text = "Public Interface '{interfaceName}' has a non-public base Interface"
+translated = true
+text = "Öffentliches (public) Interface '{interfaceName}' hat ein nicht-öffentliches Basis-Interface"
 placeholders = [{ name = "interfaceName", type = "string" }]
 
 [[message]]
 id = 60
 name = "interface_emission.interface_abi_identity_missing"
-translated = false
-text = "Public Interface has no canonical ABI identity"
+translated = true
+text = "Öffentliches (public) Interface hat keine kanonische ABI-Identität"
 placeholders = []
 
 [[message]]
 id = 61
 name = "interface_emission.interface_base_identity_missing"
-translated = false
-text = "Public Interface '{interfaceName}' has no retained base Interface identity"
+translated = true
+text = "Öffentliches (public) Interface '{interfaceName}' hat keine beibehaltene Basis-Interface-Identität"
 placeholders = [{ name = "interfaceName", type = "string" }]
 
 [[message]]
 id = 62
 name = "interface_emission.interface_additional_base_identity_missing"
-translated = false
-text = "Public Interface '{interfaceName}' has no retained additional base Interface identity"
+translated = true
+text = "Öffentliches (public) Interface '{interfaceName}' hat keine beibehaltene zusätzliche Basis-Interface-Identität"
 placeholders = [{ name = "interfaceName", type = "string" }]
 
 [[message]]
 id = 63
 name = "interface_emission.interface_method_callable_return_type_unsupported"
-translated = false
-text = "Public Interface method callable return type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Aufrufbarer Rückgabetyp '{typeName}' der öffentlichen (public) Interfacemethode liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 64
 name = "interface_emission.interface_method_callable_signature_unsupported"
-translated = false
-text = "Public Interface method '{methodName}' has a callable return signature outside the compact interface slice"
+translated = true
+text = "Öffentliche (public) Interfacemethode '{methodName}' hat eine aufrufbare Rückgabezuweisung außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 65
 name = "interface_emission.interface_method_return_type_unsupported"
-translated = false
-text = "Public Interface method return type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Rückgabetyp '{typeName}' der öffentlichen (public) Interfacemethode liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 66
 name = "interface_emission.interface_method_abi_identity_missing"
-translated = false
-text = "Public Interface method '{methodName}' has no canonical ABI identity"
+translated = true
+text = "Öffentliche (public) Interfacemethode '{methodName}' hat keine kanonische ABI-Identität"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 67
 name = "interface_emission.interface_method_parameters_unsupported"
-translated = false
-text = "Public Interface method '{methodName}' has parameters outside the compact interface slice"
+translated = true
+text = "Öffentliche (public) Interfacemethode '{methodName}' hat Parameter außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 68
 name = "interface_emission.struct_layout_cycle"
-translated = false
-text = "Public Struct layout cycle reaches '{structName}'"
+translated = true
+text = "Layoutkreislauf des öffentlichen  (public) Structs erreicht '{structName}'"
 placeholders = [{ name = "structName", type = "string" }]
 
 [[message]]
 id = 69
 name = "interface_emission.struct_abi_identity_missing"
-translated = false
-text = "Public Struct has no canonical ABI identity"
+translated = true
+text = "Öffentlicher (public) Struct hat keine kanonische ABI-Identität"
 placeholders = []
 
 [[message]]
 id = 70
 name = "interface_emission.struct_static_array_element_type_unsupported"
-translated = false
-text = "Public Struct StaticArray field element type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Elementtyp '{typeName}' des StaticArray-Field des öffentlichen (public) Structs liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 71
 name = "interface_emission.struct_callable_field_type_unsupported"
-translated = false
-text = "Public Struct callable field type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Aufrufbarer Field-Typ '{typeName}' des öffentlichen (public) Struct liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 72
 name = "interface_emission.struct_callable_array_field_type_unsupported"
-translated = false
-text = "Public Struct callable-array field type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Aufrufbarer Array-Field-Typ '{typeName}' des öffentlichen (public) Struct liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 73
 name = "interface_emission.struct_field_type_unsupported"
-translated = false
-text = "Public Struct field type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Field-Typ '{typeName}' des öffentlichen (public) Struct liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 74
 name = "interface_emission.type_abi_identity_missing"
-translated = false
-text = "Public Type has no canonical ABI identity"
+translated = true
+text = "Öffentlicher (public) Typ hat keine kanonische ABI-Identität"
 placeholders = []
 
 [[message]]
 id = 75
 name = "interface_emission.type_base_unpublishable"
-translated = false
-text = "Public Type '{typeName}' has a base outside the compact interface slice"
+translated = true
+text = "Öffentlicher (public) Typ '{typeName}' hat eine Basisklasse außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 76
 name = "interface_emission.type_imported_base_record_missing"
-translated = false
-text = "Public Type '{typeName}' has no imported base ABI record"
+translated = true
+text = "Öffentlicher (public) Typ '{typeName}' hat keinen importierten Basis-ABI-Datensatz (Record)"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 77
 name = "interface_emission.type_implemented_interface_identity_missing"
-translated = false
-text = "Public Type '{typeName}' has no retained implemented Interface identity"
+translated = true
+text = "Öffentlicher (public) Typ '{typeName}' hat keine beibehaltene Identität des implementierten Interfaces"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 78
 name = "interface_emission.type_static_array_field_element_type_unsupported"
-translated = false
-text = "Public Type StaticArray field element type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Elementtyp '{typeName}' des StaticArray-Field des öffentlichen (public) Typs liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 79
 name = "interface_emission.type_field_type_unsupported"
-translated = false
-text = "Public Type field type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Field-Typ '{typeName}' des öffentlichen (public) Typs liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 80
 name = "interface_emission.type_routine_callable_return_type_unsupported"
-translated = false
-text = "Public Type routine callable return type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Aufrufbarer Routinen-Rückgabetyp '{typeName}' des öffentlichen (public) Typs liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 81
 name = "interface_emission.type_routine_callable_signature_unsupported"
-translated = false
-text = "Type routine '{routineName}' has a callable return signature outside the compact interface slice"
+translated = true
+text = "Typ-Routine '{routineName}' hat eine aufrufbare Rückgabezuweisung außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 82
 name = "interface_emission.type_routine_return_type_unsupported"
-translated = false
-text = "Public Type routine return type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Rückgabetyp '{typeName}' der öffentlichen (public) Typ-Routine liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 83
 name = "interface_emission.type_routine_default_argument_unsupported"
-translated = false
-text = "Type routine '{routineName}' has a default argument outside the compact interface slice"
+translated = true
+text = "Typ-Routine '{routineName}' hat ein Standardargument außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 84
 name = "interface_emission.type_routine_parameters_unsupported"
-translated = false
-text = "Type routine '{routineName}' has parameters outside the compact interface slice"
+translated = true
+text = "Typ-Routine '{routineName}' hat Parameter außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 85
 name = "interface_emission.constant_type_unsupported"
-translated = false
-text = "Public constant type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Öffentlicher (public) Konstantentyp '{typeName}' liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 86
 name = "interface_emission.constant_literal_not_normalized"
-translated = false
-text = "Public constant '{constantName}' is not represented by a normalized literal"
+translated = true
+text = "Öffentliche (public) Konstante '{constantName}' wird nicht durch ein normalisiertes Literal dargestellt"
 placeholders = [{ name = "constantName", type = "string" }]
 
 [[message]]
 id = 87
 name = "interface_emission.string_constant_literal_missing"
-translated = false
-text = "Public String constant '{constantName}' has no retained literal value"
+translated = true
+text = "Öffentliche (public) String-Konstante '{constantName}' hat keinen beibehaltenen Literalwert"
 placeholders = [{ name = "constantName", type = "string" }]
 
 [[message]]
 id = 88
 name = "interface_emission.routine_callable_return_type_unsupported"
-translated = false
-text = "Public routine callable return type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Aufrufbarer Routinen-Rückgabetyp '{typeName}' der öffentlichen (public) Routine liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 89
 name = "interface_emission.routine_callable_signature_unsupported"
-translated = false
-text = "Public routine '{routineName}' has a callable return signature outside the compact interface slice"
+translated = true
+text = "Öffentliche (public) Routine '{routineName}' hat eine aufrufbare Rückgabezuweisung außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 90
 name = "interface_emission.routine_return_type_unsupported"
-translated = false
-text = "Public routine return type '{typeName}' is outside the compact interface slice"
+translated = true
+text = "Rückgabetyp '{typeName}' der öffentlichen (public) Routine liegt außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 91
 name = "interface_emission.routine_default_argument_unsupported"
-translated = false
-text = "Public routine '{routineName}' has a default argument outside the compact interface slice"
+translated = true
+text = "Öffentliche (public) Routine '{routineName}' hat ein Standardargument außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 92
 name = "interface_emission.routine_parameters_unsupported"
-translated = false
-text = "Public routine '{routineName}' has parameters outside the compact interface slice"
+translated = true
+text = "Öffentliche (public) Routine '{routineName}' hat Parameter außerhalb des kompakten Interfacebereichs"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 93
 name = "ir_lowering.recursive_struct_constructor_delegation"
-translated = false
-text = "Recursive Struct constructor delegation involving '{routineName}'"
+translated = true
+text = "Rekursive Konstruktor-Delegierung des Struct unter Beteiligung von '{routineName}'"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 94
 name = "ir_lowering.throw_requires_managed_expression"
-translated = false
-text = "Throw requires a managed Object, String, or Array expression"
+translated = true
+text = "Throw erfordert einen verwalteten (managed) Objekt-, String- oder Array-Ausdruck"
 placeholders = []
 
 [[message]]
 id = 95
 name = "ir_lowering.data_item_type_has_no_runtime_representation"
-translated = false
-text = "Data item type '{typeName}' has no runtime representation"
+translated = true
+text = "Datenelement-Typ '{typeName}' hat keine Laufzeitdarstellung (Runtime Representation)"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 96
 name = "ir_lowering.incbin_requires_quoted_resource_path"
-translated = false
-text = "Incbin requires a quoted resource path"
+translated = true
+text = "Incbin erfordert einen in Anführungszeichen gesetzten Ressourcenpfad)"
 placeholders = []
 
 [[message]]
 id = 97
 name = "ir_lowering.enum_underlying_type_outside_integral_scalar_slice"
-translated = false
-text = "Enum underlying type '{typeName}' is outside the integral scalar slice"
+translated = true
+text = "Der zugrundeliegende Typ '{typeName}' des Enums liegt außerhalb des ganzzahligen skalaren Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 98
 name = "ir_lowering.enum_member_has_no_integral_constant_value"
-translated = false
-text = "Enum member '{memberName}' has no integral constant value"
+translated = true
+text = "Enum-Member '{memberName}' hat keinen ganzzahligen konstanten Wert"
 placeholders = [{ name = "memberName", type = "string" }]
 
 [[message]]
 id = 99
 name = "ir_lowering.imported_enum_has_no_resolved_semantic_type"
-translated = false
-text = "Imported Enum '{enumName}' has no resolved semantic type"
+translated = true
+text = "Importiertes Enum '{enumName}' hat keinen aufgelösten semantischen Typ"
 placeholders = [{ name = "enumName", type = "string" }]
 
 [[message]]
 id = 100
 name = "ir_lowering.imported_enum_underlying_type_unsupported"
-translated = false
-text = "Imported Enum '{enumName}' has an unsupported underlying type"
+translated = true
+text = "Importiertes Enum '{enumName}' hat einen nicht unterstützten zugrundeliegenden Typ"
 placeholders = [{ name = "enumName", type = "string" }]
 
 [[message]]
 id = 101
 name = "ir_lowering.imported_enum_interface_abi_identity_missing"
-translated = false
-text = "Imported Enum '{enumName}' has no interface ABI identity"
+translated = true
+text = "Importiertes Enum '{enumName}' hat keine Interface-ABI-Identität"
 placeholders = [{ name = "enumName", type = "string" }]
 
 [[message]]
 id = 102
 name = "ir_lowering.imported_enum_member_has_no_integral_constant_value"
-translated = false
-text = "Imported Enum member '{memberName}' has no integral constant value"
+translated = true
+text = "Member '{memberName}' des importierten Enums hat keinen ganzzahligen konstanten Wert"
 placeholders = [{ name = "memberName", type = "string" }]
 
 [[message]]
 id = 103
 name = "ir_lowering.generic_struct_requires_canonical_specialization"
-translated = false
-text = "Generic Structs require canonical specialization lowering"
+translated = true
+text = "Generische Structs erfordern ein kanonisches Spezialisierungs-Lowering"
 placeholders = []
 
 [[message]]
 id = 104
 name = "ir_lowering.struct_value_layout_cycle"
-translated = false
-text = "Struct value layout cycle involving '{structName}'"
+translated = true
+text = "Wert-Layoutkreislauf des Struct unter Beteiligung von '{structName}'"
 placeholders = [{ name = "structName", type = "string" }]
 
 [[message]]
 id = 105
 name = "ir_lowering.struct_field_type_outside_layout_slice"
-translated = false
-text = "Struct field type '{typeName}' is outside the scalar, StaticArray, and nested-Struct layout slice"
+translated = true
+text = "Struct-Field-Typ '{typeName}' liegt außerhalb des Skalar-, StaticArray- und verschachtelten Struct-Layoutbereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 106
 name = "ir_lowering.imported_struct_static_array_element_helper_missing"
-translated = false
-text = "Imported Struct StaticArray field element type '{typeName}' has no published zero-argument value helper"
+translated = true
+text = "Der Elementtyp '{typeName}' des StaticArray-Fields des importierten Structs hat keine veröffentlichte argumentfreie Wert-Hilfsfunktion"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 107
 name = "ir_lowering.generic_interface_inheritance_requires_ordinary_abi"
-translated = false
-text = "Generic Interface inheritance requires ordinary Interface ABI '{abiName}'"
+translated = true
+text = "Generische Interface-Vererbung erfordert ein gewöhnliches Interface-ABI '{abiName}'"
 placeholders = [{ name = "abiName", type = "string" }]
 
 [[message]]
 id = 108
 name = "ir_lowering.generic_interface_requires_canonical_specialization"
-translated = false
-text = "Generic Interfaces require canonical specialization lowering"
+translated = true
+text = "Generische Interfaces erfordern ein kanonisches Spezialisierungs-Lowering"
 placeholders = []
 
 [[message]]
 id = 109
 name = "ir_lowering.imported_interface_abi_name_missing"
-translated = false
-text = "Imported Interface '{interfaceName}' has no interface ABI name"
+translated = true
+text = "Importiertes Interface '{interfaceName}' hat keinen Interface-ABI-Namen"
 placeholders = [{ name = "interfaceName", type = "string" }]
 
 [[message]]
 id = 110
 name = "ir_lowering.imported_interface_abi_name_requires_linker_representation"
-translated = false
-text = "Imported Interface ABI name '{abiName}' requires an explicit linker-name representation"
+translated = true
+text = "Der importierte Interface-ABI-Name '{abiName}' erfordert eine explizite Linker-Namen-Darstellung"
 placeholders = [{ name = "abiName", type = "string" }]
 
 [[message]]
 id = 111
 name = "ir_lowering.interface_inheritance_requires_published_abi"
-translated = false
-text = "Interface inheritance requires a non-generic source or imported Interface with a published ABI"
+translated = true
+text = "Interface-Vererbung erfordert ein nicht-generisches Quell-Interface oder ein importiertes Interface mit einem veröffentlichten ABI"
 placeholders = []
 
 [[message]]
 id = 112
 name = "ir_lowering.interface_method_return_type_outside_abi_slice"
-translated = false
-text = "Interface method return type '{typeName}' is outside the current ABI slice"
+translated = true
+text = "Der Rückgabetyp '{typeName}' der Interfacemethode liegt außerhalb des aktuellen ABI-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 113
 name = "ir_lowering.interface_method_parameters_require_supported_abi_types"
-translated = false
-text = "Interface method parameters require supported ordinary-C ABI value types"
+translated = true
+text = "Parameter von Interfacemethoden erfordern unterstützte Standard-C-ABI-Werttypen"
 placeholders = []
 
 [[message]]
 id = 114
 name = "ir_lowering.type_field_type_outside_object_layout_slice"
-translated = false
-text = "Field type '{typeName}' is outside the simple object layout slice"
+translated = true
+text = "Field-Typ '{typeName}' liegt außerhalb des einfachen Objekt-Layoutbereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 115
 name = "ir_lowering.imported_struct_static_array_type_field_element_helper_missing"
-translated = false
-text = "Imported Struct StaticArray Type field element type '{typeName}' has no published zero-argument value helper"
+translated = true
+text = "Der Elementtyp '{typeName}' des StaticArray-Typ-Field des importierten Struct hat keine veröffentlichte argumentfreie Wert-Hilfsfunktion"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 116
 name = "ir_lowering.generic_type_requires_canonical_specialization"
-translated = false
-text = "Generic Types require canonical specialization lowering"
+translated = true
+text = "Generic Types erfordern ein kanonisches Spezialisierungs-Lowering"
 placeholders = []
 
 [[message]]
 id = 117
 name = "ir_lowering.interface_implementation_requires_published_abi"
-translated = false
-text = "Interface implementation requires a source or canonical imported Interface with a published ABI"
+translated = true
+text = "Interface-Implementierung erfordert ein Quell-Interface oder ein kanonisch importiertes Interface mit einem veröffentlichten ABI"
 placeholders = []
 
 [[message]]
 id = 118
 name = "ir_lowering.type_inheritance_requires_resolved_base"
-translated = false
-text = "Type inheritance requires a resolved Type base"
+translated = true
+text = "Type-Vererbung erfordert eine aufgelöste Type-Basisklasse"
 placeholders = []
 
 [[message]]
 id = 119
 name = "ir_lowering.imported_type_inheritance_requires_published_abi_record"
-translated = false
-text = "Imported Type inheritance requires a complete published ABI record"
+translated = true
+text = "Importierte Type-Vererbung erfordert einen vollständigen veröffentlichten ABI-Datensatz "
 placeholders = []
 
 [[message]]
 id = 120
 name = "ir_lowering.interface_method_implementation_missing"
-translated = false
-text = "Interface method '{interfaceName}.{methodName}' has no lowered implementation"
+translated = true
+text = "Die Interfacemethode '{interfaceName}.{methodName}' hat keine generierte Implementierung"
 placeholders = [{ name = "interfaceName", type = "string" }, { name = "methodName", type = "string" }]
 
 [[message]]
 id = 121
 name = "ir_lowering.capturing_closure_in_generic_routine_unsupported"
-translated = false
-text = "capturing Closure literals in generic routines require canonical environment specialization support"
+translated = true
+text = "Werteschließende (capturing) Closures in generischen Routinen erfordern eine kanonische Umgebungsspezialisierungs-Unterstützung"
 placeholders = []
 
 [[message]]
 id = 122
 name = "ir_lowering.sibling_closures_captured_self_type_mismatch"
-translated = false
-text = "sibling Closure literals disagree about their captured Self type"
+translated = true
+text = "Sibling-Closures stimmen nicht in ihrem eingefangenen 'Self'-Typ überein"
 placeholders = []
 
 [[message]]
 id = 123
 name = "ir_lowering.captured_value_environment_type_unsupported"
-translated = false
-text = "captured value '{valueName}' has unsupported environment type '{typeName}'"
+translated = true
+text = "Der eingefangene Wert '{valueName}' hat einen nicht unterstützten Umgebungstyp '{typeName}'"
 placeholders = [{ name = "valueName", type = "string" }, { name = "typeName", type = "string" }]
 
 [[message]]
 id = 124
 name = "ir_lowering.nested_closure_enclosing_environment_plan_missing"
-translated = false
-text = "nested Closure capture has no enclosing environment plan"
+translated = true
+text = "Einfangprozess der verschachtelten Closure hat keinen umschließenden Umgebungsplan"
 placeholders = []
 
 [[message]]
 id = 125
 name = "ir_lowering.nested_closure_parent_environment_layout_missing"
-translated = false
-text = "nested Closure parent environment has no lowered layout"
+translated = true
+text = "Die übergeordnete Umgebung der verschachtelten Closure hat kein generiertes Layout"
 placeholders = []
 
 [[message]]
 id = 126
 name = "ir_lowering.captured_self_environment_type_unsupported"
-translated = false
-text = "captured Self has an unsupported environment type"
+translated = true
+text = "Das eingefangene 'Self' hat einen nicht unterstützten Umgebungstyp"
 placeholders = []
 
 [[message]]
 id = 127
 name = "ir_lowering.using_resource_does_not_expose_closeable_contract"
-translated = false
-text = "Using resource '{resourceName}' does not expose an ICloseable Interface contract"
+translated = true
+text = "Die 'Using'-Ressource '{resourceName}' deklariert keinen 'ICloseable'-Interface-Vertrag"
 placeholders = [{ name = "resourceName", type = "string" }]
 
 [[message]]
 id = 128
 name = "ir_lowering.using_resource_interface_close_method_missing"
-translated = false
-text = "Using resource Interface has no parameterless Close method"
+translated = true
+text = "Das Interface der 'Using'-Ressource besitzt keine parameterlose 'Close'-Methode"
 placeholders = []
 
 [[message]]
 id = 129
 name = "ir_lowering.nested_closure_active_parent_environment_missing"
-translated = false
-text = "nested Closure environment has no active parent environment"
+translated = true
+text = "Die Umgebung der verschachtelten Closure hat keine aktive übergeordnete Umgebung"
 placeholders = []
 
 [[message]]
 id = 130
 name = "ir_lowering.capturing_closure_active_instance_receiver_missing"
-translated = false
-text = "capturing Closure has no active instance receiver"
+translated = true
+text = "Die werteschließende (capturing) Closure hat keinen aktiven Instanz-Receiver"
 placeholders = []
 
 [[message]]
 id = 131
 name = "ir_lowering.using_requires_lowered_resource_per_declaration"
-translated = false
-text = "Using requires one lowered managed resource per declaration"
+translated = true
+text = "'Using' erfordert genau eine generierte verwaltete Ressource pro Deklaration"
 placeholders = []
 
 [[message]]
 id = 132
 name = "ir_lowering.closure_unary_operation_unsupported"
-translated = false
-text = "Closure unary operation '{operatorText}' is not implemented"
+translated = true
+text = "Unäre Closure-Operation '{operatorText}' ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 133
 name = "ir_lowering.closure_binary_operation_unsupported"
-translated = false
-text = "Closure operation '{operatorText}' is not implemented"
+translated = true
+text = "Closure-Operation '{operatorText}' ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 134
 name = "ir_lowering.bound_method_reference_requires_closure_signature_and_object_receiver"
-translated = false
-text = "Bound Method reference requires a supported managed Closure signature and object receiver"
+translated = true
+text = "Gebundene Methodenreferenz erfordert eine unterstützte verwaltete Closure-Signatur und einen Objekt-Receiver"
 placeholders = []
 
 [[message]]
 id = 135
 name = "ir_lowering.bound_method_reference_struct_receiver_unsupported"
-translated = false
-text = "Bound Method references currently support Type and Interface receivers; Struct receiver capture semantics are not yet defined"
+translated = true
+text = "Gebundene Methodenreferenzen unterstützen derzeit nur Type- und Interface-Receiver; die Semantik zum Einfangen von Struct-Receivern ist noch nicht definiert"
 placeholders = []
 
 [[message]]
 id = 136
 name = "ir_lowering.capturing_closure_synthesized_environment_missing"
-translated = false
-text = "capturing Closure literal has no active synthesized environment"
+translated = true
+text = "Das Literal der werteschließenden (capturing) Closure hat keine aktive synthetisierte Umgebung"
 placeholders = []
 
 [[message]]
 id = 137
-name = "ir_lowering.closure_native_abi_representation_missing"
-translated = false
-text = "Closure values have no native ABI representation"
+name = "ir_lowering.closure_values_have no native ABI representation"
+translated = true
+text = "Closure-Werte haben keine native ABI-Darstellung"
 placeholders = []
 
 [[message]]
 id = 138
 name = "ir_lowering.struct_cannot_declare_delete_method"
-translated = false
-text = "Structs have C value lifetime and cannot declare a Delete method"
+translated = true
+text = "Structs besitzen die Lebensdauer von C-Werten und können keine 'Delete'-Methode deklarieren"
 placeholders = []
 
 [[message]]
 id = 139
 name = "ir_lowering.enum_declaration_could_not_be_lowered"
-translated = false
-text = "Enum declaration could not be lowered"
+translated = true
+text = "Enum-Deklaration konnte nicht generiert werden"
 placeholders = []
 
 [[message]]
 id = 140
 name = "ir_lowering.generic_routine_requires_canonical_specialization"
-translated = false
-text = "Generic routines require canonical specialization lowering"
+translated = true
+text = "Generic-Routinen erfordern ein kanonisches Spezialisierungs-Lowering"
 placeholders = []
 
 [[message]]
 id = 141
 name = "ir_lowering.routine_return_type_outside_scalar_slice"
-translated = false
-text = "Routine return type '{typeName}' is outside the scalar IR slice"
+translated = true
+text = "Rückgabetyp '{typeName}' der Routine liegt außerhalb des skalaren IR-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 142
 name = "ir_lowering.callable_parameters_require_value_passing"
-translated = false
-text = "Callable parameters require value passing in the ordinary-C ABI IR slice"
+translated = true
+text = "Aufrufbare Parameter erfordern eine Wertübergabe im Standard-C-ABI-IR-Slice"
 placeholders = []
 
 [[message]]
 id = 143
 name = "ir_lowering.callable_destructor_parameters_outside_lifecycle_abi"
-translated = false
-text = "Callable destructor parameters are outside the lifecycle ABI"
+translated = true
+text = "Aufrufbare Destruktor-Parameter liegen außerhalb des Lebenszyklus-ABI"
 placeholders = []
 
 [[message]]
 id = 144
 name = "ir_lowering.parameter_type_outside_ordinary_c_abi_slice"
-translated = false
-text = "Parameter type '{typeName}' is outside the ordinary-C ABI IR slice"
+translated = true
+text = "Parametertyp '{typeName}' liegt außerhalb des Standard-C-ABI-IR-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 145
 name = "ir_lowering.var_parameter_requires_addressable_abi_type"
-translated = false
-text = "Var parameters require a directly addressable value ABI type"
+translated = true
+text = "Var-Parameter erfordern einen direkt adressierbaren Wert-ABI-Typ"
 placeholders = []
 
 [[message]]
 id = 146
 name = "ir_lowering.extern_routine_requires_native_abi_binding"
-translated = false
-text = "Extern routines require a native ABI binding"
+translated = true
+text = "Extern-Routinen erfordern eine native ABI-Bindung"
 placeholders = []
 
 [[message]]
 id = 147
 name = "ir_lowering.extern_variable_requires_global_native_abi_binding"
-translated = false
-text = "Extern variables must be Global declarations with a native ABI binding"
+translated = true
+text = "Extern-Variablen müssen globale Deklarationen mit einer nativen ABI-Bindung sein"
 placeholders = []
 
 [[message]]
 id = 148
 name = "ir_lowering.extern_type_requires_struct_abi_declaration"
-translated = false
-text = "Only Struct ABI declarations are implemented as Extern types"
+translated = true
+text = "Nur Struct-ABI-Deklarationen sind als Extern-Types implementiert"
 placeholders = []
 
 [[message]]
 id = 149
 name = "ir_lowering.extern_block_declaration_unsupported"
-translated = false
-text = "Only routine and Global declarations are implemented in Extern blocks"
+translated = true
+text = "In Extern-Blöcken sind nur Routinen- und globale Deklarationen implementiert"
 placeholders = []
 
 [[message]]
 id = 150
 name = "ir_lowering.yielding_routine_cannot_retain_var_parameters"
-translated = false
-text = "yielding routines cannot retain Var parameters beyond the creating call"
+translated = true
+text = "Ergebnisliefernde (yielding)-Routinen) dürfen Var-Parameter nicht über den erzeugenden Aufruf hinaus beibehalten"
 placeholders = []
 
 [[message]]
 id = 151
 name = "ir_lowering.yield_inside_finally_unsupported"
-translated = false
-text = "Yield inside Finally is not supported; Yield from the protected Try or Catch body instead"
+translated = true
+text = "'Yield' innerhalb eines 'Finally'-Blocks wird nicht unterstützt; verwenden Sie 'Yield' stattdessen aus dem geschützten 'Try'- oder 'Catch'-Rumpf"
 placeholders = []
 
 [[message]]
 id = 152
 name = "ir_lowering.iterator_interface_method_implementation_missing"
-translated = false
-text = "iterator Interface method '{methodName}' has no generated implementation"
-placeholders = [{ name = "methodName", type = "string" }]
+translated = true
+text = "Die Iterator-Interface-Methode '{methodName}' hat keine generierte Implementierung"
+placeholders = []
 
 [[message]]
 id = 153
 name = "ir_lowering.object_iterator_each_in_loop_variable_unsupported"
-translated = false
-text = "Object iterator EachIn requires a matching supported loop variable, or an object-reference target for a legacy Object result"
+translated = true
+text = "Der Objekt-Iterator 'EachIn' erfordert eine passende, unterstützte Schleifenvariable oder ein Objektreferenz-Ziel für ein veraltetes (legacy) Objekt-Ergebnis"
 placeholders = []
 
 [[message]]
 id = 154
 name = "ir_lowering.object_iterator_each_in_receiver_unsupported"
-translated = false
-text = "Object iterator EachIn currently requires source or imported Type, or non-generic Interface receivers"
+translated = true
+text = "Der Objekt-Iterator 'EachIn' erfordert derzeit einen Quell- oder importierten Type oder nicht-generische Interface-Receiver"
 placeholders = []
 
 [[message]]
 id = 155
 name = "ir_lowering.object_iterator_each_in_target_not_addressable"
-translated = false
-text = "Object iterator EachIn requires an addressable Local, Var parameter, Field, Global, or array element target"
+translated = true
+text = "Der Objekt-Iterator 'EachIn' erfordert ein adressierbares Ziel (Lokale Variable, Var-Parameter, Field, Globale Variable oder Array-Element)"
 placeholders = []
 
 [[message]]
 id = 156
 name = "ir_lowering.legacy_object_enumerator_cast_identity_missing"
-translated = false
-text = "Legacy ObjectEnumerator target has no runtime cast identity"
+translated = true
+text = "Das veraltete (legacy) ObjectEnumerator-Ziel hat keine Laufzeit-Cast-Identität"
 placeholders = []
 
 [[message]]
 id = 157
 name = "ir_lowering.static_array_each_in_element_type_unsupported"
-translated = false
-text = "StaticArray EachIn element type is not implemented"
+translated = true
+text = "Der 'EachIn'-Elementtyp für StaticArray ist nicht implementiert"
 placeholders = []
 
 [[message]]
 id = 158
 name = "ir_lowering.static_array_each_in_loop_variable_type_unsupported"
-translated = false
-text = "StaticArray EachIn loop variable type is not implemented for this element type"
+translated = true
+text = "Der Schleifenvariablentyp für 'EachIn' auf StaticArray ist für diesen Elementtyp nicht implementiert"
 placeholders = []
 
 [[message]]
 id = 159
 name = "ir_lowering.static_array_each_in_target_not_addressable"
-translated = false
-text = "StaticArray EachIn requires an addressable Local, Var parameter, Field, Global, or array element target"
+translated = true
+text = "Das 'EachIn' für StaticArray erfordert ein adressierbares Ziel (Lokale Variable, Var-Parameter, Field, Globale Variable oder Array-Element)"
 placeholders = []
 
 [[message]]
 id = 160
 name = "ir_lowering.string_each_in_requires_numeric_loop_variable"
-translated = false
-text = "String EachIn requires a numeric loop variable for UTF-16 code units"
+translated = true
+text = "Das 'EachIn' für Strings erfordert eine numerische Schleifenvariable für UTF-16-Code-Units"
 placeholders = []
 
 [[message]]
 id = 161
 name = "ir_lowering.string_each_in_target_not_addressable"
-translated = false
-text = "String EachIn requires an addressable Local, Var parameter, Field, Global, or array element target"
+translated = true
+text = "Das 'EachIn' für Strings erfordert ein adressierbares Ziel (Lokale Variable, Var-Parameter, Field, Globale Variable oder Array-Element)"
 placeholders = []
 
 [[message]]
 id = 162
 name = "ir_lowering.each_in_requires_supported_managed_array"
-translated = false
-text = "EachIn requires a supported managed Array"
+translated = true
+text = "EachIn erfordert ein unterstütztes verwaltetes (managed) Array"
 placeholders = []
 
 [[message]]
 id = 163
 name = "ir_lowering.array_each_in_element_type_mismatch"
-translated = false
-text = "Array EachIn element type '{elementType}' cannot be assigned to loop variable type '{variableType}'"
+translated = true
+text = "Der Array-'EachIn'-Elementtyp '{elementType}' kann dem Schleifenvariablentyp '{variableType}' nicht zugewiesen werden"
 placeholders = [{ name = "elementType", type = "string" }, { name = "variableType", type = "string" }]
 
 [[message]]
 id = 164
 name = "ir_lowering.array_each_in_target_not_addressable"
-translated = false
-text = "Array EachIn requires an addressable Local, Var parameter, Field, Global, or array element target"
+translated = true
+text = "Das Array-'EachIn' erfordert ein adressierbares Ziel (Lokale Variable, Var-Parameter, Field, Globale Variable oder Array-Element)"
 placeholders = []
 
 [[message]]
 id = 165
 name = "ir_lowering.object_array_each_in_cast_identity_missing"
-translated = false
-text = "Object Array EachIn target has no runtime cast identity"
+translated = true
+text = "Das Objekt-Array-'EachIn'-Ziel hat keine Laufzeit-Cast-Identität"
 placeholders = []
 
 [[message]]
 id = 166
 name = "ir_lowering.range_for_requires_numeric_types"
-translated = false
-text = "Range For loops require numeric variable, initializer, limit, and step types"
+translated = true
+text = "Range-For-Schleifen erfordern numerische Typen für Variable, Initialisierer, Limit und Schrittweite (Step)"
 placeholders = []
 
 [[message]]
 id = 167
 name = "ir_lowering.range_for_target_not_addressable"
-translated = false
-text = "Range For requires an addressable Local, Var parameter, Field, Global, or array element target"
+translated = true
+text = "Range-For erfordert ein adressierbares Ziel (Lokale Variable, Var-Parameter, Field, Globale Variable oder Array-Element)"
 placeholders = []
 
 [[message]]
 id = 168
 name = "ir_lowering.extern_const_compile_time_value_missing"
-translated = false
-text = "Extern Const '{constantName}' has no compile-time value"
+translated = true
+text = "Die externe ('Extern') Konstante '{constantName}' hat keinen Wert zur Kompilierzeit"
 placeholders = [{ name = "constantName", type = "string" }]
 
 [[message]]
 id = 169
 name = "ir_lowering.static_array_type_field_requires_default_initialization"
-translated = false
-text = "StaticArray Type fields currently require default initialization"
+translated = true
+text = "Fields mit StaticArray-Type erfordern derzeit eine Standardinitialisierung"
 placeholders = []
 
 [[message]]
 id = 170
 name = "ir_lowering.type_field_initializer_expression_missing"
-translated = false
-text = "Field initializer did not have a bound expression"
+translated = true
+text = "Der Field-Initialisierer besaß keinen gebundenen Ausdruck"
 placeholders = []
 
 [[message]]
 id = 171
 name = "ir_lowering.static_array_struct_field_requires_default_initialization"
-translated = false
-text = "StaticArray Struct fields currently require default initialization"
+translated = true
+text = "Fields mit StaticArray-Struct erfordern derzeit eine Standardinitialisierung"
 placeholders = []
 
 [[message]]
 id = 172
 name = "ir_lowering.struct_field_initializer_expression_missing"
-translated = false
-text = "Struct field initializer did not have a bound expression"
+translated = true
+text = "Der Struct-Field-Initialisierer besaß keinen gebundenen Ausdruck"
 placeholders = []
 
 [[message]]
 id = 173
 name = "ir_lowering.struct_constructor_cannot_delegate_to_imported_type"
-translated = false
-text = "Struct constructors cannot delegate to an imported Type constructor"
+translated = true
+text = "Struct-Konstruktoren können nicht an einen importierten Type-Konstruktor delegieren"
 placeholders = []
 
 [[message]]
 id = 174
 name = "ir_lowering.struct_constructor_delegation_requires_same_struct"
-translated = false
-text = "Struct constructors may only delegate to another constructor on the same Struct"
+translated = true
+text = "Struct-Konstruktoren dürfen nur an einen anderen Konstruktor desselben Struct delegieren"
 placeholders = []
 
 [[message]]
 id = 175
 name = "ir_lowering.multiple_declarators_unsupported"
-translated = false
-text = "Multiple declarators in one statement are not yet lowered"
+translated = true
+text = "Mehrere Deklaratoren in einer einzigen Anweisung werden beim Lowering noch nicht unterstützt"
 placeholders = []
 
 [[message]]
 id = 176
 name = "ir_lowering.variable_declaration_semantic_symbol_missing"
-translated = false
-text = "Variable declaration has no semantic symbol"
+translated = true
+text = "Die Variablendeklaration hat kein semantisches Symbol"
 placeholders = []
 
 [[message]]
 id = 177
 name = "ir_lowering.callable_storage_requires_compatible_declaration"
-translated = false
-text = "Callable storage currently requires an ordinary-C-compatible Local or Global declaration"
+translated = true
+text = "Aufrufbarer (callable) Speicher erfordert derzeit eine mit Standard-C kompatible lokale oder globale Deklaration"
 placeholders = []
 
 [[message]]
 id = 178
 name = "ir_lowering.variable_type_outside_scalar_slice"
-translated = false
-text = "Variable type '{typeName}' is outside the scalar IR slice"
+translated = true
+text = "Der Variablentyp '{typeName}' liegt außerhalb des skalaren IR-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 179
 name = "ir_lowering.static_array_declaration_requires_default_initialization"
-translated = false
-text = "StaticArray declarations currently require default initialization"
+translated = true
+text = "StaticArray-Deklarationen erfordern derzeit eine Standardinitialisierung"
 placeholders = []
 
 [[message]]
 id = 180
 name = "ir_lowering.imported_struct_static_array_declaration_element_helper_missing"
-translated = false
-text = "Imported Struct StaticArray element type '{typeName}' has no published zero-argument value helper"
+translated = true
+text = "Der Elementtyp '{typeName}' des importierten StaticArray-Structs hat keine veröffentlichte argumentfreie Wert-Hilfsfunktion"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 181
 name = "ir_lowering.assignment_target_unsupported"
-translated = false
-text = "Only symbol, field, heap-array and StaticArray element assignment is implemented"
+translated = true
+text = "Nur die Zuweisung an Symbole, Field, Heap-Arrays und StaticArray-Elemente ist implementiert"
 placeholders = []
 
 [[message]]
 id = 182
 name = "ir_lowering.compound_assignment_target_unsupported"
-translated = false
-text = "Compound assignment requires a supported scalar or Enum target, or a stable String/heap-array target with :+"
+translated = true
+text = "Zusammengesetzte (compound) Zuweisung erfordert ein unterstütztes skalares oder Enum-Ziel oder ein stabiles String/Heap-Array-Ziel mit ':+'"
 placeholders = []
 
 [[message]]
 id = 183
 name = "ir_lowering.assert_condition_type_not_convertible_to_truth"
-translated = false
-text = "Assert condition type '{typeName}' cannot be converted to BlitzMax truth"
+translated = true
+text = "Assert-Bedingungstyp '{typeName}' kann nicht in einen BlitzMax-Wahrheitswert (Truth) konvertiert werden"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 184
 name = "ir_lowering.assert_message_type_not_convertible_to_string"
-translated = false
-text = "Assert message type '{typeName}' cannot be converted to String by the current IR"
+translated = true
+text = "Assert-Nachrichtentyp '{typeName}' kann von der aktuellen IR nicht in einen String konvertiert werden"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 185
 name = "ir_lowering.release_requires_integer_handle"
-translated = false
-text = "Release requires an integer handle expression"
+translated = true
+text = "Release erfordert einen ganzzahligen (integer) Handle-Ausdruck"
 placeholders = []
 
 [[message]]
 id = 186
 name = "ir_lowering.select_selector_type_unsupported"
-translated = false
-text = "Select selector type '{typeName}' requires String, managed Object/Array identity, Enum, pointer, or scalar numeric comparison IR"
+translated = true
+text = "Der Selektortyp '{typeName}' für Select erfordert eine String-, verwaltete Objekt/Array-Identitäts-, Enum-, Pointer- oder skalare numerische Vergleichs-IR"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 187
 name = "ir_lowering.try_requires_catch_or_finally"
-translated = false
-text = "Try requires Catch or Finally"
+translated = true
+text = "Try erfordert Catch oder Finally"
 placeholders = []
 
 [[message]]
 id = 188
 name = "ir_lowering.catch_type_downcast_identity_missing"
-translated = false
-text = "Catch type '{typeName}' has no runtime downcast identity"
+translated = true
+text = "Catch-Typ '{typeName}' hat keine Laufzeit-Downcast-Identität"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 189
 name = "ir_lowering.read_data_operation_missing"
-translated = false
-text = "ReadData has no analyzed data operation"
+translated = true
+text = "ReadData hat keine analysierte Datenoperation"
 placeholders = []
 
 [[message]]
 id = 190
 name = "ir_lowering.read_data_target_not_addressable"
-translated = false
-text = "ReadData target is not addressable in typed IR"
+translated = true
+text = "Das ReadData-Ziel ist in der typisierten IR nicht adressierbar"
 placeholders = []
 
 [[message]]
 id = 191
 name = "ir_lowering.restore_data_label_missing"
-translated = false
-text = "RestoreData has no resolved data label"
+translated = true
+text = "RestoreData hat kein aufgelöstes Daten-Label"
 placeholders = []
 
 [[message]]
 id = 192
 name = "ir_lowering.loop_control_target_missing"
-translated = false
-text = "Loop control target was not retained by semantic analysis"
+translated = true
+text = "Schleifensteuerungsziel wurde von der semantischen Analyse nicht beibehalten"
 placeholders = []
 
 [[message]]
 id = 193
 name = "ir_lowering.bound_statement_kind_unsupported"
-translated = false
-text = "Bound statement kind '{statementKind}' is not implemented"
+translated = true
+text = "Gebundene Anweisungsart  '{statementKind}' ist nicht implementiert"
 placeholders = [{ name = "statementKind", type = "integer" }]
 
 [[message]]
 id = 194
 name = "ir_lowering.heap_array_allocation_rank_mismatch"
-translated = false
-text = "Heap-array declaration allocation requires one dimension per declared rank"
+translated = true
+text = "Die Speicherallokation der Heap-Array-Deklaration erfordert genau eine Dimension pro deklariertem Rang"
 placeholders = []
 
 [[message]]
 id = 195
 name = "ir_lowering.array_element_type_unsupported"
-translated = false
-text = "Array element type '{typeName}' is not implemented"
+translated = true
+text = "Array-Elementtyp '{typeName}' ist nicht implementiert"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 196
 name = "ir_lowering.expression_type_outside_scalar_slice"
-translated = false
-text = "Expression type '{typeName}' is outside the scalar IR slice"
+translated = true
+text = "Ausdruckstyp '{typeName}' liegt außerhalb des skalaren IR-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 197
 name = "ir_lowering.array_literal_requires_one_dimension"
-translated = false
-text = "Only one-dimensional array literals are implemented"
+translated = true
+text = "Es sind nur eindimensionale Array-Literale implementiert"
 placeholders = []
 
 [[message]]
 id = 198
 name = "ir_lowering.self_requires_instance_method"
-translated = false
-text = "Self is only available while lowering an instance method"
+translated = true
+text = "Self ist nur während des Lowerings einer Instanzmethode verfügbar"
 placeholders = []
 
 [[message]]
 id = 199
 name = "ir_lowering.static_array_member_unsupported"
-translated = false
-text = "StaticArray member lowering currently supports only length"
+translated = true
+text = "Das Lowering von StaticArray-Membern unterstützt derzeit nur length"
 placeholders = []
 
 [[message]]
 id = 200
 name = "ir_lowering.array_member_unsupported"
-translated = false
-text = "Array member lowering currently supports only length"
+translated = true
+text = "Das Lowering von Array-Membern unterstützt derzeit nur length"
 placeholders = []
 
 [[message]]
 id = 201
 name = "ir_lowering.string_index_requires_integral_index"
-translated = false
-text = "String indexing requires one integral index"
+translated = true
+text = "Die String-Indexierung erfordert genau einen ganzzahligen Index"
 placeholders = []
 
 [[message]]
 id = 202
 name = "ir_lowering.pointer_index_unsupported"
-translated = false
-text = "Raw pointer indexing requires one integral index and a supported non-Void element type"
+translated = true
+text = "Die native Pointer-Indexierung erfordert einen ganzzahligen Index und einen unterstützten Nicht-Void-Elementtyp"
 placeholders = []
 
 [[message]]
 id = 203
 name = "ir_lowering.static_array_index_unsupported"
-translated = false
-text = "Only one-dimensional supported StaticArray indexing is implemented"
+translated = true
+text = "Es ist nur eindimensionale StaticArray-Indexierung implementiert"
 placeholders = []
 
 [[message]]
 id = 204
 name = "ir_lowering.heap_array_index_rank_mismatch"
-translated = false
-text = "Heap-array indexing requires one index per declared rank"
+translated = true
+text = "Die Heap-Array-Indexierung erfordert genau einen Index pro deklariertem Rang"
 placeholders = []
 
 [[message]]
 id = 205
 name = "ir_lowering.slice_receiver_type_unsupported"
-translated = false
-text = "Slice receiver type '{typeName}' is outside the String and one-dimensional heap Array slice"
+translated = true
+text = "Der Slice-Receiver-Typ '{typeName}' liegt außerhalb des zulässigen Bereichs für Strings und eindimensionale Heap-Arrays"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 206
 name = "ir_lowering.var_ptr_operand_not_addressable"
-translated = false
-text = "VarPtr operand is not addressable in typed compiler IR"
+translated = true
+text = "Der VarPtr-Operand ist in der typisierten Compiler-IR nicht adressierbar"
 placeholders = []
 
 [[message]]
 id = 207
 name = "ir_lowering.callable_unary_operation_unsupported"
-translated = false
-text = "Callable unary operation '{operatorText}' is not implemented"
+translated = true
+text = "Unäre Operation '{operatorText}' für aufrufbare Typen (Callables) ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 208
 name = "ir_lowering.object_unary_operation_unsupported"
-translated = false
-text = "Object unary operation '{operatorText}' is not implemented"
+translated = true
+text = "Unäre Objekt-Operation '{operatorText}' ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 209
 name = "ir_lowering.array_unary_operation_unsupported"
-translated = false
-text = "Array unary operation '{operatorText}' is not implemented"
+translated = true
+text = "Unäre Array-Operation '{operatorText}' ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 210
 name = "ir_lowering.string_unary_operation_unsupported"
-translated = false
-text = "String unary operation '{operatorText}' is not implemented"
+translated = true
+text = "Unäre String-Operation '{operatorText}' ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 211
 name = "ir_lowering.pointer_unary_operation_requires_explicit_ir"
-translated = false
-text = "Pointer unary operations require explicit pointer IR operations"
+translated = true
+text = "Unäre Pointer-Operationen erfordern explizite Pointer-IR-Operationen"
 placeholders = []
 
 [[message]]
 id = 212
 name = "ir_lowering.struct_unary_operation_requires_resolved_operator"
-translated = false
-text = "Struct unary operation '{operatorText}' requires a resolved operator"
+translated = true
+text = "Unäre Struktur-Operation '{operatorText}' erfordert einen aufgelösten Operator"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 213
 name = "ir_lowering.object_binary_operation_unsupported"
-translated = false
-text = "Object operation '{operatorText}' is not implemented"
+translated = true
+text = "Objekt-Operation '{operatorText}' ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 214
 name = "ir_lowering.array_binary_operation_unsupported"
-translated = false
-text = "Array operation '{operatorText}' is not implemented"
-placeholders = [{ name = "operatorText", type = "string" }]
+translated = true
+text = "Array-Operation '{operatorText}' ist nicht implementiert"
+placeholders = []
 
 [[message]]
 id = 215
 name = "ir_lowering.string_binary_operation_unsupported"
-translated = false
-text = "String binary operation '{operatorText}' is not implemented"
+translated = true
+text = "Binäre String-Operation '{operatorText}' ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 216
 name = "ir_lowering.pointer_binary_operation_unsupported"
-translated = false
-text = "Pointer operation '{operatorText}' is not implemented"
+translated = true
+text = "Pointer-Operation '{operatorText}' ist nicht implementiert"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 217
 name = "ir_lowering.null_default_conversion_unsupported"
-translated = false
-text = "Null default conversion to '{typeName}' has no typed IR representation"
+translated = true
+text = "Die Standardkonvertierung von Null in '{typeName}' besitzt keine typisierte IR-Darstellung"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 218
 name = "ir_lowering.enum_to_string_requires_descriptor"
-translated = false
-text = "Enum-to-String conversion requires a retained Enum descriptor"
+translated = true
+text = "Die Konvertierung von Enum in String erfordert einen beibehaltenen Enum-Deskriptor"
 placeholders = []
 
 [[message]]
 id = 219
 name = "ir_lowering.bound_expression_kind_unsupported"
-translated = false
-text = "Bound expression kind '{expressionKind}' is not implemented"
+translated = true
+text = "Gebundene Ausdrucksart '{expressionKind}' ist nicht implementiert"
 placeholders = [{ name = "expressionKind", type = "integer" }]
 
 [[message]]
 id = 220
 name = "ir_lowering.range_struct_abi_missing"
-translated = false
-text = "The standard Range value has no published Struct ABI"
+translated = true
+text = "Der Standard-Bereichswert besitzt kein veröffentlichtes Struct-ABI"
 placeholders = []
 
 [[message]]
 id = 221
 name = "ir_lowering.range_bound_resolution_abi_missing"
-translated = false
-text = "The standard Range value has no published bound-resolution ABI"
+translated = true
+text = "Der Standard-Bereichswert besitzt kein veröffentlichtes ABI zur Grenzwertauflösung"
 placeholders = []
 
 [[message]]
 id = 222
 name = "ir_lowering.range_slicing_receiver_unsupported"
-translated = false
-text = "Range slicing supports String and one-dimensional heap Array values"
+translated = true
+text = "Bereichsabtrennung (Range Slicing) unterstützt nur Strings und eindimensionale Heap-Array-Werte"
 placeholders = []
 
 [[message]]
 id = 223
 name = "ir_lowering.super_method_requires_source_base_implementation"
-translated = false
-text = "Super method dispatch currently requires a lowered source base implementation"
+translated = true
+text = "Der Methodenaufruf via Super erfordert derzeit eine generierte Implementierung in der Quell-Basisklasse"
 placeholders = []
 
 [[message]]
 id = 224
 name = "ir_lowering.call_target_unsupported"
-translated = false
-text = "Call target '{callName}' on receiver type '{receiverType}' is not implemented"
+translated = true
+text = "Das Aufrufziel '{callName}' auf dem Receiver-Typ '{receiverType}' ist nicht implementiert"
 placeholders = [{ name = "callName", type = "string" }, { name = "receiverType", type = "string" }]
 
 [[message]]
 id = 225
 name = "ir_lowering.lifecycle_call_requires_dedicated_operation"
-translated = false
-text = "Constructor delegation and direct destructor calls require dedicated lifecycle operations"
+translated = true
+text = "Konstruktor-Delegierung und direkte Destruktor-Aufrufe erfordern dedizierte Lebenszyklus-Operationen"
 placeholders = []
 
 [[message]]
 id = 226
 name = "ir_lowering.object_qualified_type_function_source_slot_missing"
-translated = false
-text = "Object-qualified Type Function call has no source class-table slot"
+translated = true
+text = "Der objektqualifizierte Type-Funktionsaufruf besitzt keinen Slot in der Quell-Klassentabelle"
 placeholders = []
 
 [[message]]
 id = 227
 name = "ir_lowering.super_dispatch_requires_instance_method"
-translated = false
-text = "Super dispatch requires an instance method"
+translated = true
+text = "Der Aufruf via Super erfordert eine Instanzmethode"
 placeholders = []
 
 [[message]]
 id = 228
 name = "ir_lowering.super_dispatch_source_base_layout_missing"
-translated = false
-text = "Super dispatch class does not have a lowered source base layout"
+translated = true
+text = "Die via Super aufgerufene Klasse besitzt kein generiertes Quell-Basis-Layout"
 placeholders = []
 
 [[message]]
 id = 229
 name = "ir_lowering.method_call_receiver_missing"
-translated = false
-text = "Method call did not retain its bound receiver"
+translated = true
+text = "Der Methodenaufruf hat seinen gebundenen Receiver nicht beibehalten"
 placeholders = []
 
 [[message]]
 id = 230
 name = "ir_lowering.imported_struct_constructor_requires_struct_new"
-translated = false
-text = "Imported Struct constructors require a struct-new operation"
+translated = true
+text = "Konstruktoren importierter Structs erfordern eine Struct-new-Operation"
 placeholders = []
 
 [[message]]
 id = 231
 name = "ir_lowering.imported_struct_method_receiver_missing"
-translated = false
-text = "Imported Struct method call did not retain its receiver"
+translated = true
+text = "Der Methodenaufruf des importierten Structs hat seinen Receiver nicht beibehalten"
 placeholders = []
 
 [[message]]
 id = 232
 name = "ir_lowering.imported_virtual_method_receiver_missing"
-translated = false
-text = "Imported virtual method call did not retain its bound receiver"
+translated = true
+text = "Der Aufruf der importierten virtuellen Methode hat seinen gebundenen Receiver nicht beibehalten"
 placeholders = []
 
 [[message]]
 id = 233
 name = "ir_lowering.imported_virtual_method_receiver_abi_missing"
-translated = false
-text = "Imported virtual method receiver type has no published class ABI"
+translated = true
+text = "Der Receiver-Type der importierten virtuellen Methode besitzt kein veröffentlichtes Klassen-ABI"
 placeholders = []
 
 [[message]]
 id = 234
 name = "ir_lowering.imported_method_inherited_slot_missing"
-translated = false
-text = "Imported method '{methodName}' has no inherited slot in source receiver type '{receiverType}' (declaring imported class '{declaringClass}', source imported base '{sourceBase}')"
-placeholders = [{ name = "methodName", type = "string" }, { name = "receiverType", type = "string" }, { name = "declaringClass", type = "string" }, { name = "sourceBase", type = "string" }]
+translated = true
+text = "Die importierte Methode '{methodName}' hat keinen geerbten Slot im Quell-Receiver-Type '{receiverType}' (deklariert die importierte Klasse '{declaringClass}', Quell-Importbasis ist '{sourceBase}')"
+placeholders = [{ name = "methodName", type = "string" }, { name = "receiverType", type = "string" }, { name = "declaringClass", type = "string" }, { sourceName = "sourceBase", type = "string" }]
 
 [[message]]
 id = 235
 name = "ir_lowering.imported_super_dispatch_implementation_missing"
-translated = false
-text = "Imported Super dispatch requires an exact imported base implementation"
+translated = true
+text = "Der importierte Super-Aufruf erfordert eine exakte Implementierung in der importierten Basisklasse"
 placeholders = []
 
 [[message]]
 id = 236
 name = "ir_lowering.object_qualified_imported_type_function_slot_missing"
-translated = false
-text = "Object-qualified imported Type Function call has no class-table slot"
+translated = true
+text = "Der objektqualifizierte Aufruf einer importierten Type-Funktion besitzt keinen Slot in der Klassentabelle"
 placeholders = []
 
 [[message]]
 id = 237
 name = "ir_lowering.direct_or_generic_method_receiver_missing"
-translated = false
-text = "Direct or generic method call did not retain its bound receiver"
+translated = true
+text = "Der direkte oder generische Methodenaufruf hat seinen gebundenen Receiver nicht beibehalten"
 placeholders = []
 
 [[message]]
 id = 238
 name = "ir_lowering.imported_struct_construction_requires_constructor_helper"
-translated = false
-text = "Imported Struct construction arguments require a published constructor helper"
+translated = true
+text = "Die Konstruktionsargumente des importierten Struct erfordern eine veröffentlichte Konstruktor-Hilfsfunktion"
 placeholders = []
 
 [[message]]
 id = 239
 name = "ir_lowering.struct_construction_requires_lowered_constructor"
-translated = false
-text = "Struct construction arguments require a lowered constructor"
+translated = true
+text = "Die Konstruktionsargumente des Struct erfordern einen generierten Konstruktor (Lowered Constructor)"
 placeholders = []
 
 [[message]]
 id = 240
 name = "ir_lowering.imported_type_allocation_requires_constructor_abi"
-translated = false
-text = "Imported Type allocation requires a selected constructor with a published object-construction ABI"
+translated = true
+text = "Die Speicherallokation des importierten Type erfordert einen ausgewählten Konstruktor mit einem veröffentlichten Objektkonstruktions-ABI"
 placeholders = []
 
 [[message]]
 id = 241
 name = "ir_lowering.object_allocation_requires_constructor"
-translated = false
-text = "Object allocation requires an implicit default or lowered source constructor"
+translated = true
+text = "Die Objektspeicherallokation erfordert einen impliziten Standardkonstruktor oder einen generierten Quellkonstruktor"
 placeholders = []
 
 [[message]]
 id = 242
 name = "ir_lowering.heap_array_allocation_dimension_mismatch"
-translated = false
-text = "Heap-array allocation requires one dimension per declared rank"
+translated = true
+text = "Die Speicherallokation des Heap-Arrays erfordert genau eine Dimension pro deklariertem Rang"
 placeholders = []
 
 [[message]]
 id = 243
 name = "ir_lowering.indirect_call_signature_missing"
-translated = false
-text = "Indirect call is missing its resolved callable signature"
+translated = true
+text = "Dem indirekten Aufruf fehlt seine aufgelöste aufrufbare Signatur"
 placeholders = []
 
 [[message]]
 id = 244
 name = "ir_lowering.indirect_call_target_type_unsupported"
-translated = false
-text = "Indirect call target type '{callableType}' is not supported by the runtime ABI"
+translated = true
+text = "Der Zieltyp '{callableType}' des indirekten Aufrufs wird vom Laufzeit-ABI nicht unterstützt"
 placeholders = [{ name = "callableType", type = "string" }]
 
 [[message]]
 id = 245
 name = "ir_lowering.indirect_call_argument_count_mismatch"
-translated = false
-text = "Indirect call requires {requiredCount} arguments but received {actualCount}"
+translated = true
+text = "Indirekter Aufruf erfordert {requiredCount} Argumente, hat aber {actualCount} erhalten"
 placeholders = [{ name = "requiredCount", type = "integer" }, { name = "actualCount", type = "integer" }]
 
 [[message]]
 id = 246
 name = "ir_lowering.indirect_call_omitted_arguments_unsupported"
-translated = false
-text = "Indirect callable invocation does not accept omitted arguments"
+translated = true
+text = "Der indirekte Aufruf akzeptiert keine ausgelassenen Argumente"
 placeholders = []
 
 [[message]]
 id = 247
 name = "ir_lowering.callable_static_array_argument_mismatch"
-translated = false
-text = "StaticArray argument {argumentIndex} does not match callable parameter extent and element type '{parameterType}'"
+translated = true
+text = "Das StaticArray-Argument {argumentIndex} entspricht nicht der Dimension und dem Elementtyp '{parameterType}' des aufrufbaren Parameters"
 placeholders = [{ name = "argumentIndex", type = "integer" }, { name = "parameterType", type = "string" }]
 
 [[message]]
 id = 248
 name = "ir_lowering.callable_truth_requires_compatible_signature"
-translated = false
-text = "Callable truth test requires an ordinary-C-compatible signature"
+translated = true
+text = "Die Wahrheitsprüfung für aufrufbare Typen erfordert eine mit Standard-C kompatible Signatur"
 placeholders = []
 
 [[message]]
 id = 249
 name = "ir_lowering.interface_call_receiver_missing"
-translated = false
-text = "Interface call did not retain a source Interface receiver"
+translated = true
+text = "Der Interface-Aufruf hat keinen Quell-Interface-Receiver beibehalten"
 placeholders = []
 
 [[message]]
 id = 250
 name = "ir_lowering.interface_super_call_requires_default_method"
-translated = false
-text = "Qualified Interface Super call must select a Default method body"
+translated = true
+text = "Der qualifizierte Interface-Super-Aufruf muss einen Default-Methodenrumpf auswählen"
 placeholders = []
 
 [[message]]
 id = 251
 name = "ir_lowering.interface_super_call_implementation_missing"
-translated = false
-text = "Qualified Interface Super call has no published default implementation"
+translated = true
+text = "Der qualifizierte Interface-Super-Aufruf besitzt keine veröffentlichte Standardimplementierung"
 placeholders = []
 
 [[message]]
 id = 252
 name = "ir_lowering.field_access_outside_object_layout"
-translated = false
-text = "Field access is outside the lowered object layout ({layoutDetail})"
+translated = true
+text = "Der Field-Zugriff liegt außerhalb des generierten Objekt-Layouts ({layoutDetail})"
 placeholders = [{ name = "layoutDetail", type = "string" }]
 
 [[message]]
 id = 253
 name = "ir_lowering.imported_field_type_outside_value_abi"
-translated = false
-text = "Imported field type '{typeName}' is outside the current value ABI slice"
+translated = true
+text = "Der importierte Field-Type '{typeName}' liegt außerhalb des aktuellen Wert-ABI-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 254
 name = "ir_lowering.resolved_call_routine_missing"
-translated = false
-text = "Resolved call did not retain its selected routine while lowering arguments"
+translated = true
+text = "Der aufgelöste Aufruf hat seine ausgewählte Routine während des Lowerings der Argumente nicht beibehalten"
 placeholders = []
 
 [[message]]
 id = 255
 name = "ir_lowering.static_array_argument_mismatch"
-translated = false
-text = "StaticArray argument {argumentIndex} does not match parameter extent and element type '{parameterType}'"
+translated = true
+text = "Das StaticArray-Argument {argumentIndex} entspricht nicht der Parameter-Dimension und dem Elementtyp '{parameterType}'"
 placeholders = [{ name = "argumentIndex", type = "integer" }, { name = "parameterType", type = "string" }]
 
 [[message]]
 id = 256
 name = "ir_lowering.omitted_argument_default_missing"
-translated = false
-text = "Omitted argument for parameter {parameterIndex} has no semantic default"
+translated = true
+text = "Das ausgelassene Argument für Parameter {parameterIndex} besitzt keinen semantischen Standardwert (Default)"
 placeholders = [{ name = "parameterIndex", type = "integer" }]
 
 [[message]]
 id = 257
 name = "ir_lowering.callable_default_outside_function_pointer_slice"
-translated = false
-text = "Callable default argument is outside the ordinary-C function-pointer IR slice"
+translated = true
+text = "Das Standardargument für aufrufbare Typen liegt außerhalb des Standard-C-Funktionszeiger-IR-Bereichs"
 placeholders = []
 
 [[message]]
 id = 258
 name = "ir_lowering.callable_default_target_unsupported"
-translated = false
-text = "Callable default target must be a lowered source or imported ordinary-C free routine"
+translated = true
+text = "Das Ziel des Standardarguments für aufrufbare Typen muss eine generierte Quellroutine oder eine importierte freie Standard-C-Routine sein"
 placeholders = []
 
 [[message]]
 id = 259
 name = "ir_lowering.callable_reference_routine_missing"
-translated = false
-text = "Callable reference has no resolved routine"
+translated = true
+text = "Die aufrufbare Referenz besitzt keine aufgelöste Routine"
 placeholders = []
 
 [[message]]
 id = 260
 name = "ir_lowering.callable_reference_requires_compatible_free_routine"
-translated = false
-text = "Callable reference requires an ordinary-C-compatible free routine"
+translated = true
+text = "Aufrufbare Referenzen erfordern eine mit Standard-C kompatible freie Routine"
 placeholders = []
 
 [[message]]
 id = 261
 name = "ir_lowering.callable_reference_target_identity_missing"
-translated = false
-text = "Callable reference target has no lowered source or imported ABI identity"
+translated = true
+text = "Das Ziel der aufrufbaren Referenz hat keine generierte Quell- oder importierte ABI-Identität"
 placeholders = []
 
 [[message]]
 id = 262
 name = "ir_lowering.bound_generic_method_reference_requires_adapter"
-translated = false
-text = "Bound generic Method references require specialization-owned adapter support"
+translated = true
+text = "Gebundene Generics-Methodenreferenzen erfordern die Unterstützung eines spezialisierungseigenen Adapters"
 placeholders = []
 
 [[message]]
 id = 263
 name = "ir_lowering.function_literal_routine_missing"
-translated = false
-text = "Function literal has no synthesized routine"
+translated = true
+text = "Das Funktionsliteral besitzt keine synthetisierte Routine"
 placeholders = []
 
 [[message]]
 id = 264
 name = "ir_lowering.function_literal_target_unsupported"
-translated = false
-text = "Function literal target is not an ordinary-C-compatible thin callable"
+translated = true
+text = "Das Ziel des Funktionsliterals ist kein mit Standard-C kompatibler 'Thin'-aufrufbarer Typ"
 placeholders = []
 
 [[message]]
 id = 265
 name = "ir_lowering.function_literal_target_identity_missing"
-translated = false
-text = "Function literal synthesized routine has no lowered ABI identity"
+translated = true
+text = "Die synthetisierte Routine des Funktionsliterals besitzt keine generierte ABI-Identität"
 placeholders = []
 
 [[message]]
 id = 266
 name = "ir_lowering.generic_static_member_specialization_owner_missing"
-translated = false
-text = "Generic static member '{memberName}' has no requested canonical specialization owner"
+translated = true
+text = "Der generische statische Member '{memberName}' hat keinen angeforderten kanonischen Spezialisierungsbesitzer"
 placeholders = [{ name = "memberName", type = "string" }]
 
 [[message]]
 id = 267
 name = "ir_lowering.symbol_not_owned_by_lowered_unit"
-translated = false
-text = "Symbol '{symbolName}' is not owned by the lowered unit"
+translated = true
+text = "Das Symbol '{symbolName}' befindet sich nicht im Besitz der generierten (lowered) Einheit"
 placeholders = [{ name = "symbolName", type = "string" }]
 
 [[message]]
 id = 268
 name = "ir_lowering.imported_struct_default_constructor_missing"
-translated = false
-text = "Imported Struct type '{typeName}' has no published zero-argument constructor for default initialization"
+translated = true
+text = "Der importierte Struct-Type '{typeName}' besitzt keinen veröffentlichten argumentfreien Konstruktor für die Standardinitialisierung"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 269
 name = "ir_lowering.imported_member_callable_return_slot_unsupported"
-translated = false
-text = "Imported member callable returns require a supported Type-function slot ABI"
+translated = true
+text = "Rückgaben von importierten aufrufbaren Membern erfordern ein unterstütztes Type-Funktions-Slot-ABI"
 placeholders = []
 
 [[message]]
 id = 270
 name = "ir_lowering.imported_routine_abi_name_missing"
-translated = false
-text = "Imported routine '{routineName}' has no interface ABI name"
+translated = true
+text = "Die importierte Routine '{routineName}' besitzt keinen Interface-ABI-Namen"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 271
 name = "ir_lowering.imported_native_abi_name_requires_linker_representation"
-translated = false
-text = "Imported/native ABI name '{abiName}' requires an explicit linker-name representation"
+translated = true
+text = "Der importierte/native ABI-Name '{abiName}' erfordert eine explizite Linker-Namen-Darstellung"
 placeholders = [{ name = "abiName", type = "string" }]
 
 [[message]]
 id = 272
 name = "ir_lowering.imported_routine_return_outside_scalar_abi"
-translated = false
-text = "Imported routine return type '{typeName}' is outside the scalar ABI slice"
+translated = true
+text = "Der Rückgabetyp '{typeName}' der importierten Routine liegt außerhalb des skalaren ABI-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 273
 name = "ir_lowering.imported_routine_parameter_outside_ordinary_c_abi"
-translated = false
-text = "Imported routine '{routineName}' parameter type '{parameterType}' is outside the supported ordinary-C ABI slice"
+translated = true
+text = "Der Parametertyp '{parameterType}' der importierten Routine '{routineName}' liegt außerhalb des unterstützten Standard-C-ABI-Bereichs"
 placeholders = [{ name = "routineName", type = "string" }, { name = "parameterType", type = "string" }]
 
 [[message]]
 id = 274
 name = "ir_lowering.imported_routine_var_parameter_type_unsupported"
-translated = false
-text = "Imported routine Var parameters require a directly addressable value ABI type"
+translated = true
+text = "Var-Parameter importierter Routinen erfordern einen direkt adressierbaren Wert-ABI-Typ"
 placeholders = []
 
 [[message]]
 id = 275
 name = "ir_lowering.direct_imported_method_abi_identity_missing"
-translated = false
-text = "Direct imported method '{methodName}' has no usable function ABI identity"
+translated = true
+text = "Die direkt importierte Methode '{methodName}' besitzt keine verwendbare Funktions-ABI-Identität"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 276
 name = "ir_lowering.direct_imported_method_type_unsupported"
-translated = false
-text = "Direct imported method '{methodName}' has an unsupported receiver or return type"
+translated = true
+text = "Die direkt importierte Methode '{methodName}' besitzt einen nicht unterstützten Receiver- oder Rückgabetyp"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 277
 name = "ir_lowering.direct_imported_method_parameter_type_unsupported"
-translated = false
-text = "Direct imported method parameters require supported ordinary-C ABI value types"
+translated = true
+text = "Parameter von direkt importierten Methoden erfordern unterstützte Standard-C-ABI-Werttypen"
 placeholders = []
 
 [[message]]
 id = 278
 name = "ir_lowering.generic_imported_method_requires_specialization"
-translated = false
-text = "Generic imported method '{methodName}' requires canonical specialization lowering"
+translated = true
+text = "Die generische importierte Methode '{methodName}' erfordert ein kanonisches Spezialisierungs-Lowering"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 279
 name = "ir_lowering.imported_method_return_type_unsupported"
-translated = false
-text = "Imported method return type '{typeName}' is outside the current value ABI slice"
+translated = true
+text = "Der Rückgabetyp '{typeName}' der importierten Methode liegt außerhalb des aktuellen Wert-ABI-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 280
 name = "ir_lowering.imported_method_parameter_type_unsupported"
-translated = false
-text = "Imported method parameters require supported ordinary-C ABI value types"
+translated = true
+text = "Parameter von importierten Methoden erfordern unterstützte Standard-C-ABI-Werttypen"
 placeholders = []
 
 [[message]]
 id = 281
 name = "ir_lowering.imported_method_class_slot_abi_name_missing"
-translated = false
-text = "Imported method '{methodName}' has no class-slot ABI name derived from '{abiName}'"
+translated = true
+text = "Die importierte Methode '{methodName}' besitzt keinen von '{abiName}' abgeleiteten Klassen-Slot-ABI-Namen"
 placeholders = [{ name = "methodName", type = "string" }, { name = "abiName", type = "string" }]
 
 [[message]]
 id = 282
 name = "ir_lowering.generic_imported_constructor_requires_specialization"
-translated = false
-text = "Generic imported constructor requires canonical specialization lowering"
+translated = true
+text = "Der generische importierte Konstruktor erfordert ein kanonisches Spezialisierungs-Lowering"
 placeholders = []
 
 [[message]]
 id = 283
 name = "ir_lowering.imported_constructor_parameter_type_unsupported"
-translated = false
-text = "Imported constructor parameters require supported value ABI types"
+translated = true
+text = "Parameter importierter Konstruktoren erfordern unterstützte Wert-ABI-Typen"
 placeholders = []
 
 [[message]]
 id = 284
 name = "ir_lowering.imported_constructor_abi_name_missing"
-translated = false
-text = "Imported constructor has no published ABI name"
+translated = true
+text = "Der importierte Konstruktor besitzt keinen veröffentlichten ABI-Namen"
 placeholders = []
 
 [[message]]
 id = 285
 name = "ir_lowering.imported_constructor_allocation_abi_name_requires_linker_representation"
-translated = false
-text = "Imported constructor object-allocation ABI name requires an explicit linker-name representation"
+translated = true
+text = "Der Objektspeicherallokations-ABI-Name des importierten Konstruktors erfordert eine explizite Linker-Namen-Darstellung"
 placeholders = []
 
 [[message]]
 id = 286
 name = "ir_lowering.imported_global_abi_name_missing"
-translated = false
-text = "Imported/native Global '{globalName}' has no ABI name"
+translated = true
+text = "Die importierte/native globale Variable '{globalName}' besitzt keinen ABI-Namen"
 placeholders = [{ name = "globalName", type = "string" }]
 
 [[message]]
 id = 287
 name = "ir_lowering.imported_global_type_outside_abi_slice"
-translated = false
-text = "Imported/native Global type '{typeName}' is outside the scalar, pointer, and callable ABI slice"
+translated = true
+text = "Der Typ '{typeName}' der importierten/nativen globalen Variable liegt außerhalb des Skalar-, Pointer- und aufrufbaren ABI-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 288
 name = "ir_lowering.imported_struct_value_layout_cycle"
-translated = false
-text = "Imported Struct value layout cycle involving '{structName}'"
+translated = true
+text = "Wert-Layoutkreislauf des importierten Structs unter Beteiligung von '{structName}'"
 placeholders = [{ name = "structName", type = "string" }]
 
 [[message]]
 id = 289
 name = "ir_lowering.generic_imported_struct_requires_specialization"
-translated = false
-text = "Generic imported Struct '{structName}' requires canonical specialization lowering"
+translated = true
+text = "Der generisch importierte Struct '{structName}' erfordert ein kanonisches Spezialisierungs-Lowering"
 placeholders = [{ name = "structName", type = "string" }]
 
 [[message]]
 id = 290
 name = "ir_lowering.imported_struct_abi_name_missing"
-translated = false
-text = "Imported Struct '{structName}' has no usable C ABI name"
+translated = true
+text = "Der importierte Struct '{structName}' besitzt keinen verwendbaren C-ABI-Namen"
 placeholders = [{ name = "structName", type = "string" }]
 
 [[message]]
 id = 291
 name = "ir_lowering.imported_struct_field_type_outside_layout"
-translated = false
-text = "Imported Struct field type '{typeName}' is outside the current layout slice"
+translated = true
+text = "Der Field-Typ '{typeName}' des importierten Struct liegt außerhalb des aktuellen Layout-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 292
 name = "ir_lowering.imported_struct_routine_abi_identity_missing"
-translated = false
-text = "Imported Struct routine '{routineName}' has no supported ABI identity"
+translated = true
+text = "Die importierte Struct-Routine '{routineName}' besitzt keine unterstützte ABI-Identität"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 293
 name = "ir_lowering.imported_struct_routine_return_type_unsupported"
-translated = false
-text = "Imported Struct routine return type '{typeName}' is outside the current value slice"
+translated = true
+text = "Der Rückgabetyp '{typeName}' der importierten Struct-Routine liegt außerhalb des aktuellen Wert-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 294
 name = "ir_lowering.imported_struct_routine_parameter_type_unsupported"
-translated = false
-text = "Imported Struct routine parameters require supported value ABI types"
+translated = true
+text = "Parameter von importierten Struct-Routinen erfordern unterstützte Wert-ABI-Typen"
 placeholders = []
 
 [[message]]
 id = 295
 name = "ir_lowering.imported_struct_routine_parameter_mode_unsupported"
-translated = false
-text = "Imported Struct routine parameters require supported value or Var ABI modes"
+translated = true
+text = "Parameter von importierten Struct-Routinen erfordern unterstützte Wert- oder Var-ABI-Modi"
 placeholders = []
 
 [[message]]
 id = 296
 name = "ir_lowering.generic_imported_type_requires_specialization"
-translated = false
-text = "Generic imported Type '{typeName}' requires canonical specialization lowering"
+translated = true
+text = "Der generische importierte Typ '{typeName}' erfordert ein kanonisches Spezialisierungs-Lowering"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 297
 name = "ir_lowering.imported_type_class_abi_name_missing"
-translated = false
-text = "Imported Type '{typeName}' has no class ABI name"
+translated = true
+text = "Der importierte Typ '{typeName}' besitzt keinen Klassen-ABI-Namen"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 298
 name = "ir_lowering.imported_type_abi_name_requires_linker_representation"
-translated = false
-text = "Imported Type ABI name '{abiName}' requires an explicit linker-name representation"
+translated = true
+text = "Der importierte Typ-ABI-Name '{abiName}' erfordert eine explizite Linker-Namen-Darstellung"
 placeholders = [{ name = "abiName", type = "string" }]
 
 [[message]]
 id = 299
 name = "ir_lowering.enum_instance_intrinsic_receiver_missing"
-translated = false
-text = "Enum instance intrinsic '{routineName}' has no receiver"
+translated = true
+text = "Die intrinsische Methode der Enum-Instanz '{routineName}' besitzt keinen Receiver"
 placeholders = [{ name = "routineName", type = "string" }]
 
 [[message]]
 id = 300
 name = "ir_lowering.quoted_source_path_escapes_root"
-translated = false
-text = "Quoted source path escapes its module or application source root"
+translated = true
+text = "Der in Anführungszeichen gesetzte Quellpfad bricht aus seinem Modul- oder Anwendungs-Quellverzeichnis (source root) aus"
 placeholders = []
 
 [[message]]
 id = 301
 name = "ir_lowering.object_enumerator_each_in_protocol_operation_missing"
-translated = false
-text = "ObjectEnumerator EachIn is missing a resolved protocol operation"
+translated = true
+text = "Dem ObjectEnumerator EachIn fehlt eine aufgelöste Protokoll-Operation"
 placeholders = []
 
 [[message]]
 id = 302
 name = "ir_lowering.each_in_protocol_method_requires_non_default_argument"
-translated = false
-text = "EachIn protocol method '{methodName}' requires a non-default argument"
+translated = true
+text = "Die EachIn-Protokollmethode '{methodName}' erfordert ein Argument, das kein Standardwert ist"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 303
 name = "ir_lowering.interface_instance_method_dispatch_slot_missing"
-translated = false
-text = "Interface instance method has no emitted dispatch slot"
+translated = true
+text = "Die Interface-Instanzmethode besitzt keinen generierten Aufruf-Slot"
 placeholders = []
 
 [[message]]
 id = 304
 name = "ir_lowering.imported_type_instance_method_class_slot_missing"
-translated = false
-text = "Imported Type instance method has no published class-slot ABI"
+translated = true
+text = "Die Instanzmethode des importierten Typs besitzt kein veröffentlichtes Class-Slot-ABI"
 placeholders = []
 
 [[message]]
 id = 305
 name = "ir_lowering.inherited_imported_instance_method_source_slot_missing"
 translated = false
-text = "Inherited imported instance method has no source-class slot"
+text = "Die geerbte importierte Instanzmethode besitzt keinen Quellklassen-Slot"
 placeholders = []
 
 [[message]]
 id = 306
 name = "ir_lowering.instance_operation_requires_lowered_source_method"
-translated = false
-text = "Instance operation must resolve to a lowered source method"
+translated = true
+text = "Die Instanz-Operation muss in eine generierte Quellmethode aufgelöst werden"
 placeholders = []
 
 [[message]]
 id = 307
 name = "ir_lowering.instance_method_receiver_source_class_missing"
-translated = false
-text = "Instance method receiver has no lowered source class"
+translated = true
+text = "Der Receiver der Instanzmethode besitzt keine generierte Quellklasse"
 placeholders = []
 
 [[message]]
 id = 308
 name = "c_backend.runtime_header_initialization_plan_required"
-translated = false
-text = "Runtime header emission requires an initialization plan"
+translated = true
+text = "Die Ausgabe des Laufzeit-Headers erfordert einen Initialisierungsplan"
 placeholders = []
 
 [[message]]
 id = 309
 name = "c_backend.compiler_ir_module_unavailable"
-translated = false
-text = "Compiler IR module was not available"
+translated = true
+text = "Das Compiler-IR-Modul war nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 310
 name = "c_backend.pico_callable_return_virtual_method_unsupported"
-translated = false
-text = "Callable-return virtual methods are not available in the current Pico dispatch tier"
+translated = true
+text = "Virtuelle Methoden mit aufrufbaren Rückgabetypen sind in der aktuellen Pico-Aufrufebene nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 311
 name = "c_backend.runtime_emission_initialization_plan_required"
-translated = false
-text = "Runtime-compatible C emission requires an initialization plan"
+translated = true
+text = "Die laufzeitkompatible C-Code-Ausgabe erfordert einen Initialisierungsplan"
 placeholders = []
 
 [[message]]
 id = 312
 name = "c_backend.pico_imported_type_field_unsupported"
-translated = false
-text = "Imported Type field '{typeName}.{fieldName}' is outside the current Pico object-layout slice"
+translated = true
+text = "Das Field des importierten Typs '{typeName}.{fieldName}' liegt außerhalb des aktuellen Pico-Objekt-Layout-Bereichs"
 placeholders = [{ name = "typeName", type = "string" }, { name = "fieldName", type = "string" }]
 
 [[message]]
 id = 313
 name = "c_backend.pico_imported_type_descriptor_abi_missing"
-translated = false
-text = "Imported Type '{typeName}' has no Pico descriptor ABI"
+translated = true
+text = "Der importierte Typ '{typeName}' besitzt kein Pico-Deskriptor-ABI"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 314
 name = "c_backend.pico_interface_descriptor_abi_missing"
-translated = false
-text = "Imported or native Interface '{interfaceName}' has no Pico descriptor ABI"
+translated = true
+text = "Das importierte oder native Interface '{interfaceName}' besitzt kein Pico-Deskriptor-ABI"
 placeholders = [{ name = "interfaceName", type = "string" }]
 
 [[message]]
 id = 315
 name = "c_backend.pico_static_array_type_field_unsupported"
-translated = false
-text = "Type field '{typeName}.{fieldName}' is not supported by the Pico StaticArray profile"
+translated = true
+text = "Das Typfeld '{typeName}.{fieldName}' wird vom Pico-StaticArray-Profil nicht unterstützt"
 placeholders = [{ name = "typeName", type = "string" }, { name = "fieldName", type = "string" }]
 
 [[message]]
 id = 316
 name = "c_backend.pico_type_field_scalar_unsupported"
-translated = false
-text = "Type field '{typeName}.{fieldName}' is not a supported scalar in the initial Pico Object profile"
+translated = true
+text = "Das Field des importen Typs '{typeName}.{fieldName}' ist im initialen Pico-Objektprofil kein unterstützter Skalar"
 placeholders = [{ name = "typeName", type = "string" }, { name = "fieldName", type = "string" }]
 
 [[message]]
 id = 317
 name = "c_backend.debug_instrumentation_requires_runtime_backend"
-translated = false
-text = "Debug instrumentation requires the BlitzMax runtime C backend"
+translated = true
+text = "Die Debug-Instrumentierung erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 318
 name = "c_backend.coverage_instrumentation_requires_runtime_backend"
-translated = false
-text = "Coverage instrumentation requires the BlitzMax runtime C backend"
+translated = true
+text = "Die Code-Abdeckungs-Instrumentierungerfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 319
 name = "c_backend.pico_struct_fields_unsupported"
-translated = false
-text = "Struct '{structName}' contains callable, imported-managed, or otherwise unsupported Pico fields"
+translated = true
+text = "Das Struct '{structName}' enthält aufrufbare, importiert-verwaltete oder anderweitig nicht unterstützte Pico-Felder"
 placeholders = [{ name = "structName", type = "string" }]
 
 [[message]]
 id = 320
 name = "c_backend.struct_layout_cycle"
-translated = false
-text = "Struct layout cycle reaches '{structName}'"
+translated = true
+text = "Layoutkreislauf des Struct '{structName}' erreicht"
 placeholders = [{ name = "structName", type = "string" }]
 
 [[message]]
 id = 321
 name = "c_backend.imported_struct_layout_cycle"
-translated = false
-text = "Imported Struct layout cycle reaches '{structName}'"
+translated = true
+text = "Layoutkreislauf des importierten Struct '{structName}' erreicht"
 placeholders = [{ name = "structName", type = "string" }]
 
 [[message]]
 id = 322
 name = "c_backend.static_array_struct_field_default_helper_missing"
-translated = false
-text = "StaticArray Struct field '{fieldName}' has no element default construction helper"
+translated = true
+text = "Das StaticArray-Struct-Field '{fieldName}' hat keine Standard-Konstruktions-Hilfsfunktion für Elemente"
 placeholders = [{ name = "fieldName", type = "string" }]
 
 [[message]]
 id = 323
 name = "c_backend.nested_struct_field_default_helper_missing"
-translated = false
-text = "Nested Struct field '{fieldName}' has no default construction helper"
+translated = true
+text = "Das verschachtelte Struct-Field '{fieldName}' hat keine Standard-Konstruktions-Hilfsfunktion"
 placeholders = [{ name = "fieldName", type = "string" }]
 
 [[message]]
 id = 324
 name = "c_backend.static_array_struct_element_default_helper_missing"
-translated = false
-text = "StaticArray Struct element type '{typeName}' has no default construction helper"
+translated = true
+text = "Der StaticArray-Struct-Elementtyp '{typeName}' hat keine Standard-Konstruktions-Hilfsfunktion"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 325
 name = "c_backend.iterator_factory_state_class_missing"
-translated = false
-text = "iterator factory has no generated state class"
+translated = true
+text = "Die Iterator-Factory besitzt keine generierte Zustandsklasse"
 placeholders = []
 
 [[message]]
 id = 326
 name = "c_backend.iterator_move_next_factory_state_missing"
-translated = false
-text = "iterator MoveNext has no generated factory state"
+translated = true
+text = "Die Iterator-Methode MoveNext besitzt keinen generierten Factory-Zustand"
 placeholders = []
 
 [[message]]
 id = 327
 name = "c_backend.debug_variable_typetag_incomplete"
-translated = false
-text = "Debug variable '{variableName}' has no complete typetag for semantic type '{typeName}'"
+translated = true
+text = "Die Debug-Variable '{variableName}' hat kein vollständiges Typetag für den semantischen Typ '{typeName}'"
 placeholders = [{ name = "variableName", type = "string" }, { name = "typeName", type = "string" }]
 
 [[message]]
 id = 328
 name = "c_backend.struct_constructor_chain_target_outside_layout"
-translated = false
-text = "Struct constructor chain target is outside the receiver layout"
+translated = true
+text = "Das Ziel der Struct-Konstruktorkette liegt außerhalb des Receiver-Layouts"
 placeholders = []
 
 [[message]]
 id = 329
 name = "c_backend.imported_constructor_chain_implementation_missing"
-translated = false
-text = "Imported constructor chain has no direct implementation ABI"
+translated = true
+text = "Die importierte Konstruktorkette besitzt kein direktes Implementierungs-ABI"
 placeholders = []
 
 [[message]]
 id = 330
 name = "c_backend.static_array_type_field_default_helper_missing"
-translated = false
-text = "StaticArray Type field '{fieldName}' has no element default construction helper"
+translated = true
+text = "Das StaticArray-Typ-Field '{fieldName}' hat keine Standard-Konstruktions-Hilfsfunktion für Elemente"
 placeholders = [{ name = "fieldName", type = "string" }]
 
 [[message]]
 id = 331
 name = "c_backend.struct_field_default_helper_missing"
-translated = false
-text = "Struct field '{fieldName}' has no default construction helper"
+translated = true
+text = "Das Struct-Field '{fieldName}' hat keine Standard-Konstruktions-Hilfsfunktion"
 placeholders = [{ name = "fieldName", type = "string" }]
 
 [[message]]
 id = 332
 name = "c_backend.pico_object_constructor_chain_target_outside_hierarchy"
-translated = false
-text = "Pico Object constructor chain target is outside the local Type hierarchy"
+translated = true
+text = "Das Ziel der Pico-Objekt-Konstruktorkette liegt außerhalb der lokalen Typ-Hierarchie"
 placeholders = []
 
 [[message]]
 id = 333
 name = "c_backend.pico_imported_constructor_chain_implementation_missing"
-translated = false
-text = "Imported Pico constructor chain has no direct implementation ABI"
+translated = true
+text = "Die importierte Pico-Konstruktorkette besitzt kein direktes Implementierungs-ABI"
 placeholders = []
 
 [[message]]
 id = 334
 name = "c_backend.ir_function_body_unavailable"
-translated = false
-text = "IR function body was not available"
+translated = true
+text = "Der IR-Funktionsrumpf war nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 335
 name = "c_backend.yield_outside_iterator_move_next"
-translated = false
-text = "Yield reached C emission outside a generated iterator MoveNext"
+translated = true
+text = "Ein Yield erreichte die C-Code-Ausgabe außerhalb einer generierten Iterator-Methode MoveNext"
 placeholders = []
 
 [[message]]
 id = 336
 name = "c_backend.pico_throw_type_unsupported"
-translated = false
-text = "Pico Throw requires an Object, String, Array, class, interface, or closure value; '{typeName}' is not supported"
+translated = true
+text = "Pico-Throw erfordert ein Objekt, String, Array, Klasse, Interface oder einen Closure-Wert; '{typeName}' wird nicht unterstützt"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 337
 name = "c_backend.release_requires_runtime_backend"
-translated = false
-text = "Release requires the BlitzMax runtime C backend"
+translated = true
+text = "Release erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 338
 name = "c_backend.assert_requires_runtime_backend"
-translated = false
-text = "Assert requires the BlitzMax runtime C backend"
+translated = true
+text = "Assert erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 339
 name = "c_backend.try_catch_requires_runtime_exception_backend"
-translated = false
-text = "Try/Catch requires the BlitzMax runtime exception backend"
+translated = true
+text = "Try/Catch erfordert das BlitzMax-Laufzeit-Exception-Backend"
 placeholders = []
 
 [[message]]
 id = 340
 name = "c_backend.pico_try_across_yield_unsupported"
-translated = false
-text = "Pico exceptions do not yet support a Try block retained across Yield"
+translated = true
+text = "Pico-Exceptions unterstützen derzeit keinen Try-Block, der über ein Yield hinweg aufrechterhalten wird"
 placeholders = []
 
 [[message]]
 id = 341
 name = "c_backend.using_requires_runtime_exception_backend"
-translated = false
-text = "Using requires the BlitzMax runtime exception backend"
+translated = true
+text = "Using erfordert das BlitzMax-Laufzeit-Exception-Backend"
 placeholders = []
 
 [[message]]
 id = 342
 name = "c_backend.read_data_requires_runtime_backend"
-translated = false
-text = "ReadData requires the BlitzMax runtime C backend"
+translated = true
+text = "ReadData erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 343
 name = "c_backend.restore_data_requires_runtime_backend"
-translated = false
-text = "RestoreData requires the BlitzMax runtime C backend"
+translated = true
+text = "RestoreData erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 344
 name = "c_backend.pico_each_in_array_element_type_unsupported"
-translated = false
-text = "EachIn Array element type '{typeName}' is not available in the Pico managed-container profile"
+translated = true
+text = "Der Array-Elementtyp '{typeName}' für EachIn ist im verwalteten Pico-Container-Profil nicht verfügbar"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 345
 name = "c_backend.ir_statement_unsupported"
-translated = false
-text = "IR statement is not supported by the scalar C backend"
+translated = true
+text = "Die IR-Anweisung wird vom skalaren C-Backend nicht unterstützt"
 placeholders = []
 
 [[message]]
 id = 346
 name = "c_backend.pico_using_across_yield_unsupported"
-translated = false
-text = "Pico Using does not yet support a resource retained across Yield"
+translated = true
+text = "Pico-Using unterstützt derzeit keine Ressourcen, die über ein Yield hinweg aufrechterhalten werden"
 placeholders = []
 
 [[message]]
 id = 347
 name = "c_backend.read_data_conversion_unsupported"
-translated = false
-text = "ReadData conversion kind is not supported"
+translated = true
+text = "Die Art der ReadData-Konvertierung wird nicht unterstützt"
 placeholders = []
 
 [[message]]
 id = 348
 name = "c_backend.ir_expression_unavailable"
-translated = false
-text = "IR expression was not available"
+translated = true
+text = "Der IR-Ausdruck war nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 349
 name = "c_backend.managed_string_literal_requires_runtime_backend"
-translated = false
-text = "Managed String literals require the BlitzMax runtime C backend"
+translated = true
+text = "Verwaltete String-Literale erfordern das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 350
 name = "c_backend.imported_struct_constructor_value_helper_missing"
-translated = false
-text = "Imported Struct constructor '{constructorId}' has no value helper ABI"
+translated = true
+text = "Der importierte Structkonstruktor '{constructorId}' besitzt kein Wert-Hilfsfunktions-ABI"
 placeholders = [{ name = "constructorId", type = "string" }]
 
 [[message]]
 id = 351
 name = "c_backend.pico_string_method_unsupported"
-translated = false
-text = "String method '{methodName}' is not available in the current Pico embedded String profile"
+translated = true
+text = "Die String-Methode '{methodName}' ist im aktuellen eingebetteten Pico-String-Profil nicht verfügbar"
 placeholders = [{ name = "methodName", type = "string" }]
 
 [[message]]
 id = 352
 name = "c_backend.exact_method_target_not_emitted"
-translated = false
-text = "Exact method call target '{functionId}' was not emitted"
+translated = true
+text = "Das exakte Methodenaufrufziel '{functionId}' wurde nicht generiert"
 placeholders = [{ name = "functionId", type = "string" }]
 
 [[message]]
 id = 353
 name = "c_backend.pico_object_to_string_requires_dynamic_string"
-translated = false
-text = "Object ToString requires dynamic Pico String support"
+translated = true
+text = "Die Objektmethode ToString erfordert die dynamische Pico-String-Unterstützung"
 placeholders = []
 
 [[message]]
 id = 354
 name = "c_backend.pico_object_send_message_unsupported"
-translated = false
-text = "Object SendMessage is not available in the current Pico Object profile"
+translated = true
+text = "Die Objektmethode SendMessage ist im aktuellen Pico-Objektprofil nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 355
 name = "c_backend.pico_virtual_dispatch_slot_unavailable"
-translated = false
-text = "Virtual dispatch slot is not available in the current Pico Type descriptor"
+translated = true
+text = "Der virtuelle Aufruf-Slot ist im aktuellen Pico-Typdeskriptor nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 356
 name = "c_backend.virtual_call_slot_not_emitted"
-translated = false
-text = "Virtual call slot '{classId}.{slotId}' was not emitted"
+translated = true
+text = "Der virtuelle Aufruf-Slot '{classId}.{slotId}' wurde nicht generiert"
 placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
 
 [[message]]
 id = 357
 name = "c_backend.managed_truth_sentinel_mapping_missing"
-translated = false
-text = "Managed truth kind '{managedKind}' has no runtime sentinel mapping"
+translated = true
+text = "Die verwaltete Wahrheits-Art '{managedKind}' besitzt keine Laufzeit-Sentinel-Zuweisung"
 placeholders = [{ name = "managedKind", type = "integer" }]
 
 [[message]]
 id = 358
 name = "c_backend.managed_default_sentinel_mapping_missing"
-translated = false
-text = "Managed default kind '{managedKind}' has no runtime sentinel mapping"
+translated = true
+text = "Die verwaltete Standard-Art '{managedKind}' besitzt keine Laufzeit-Sentinel-Zuweisung"
 placeholders = [{ name = "managedKind", type = "integer" }]
 
 [[message]]
 id = 359
 name = "c_backend.pico_array_requires_one_dimension"
-translated = false
-text = "Only one-dimensional Arrays are available in the initial Pico embedded profile"
+translated = true
+text = "Im initialen eingebetteten Pico-Profil sind nur eindimensionale Arrays verfügbar"
 placeholders = []
 
 [[message]]
 id = 360
 name = "c_backend.pico_array_element_type_unsupported"
-translated = false
-text = "Array element type '{typeName}' is not available in the Pico managed-container profile"
+translated = true
+text = "Der Array-Elementtyp '{typeName}' ist im verwalteten Pico-Container-Profil nicht verfügbar"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 361
 name = "c_backend.pico_array_element_struct_unsupported"
-translated = false
-text = "Array element Struct '{typeName}' is not supported by the Pico value-descriptor tier"
+translated = true
+text = "Der Array-Element-Struct '{typeName}' wird von der Pico-Wertdeskriptorebene nicht unterstützt"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 362
 name = "c_backend.pico_imported_array_element_initializer_missing"
-translated = false
-text = "Imported array element Struct '{typeName}' has no supported Pico element initializer ABI"
+translated = true
+text = "Der importierte Array-Element-Struct '{typeName}' besitzt kein unterstütztes Pico-Elementinitialisierer-ABI"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 363
 name = "c_backend.enum_array_element_descriptor_missing"
-translated = false
-text = "Enum array element type '{typeName}' has no runtime descriptor"
+translated = true
+text = "Der Enum-Array-Elementtyp '{typeName}' besitzt keinen Laufzeitdeskriptor"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 364
 name = "c_backend.imported_struct_array_element_layout_missing"
-translated = false
-text = "Imported Struct array element type '{typeName}' has no published layout"
+translated = true
+text = "Der importierte Struct-Array-Elementtyp '{typeName}' besitzt kein veröffentlichtes Layout"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 365
 name = "c_backend.multidimensional_imported_struct_array_initializer_missing"
-translated = false
-text = "Multidimensional imported Struct array allocation requires a published element initializer ABI"
+translated = true
+text = "Die Allokation mehrdimensionaler importierter Struct-Arrays erfordert ein veröffentlichtes Elementinitialisierer-ABI"
 placeholders = []
 
 [[message]]
 id = 366
 name = "c_backend.array_allocation_rank_mismatch"
-translated = false
-text = "Array allocation rank and dimension count do not match"
+translated = true
+text = "Der Array-Allokationsrang und die Anzahl der Dimensionen stimmen nicht überein"
 placeholders = []
 
 [[message]]
 id = 367
 name = "c_backend.pico_array_index_requires_one_dimension"
-translated = false
-text = "Only one-dimensional Array indexing is available in the initial Pico embedded profile"
+translated = true
+text = "Im initialen eingebetteten Pico-Profil ist nur die eindimensionale Array-Indexierung verfügbar"
 placeholders = []
 
 [[message]]
 id = 368
 name = "c_backend.pico_imported_array_element_struct_unsupported"
-translated = false
-text = "Imported array element Struct '{typeName}' is not supported by the Pico value-descriptor tier"
+translated = true
+text = "Der importierte Array-Element-Struct '{typeName}' wird von der Pico-Wertdeskriptorebene nicht unterstützt"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 369
 name = "c_backend.array_element_rank_mismatch"
-translated = false
-text = "Array element rank and index count do not match"
+translated = true
+text = "Der Array-Elementrang und die Anzahl der Indizes stimmen nicht überein"
 placeholders = []
 
 [[message]]
 id = 370
 name = "c_backend.pico_array_literal_element_type_unsupported"
-translated = false
-text = "Array literal element type '{typeName}' is not available in the Pico managed-container profile"
+translated = true
+text = "Der Array-Literal-Elementtyp '{typeName}' ist im verwalteten Pico-Container-Profil nicht verfügbar"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 371
 name = "c_backend.pico_array_literal_element_struct_unsupported"
-translated = false
-text = "Array literal element Struct '{typeName}' is not supported by the Pico value-descriptor tier"
+translated = true
+text = "Der Array-Literal-Element-Struct '{typeName}' wird von der Pico-Wertdeskriptorebene nicht unterstützt"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 372
 name = "c_backend.pico_imported_array_literal_element_initializer_missing"
-translated = false
-text = "Imported array literal element Struct '{typeName}' has no supported Pico element initializer ABI"
+translated = true
+text = "Der importierte Array-Literal-Element-Struct '{typeName}' besitzt kein unterstütztes Pico-Elementinitialisierer-ABI"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 373
 name = "c_backend.pico_dynamic_object_allocation_unsupported"
-translated = false
-text = "Dynamic Object allocation is not available in the initial Pico Object profile"
+translated = true
+text = "Die dynamische Objektspeicherallokation ist im initialen Pico-Objektprofil nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 374
 name = "c_backend.object_allocation_class_layout_missing"
-translated = false
-text = "Object allocation class '{classId}' has no emitted layout"
+translated = true
+text = "Die Objektspeicherallokations-Klasse '{classId}' besitzt kein generiertes Layout"
 placeholders = [{ name = "classId", type = "string" }]
 
 [[message]]
 id = 375
 name = "c_backend.imported_field_abi_record_missing"
-translated = false
-text = "Imported field '{fieldId}' has no ABI record"
+translated = true
+text = "Das importierte Field '{fieldId}' besitzt keinen ABI-Datensatz (ABI Record)"
 placeholders = [{ name = "fieldId", type = "string" }]
 
 [[message]]
 id = 376
 name = "c_backend.pico_interface_cast_descriptor_missing"
-translated = false
-text = "Interface cast target has no local Pico descriptor"
+translated = true
+text = "Das Interface-Cast-Ziel besitzt keinen lokalen Pico-Deskriptor"
 placeholders = []
 
 [[message]]
 id = 377
 name = "c_backend.pico_object_cast_descriptor_missing"
-translated = false
-text = "Object cast target has no local Pico Type descriptor"
+translated = true
+text = "Das Objekt-Cast-Ziel besitzt keinen lokalen Pico-Typdeskriptor"
 placeholders = []
 
 [[message]]
 id = 378
 name = "c_backend.object_cast_class_layout_missing"
-translated = false
-text = "Object cast class '{classId}' has no emitted layout"
+translated = true
+text = "Die Objekt-Cast-Klasse '{classId}' besitzt kein generiertes Layout"
 placeholders = [{ name = "classId", type = "string" }]
 
 [[message]]
 id = 379
 name = "c_backend.imported_object_cast_class_abi_record_missing"
-translated = false
-text = "Imported object cast class '{classId}' has no ABI record"
+translated = true
+text = "Die importierte Objekt-Cast-Klasse '{classId}' besitzt keinen ABI-Datensatz"
 placeholders = [{ name = "classId", type = "string" }]
 
 [[message]]
 id = 380
 name = "c_backend.pico_object_to_string_conversion_unsupported"
-translated = false
-text = "Object-to-String conversion is not available in the initial Pico Object profile"
+translated = true
+text = "Die Konvertierung von Objekt in String ist im initialen Pico-Objektprofil nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 381
 name = "c_backend.ir_expression_unsupported"
-translated = false
-text = "IR expression is not supported by the scalar C backend"
+translated = true
+text = "Der IR-Ausdruck wird vom skalaren C-Backend nicht unterstützt"
 placeholders = []
 
 [[message]]
 id = 382
 name = "c_backend.type_function_call_slot_not_emitted"
-translated = false
-text = "Type Function call slot '{classId}.{slotId}' was not emitted"
+translated = true
+text = "Der Typ-Funktionsaufruf-Slot '{classId}.{slotId}' wurde nicht generiert"
 placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
 
 [[message]]
 id = 383
 name = "c_backend.imported_object_construction_abi_record_missing"
-translated = false
-text = "Imported object construction has no class or constructor ABI record"
+translated = true
+text = "Die importierte Objektkonstruktion besitzt keinen Klassen- oder Konstruktor-ABI-Datensatz"
 placeholders = []
 
 [[message]]
 id = 384
 name = "c_backend.pico_dynamic_imported_object_allocation_unsupported"
-translated = false
-text = "Dynamic imported Object allocation is not available in the current Pico module ABI"
+translated = true
+text = "Die dynamische Speicherallokation importierter Objekte ist im aktuellen Pico-Modul-ABI nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 385
 name = "c_backend.pico_imported_constructor_allocation_helper_missing"
-translated = false
-text = "Imported constructor has no Pico allocation-helper ABI"
+translated = true
+text = "Der importierte Konstruktor besitzt kein Pico-Allokationshilfsfunktions-ABI)"
 placeholders = []
 
 [[message]]
 id = 386
 name = "c_backend.imported_object_allocation_requires_runtime_backend"
-translated = false
-text = "Imported Object allocation requires the BlitzMax runtime C backend"
+translated = true
+text = "Die Speicherallokation importierter Objekte erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 387
 name = "c_backend.interface_call_slot_not_emitted"
-translated = false
-text = "Interface call slot '{interfaceId}.{slotId}' was not emitted"
+translated = true
+text = "Der Interface-Aufruf-Slot '{interfaceId}.{slotId}' wurde nicht generiert"
 placeholders = [{ name = "interfaceId", type = "string" }, { name = "slotId", type = "string" }]
 
 [[message]]
 id = 388
 name = "c_backend.pico_imported_interface_dispatch_unsupported"
-translated = false
-text = "Imported or native Interface dispatch is not available in the current Pico descriptor tier"
+translated = true
+text = "Der Aufruf importierter oder nativer Interfaces  ist in der aktuellen Pico-Deskriptorebene nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 389
 name = "c_backend.pico_interface_method_signature_unavailable"
-translated = false
-text = "Interface method signature is not available in the current Pico dispatch tier"
+translated = true
+text = "Die Interface-Methodensignatur ist in der aktuellen Pico-Aufrufebene nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 390
 name = "c_backend.pico_imported_virtual_dispatch_slot_unavailable"
-translated = false
-text = "Imported virtual dispatch slot is not available in the current Pico Type descriptor ABI"
+translated = true
+text = "Der importierte virtuelle Aufruf-Slot ist im aktuellen Pico-Typdeskriptor-ABI nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 391
 name = "c_backend.imported_virtual_call_slot_abi_record_missing"
-translated = false
-text = "Imported virtual call slot '{classId}.{slotId}' has no ABI record"
+translated = true
+text = "Der importierte virtuelle Aufruf-Slot '{classId}.{slotId}' besitzt keinen ABI-Datensatz"
 placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
 
 [[message]]
 id = 392
 name = "c_backend.imported_super_call_slot_implementation_missing"
-translated = false
-text = "Imported Super call slot '{classId}.{slotId}' has no direct implementation ABI"
+translated = true
+text = "Dem importierten Super-Aufruf-Slot '{classId}.{slotId}' fehlt ein direktes Implementierungs-ABI"
 placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
 
 [[message]]
 id = 393
 name = "c_backend.super_call_dispatch_base_descriptor_missing"
-translated = false
-text = "Super call dispatch class '{classId}' has no emitted base descriptor"
+translated = true
+text = "Die Super-Aufruf-Klasse '{classId}' besitzt keinen generierten Basisdeskriptor"
 placeholders = [{ name = "classId", type = "string" }]
 
 [[message]]
 id = 394
 name = "c_backend.pico_object_super_dispatch_unsupported"
-translated = false
-text = "Super dispatch for built-in Object slots is not available in the current Pico inheritance tier"
+translated = true
+text = "Der Super-Aufruf für eingebaute Objekt-Slots ist in der aktuellen Pico-Vererbungsebene nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 395
 name = "c_backend.super_call_slot_not_emitted"
-translated = false
-text = "Super call slot '{classId}.{slotId}' was not emitted"
+translated = true
+text = "Der Super-Aufruf-Slot '{classId}.{slotId}' wurde nicht generiert"
 placeholders = [{ name = "classId", type = "string" }, { name = "slotId", type = "string" }]
 
 [[message]]
 id = 396
 name = "c_backend.pico_catch_type_unsupported"
-translated = false
-text = "Pico Catch supports Object, String, Array, and class/interface types with a compact descriptor ABI; '{typeName}' is not supported"
+translated = true
+text = "Pico-Catch unterstützt Objekt-, String-, Array- und Klassen/Interface-Typen mit einem kompakten Deskriptor-ABI; '{typeName}' wird nicht unterstützt"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 397
 name = "c_backend.catch_type_runtime_matcher_missing"
-translated = false
-text = "Catch type '{typeName}' has no runtime matcher"
+translated = true
+text = "Der Catch-Typ '{typeName}' besitzt keine Laufzeit-Abgleichsfunktion"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 398
 name = "c_backend.assignment_operator_unsupported"
-translated = false
-text = "Assignment operator '{operatorText}' has no scalar C99 lowering"
+translated = true
+text = "Der Zuweisungsoperator '{operatorText}' besitzt kein skalares C99-Lowering"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 399
 name = "c_backend.managed_array_conversion_requires_runtime_backend"
-translated = false
-text = "Explicit managed Array conversion requires the BlitzMax runtime C backend"
+translated = true
+text = "Die explizite Konvertierung verwalteter Arrays erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 400
 name = "c_backend.string_to_byte_pointer_conversion_requires_runtime_backend"
-translated = false
-text = "Implicit String-to-Byte Ptr conversion requires the BlitzMax runtime C backend"
+translated = true
+text = "Die implizite Konvertierung von String in Byte Ptr (Byte-Pointer) erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 401
 name = "c_backend.string_to_byte_pointer_conversion_escaped_cleanup_scope"
-translated = false
-text = "Implicit String-to-Byte Ptr conversion escaped its statement cleanup scope"
+translated = true
+text = "Die implizite Konvertierung von String in Byte Ptr (Byte-Pointer) ist aus ihrem Anweisungs-Bereinigungsbereich ausgebrochen"
 placeholders = []
 
 [[message]]
 id = 402
 name = "c_backend.managed_type_field_storage_conversion_requires_runtime_backend"
-translated = false
-text = "Managed Type field-storage conversion requires the BlitzMax runtime C backend"
+translated = true
+text = "Die Konvertierung des Typspeichers für verwaltete Fields erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 403
 name = "c_backend.managed_array_storage_conversion_requires_runtime_backend"
-translated = false
-text = "Managed Array storage conversion requires the BlitzMax runtime C backend"
+translated = true
+text = "Die Konvertierung des Speichers für verwaltete Arrays erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 404
 name = "c_backend.checked_enum_conversion_requires_runtime_backend"
-translated = false
-text = "Checked Enum conversion requires the BlitzMax runtime C backend"
+translated = true
+text = "Die geprüfte Enum-Konvertierung erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 405
 name = "c_backend.checked_enum_conversion_descriptor_missing"
-translated = false
-text = "Checked Enum conversion has no retained runtime descriptor"
+translated = true
+text = "Die geprüfte Enum-Konvertierung besitzt keinen beibehaltenen Laufzeitdeskriptor"
 placeholders = []
 
 [[message]]
 id = 406
 name = "c_backend.numeric_to_string_conversion_requires_runtime_backend"
-translated = false
-text = "Numeric-to-String conversion requires the BlitzMax runtime C backend"
+translated = true
+text = "Die Konvertierung von numerischen Werten in Strings erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 407
 name = "c_backend.numeric_type_string_conversion_mapping_missing"
-translated = false
-text = "Numeric type '{typeName}' has no String conversion runtime mapping"
+translated = true
+text = "Der numerische Typ '{typeName}' besitzt keine Laufzeit-Zuweisung für die String-Konvertierung"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 408
 name = "c_backend.string_to_numeric_conversion_requires_runtime_backend"
-translated = false
-text = "String-to-numeric conversion requires the BlitzMax runtime C backend"
+translated = true
+text = "Die Konvertierung von String in numerische Werte erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 409
 name = "c_backend.string_conversion_target_mapping_missing"
-translated = false
-text = "String conversion target '{typeName}' has no numeric runtime mapping"
+translated = true
+text = "Das String-Konvertierungsziel '{typeName}' besitzt keine numerische Laufzeit-Zuweisung"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 410
 name = "c_backend.managed_narrowing_conversion_reached_raw_cast"
-translated = false
-text = "Managed narrowing conversion from '{sourceType}' to '{targetType}' reached the raw C cast fallback"
+translated = true
+text = "Die verwaltete einschränkende Konvertierung von '{sourceType}' nach '{targetType}' hat den raw-C-Cast-Fallback erreicht"
 placeholders = [{ name = "sourceType", type = "string" }, { name = "targetType", type = "string" }]
 
 [[message]]
 id = 411
 name = "c_backend.ir_symbol_storage_missing"
-translated = false
-text = "IR symbol '{symbolName}' has no C storage"
+translated = true
+text = "Das IR-Symbol '{symbolName}' besitzt keinen C-Speicherplatz"
 placeholders = [{ name = "symbolName", type = "string" }]
 
 [[message]]
 id = 412
 name = "c_backend.ir_function_name_missing"
-translated = false
-text = "IR function '{functionId}' has no C name"
+translated = true
+text = "Die IR-Funktion '{functionId}' besitzt keinen C-Namen"
 placeholders = [{ name = "functionId", type = "string" }]
 
 [[message]]
 id = 413
 name = "c_backend.managed_array_value_requires_runtime_backend"
-translated = false
-text = "Managed Array values require the BlitzMax runtime C backend"
+translated = true
+text = "Verwaltete Array-Werte erfordern das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 414
 name = "c_backend.managed_closure_value_requires_runtime_backend"
-translated = false
-text = "Managed Closure values require the BlitzMax runtime C backend"
+translated = true
+text = "Verwaltete Closure-Werte erfordern das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 415
 name = "c_backend.managed_interface_value_requires_runtime_backend"
-translated = false
-text = "Managed Interface values require the BlitzMax runtime C backend"
+translated = true
+text = "Verwaltete Interface-Werte erfordern das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 416
 name = "c_backend.managed_object_value_requires_runtime_backend"
-translated = false
-text = "Managed Object values require the BlitzMax runtime C backend"
+translated = true
+text = "Verwaltete Objektwerte erfordern das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 417
 name = "c_backend.managed_imported_object_value_requires_runtime_backend"
-translated = false
-text = "Managed imported Object values require the BlitzMax runtime C backend"
+translated = true
+text = "Verwaltete importierte Objektwerte erfordern das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 418
 name = "c_backend.managed_string_value_requires_runtime_backend"
-translated = false
-text = "Managed String values require the BlitzMax runtime C backend"
+translated = true
+text = "Verwaltete String-Werte erfordern das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 419
 name = "c_backend.semantic_type_scalar_abi_mapping_missing"
-translated = false
-text = "Semantic type '{typeName}' has no scalar C99 ABI mapping"
+translated = true
+text = "Der semantische Typ '{typeName}' besitzt keine skalare C99-ABI-Zuweisung"
 placeholders = [{ name = "typeName", type = "string" }]
 
 [[message]]
 id = 420
 name = "c_backend.unset_callable_value_requires_runtime_backend"
-translated = false
-text = "Unset callable values require the BlitzMax runtime C backend"
+translated = true
+text = "Nicht gesetzte aufrufbare (callable) Werte erfordern das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 421
 name = "c_backend.managed_closure_invocation_requires_runtime_backend"
-translated = false
-text = "Managed Closure invocation requires the BlitzMax runtime C backend"
+translated = true
+text = "Der Aufruf verwalteter Closures erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 422
 name = "c_backend.pico_imported_enum_intrinsic_unsupported"
-translated = false
-text = "Imported Enum runtime intrinsics are not available in the current Pico descriptor tier"
+translated = true
+text = "Intrinsische Laufzeitfunktionen für importierte Enums sind in der aktuellen Pico-Deskriptorebene nicht verfügbar"
 placeholders = []
 
 [[message]]
 id = 423
 name = "c_backend.pico_enum_intrinsic_shape_invalid"
-translated = false
-text = "Pico Enum intrinsic has an invalid receiver or argument shape"
+translated = true
+text = "Die intrinsische Pico-Enum-Funktion besitzt eine ungültige Receiver- oder Argumentstruktur"
 placeholders = []
 
 [[message]]
 id = 424
 name = "c_backend.enum_intrinsic_requires_runtime_backend"
-translated = false
-text = "Enum runtime intrinsic requires the BlitzMax runtime C backend"
+translated = true
+text = "Die intrinsische Laufzeitfunktion für Enums erfordert das BlitzMax-Laufzeit-C-Backend"
 placeholders = []
 
 [[message]]
 id = 425
 name = "c_backend.enum_intrinsic_descriptor_missing"
-translated = false
-text = "Enum intrinsic has no retained runtime descriptor"
+translated = true
+text = "Die intrinsische Enum-Funktion besitzt keinen beibehaltenen Laufzeitdeskriptor"
 placeholders = []
 
 [[message]]
 id = 426
 name = "c_backend.enum_intrinsic_shape_invalid"
-translated = false
-text = "Enum intrinsic has an invalid receiver or argument shape"
+translated = true
+text = "Die intrinsische Enum-Funktion besitzt eine ungültige Receiver- oder Argumentstruktur"
 placeholders = []
 
 [[message]]
 id = 427
 name = "c_backend.binary_literal_requires_canonical_lowering"
-translated = false
-text = "Binary literals require canonical constant lowering before strict C99 emission"
+translated = true
+text = "Binäre Literale erfordern ein kanonisches Konstanten-Lowering vor der strikten C99-Ausgabe"
 placeholders = []
 
 [[message]]
 id = 428
 name = "c_backend.literal_unsupported"
-translated = false
-text = "Literal '{literalText}' is not supported by the scalar C99 backend"
+translated = true
+text = "Das Literal '{literalText}' wird vom skalaren C99-Backend nicht unterstützt"
 placeholders = [{ name = "literalText", type = "string" }]
 
 [[message]]
 id = 429
 name = "c_backend.unary_operator_unsupported"
-translated = false
-text = "Unary operator '{operatorText}' has no scalar C99 lowering"
+translated = true
+text = "Der unäre Operator '{operatorText}' besitzt kein skalares C99-Lowering"
 placeholders = [{ name = "operatorText", type = "string" }]
 
 [[message]]
 id = 430
 name = "c_backend.binary_operator_unsupported"
-translated = false
-text = "Binary operator '{operatorText}' has no scalar C99 lowering"
+translated = true
+text = "Der binäre Operator '{operatorText}' besitzt kein skalares C99-Lowering"
 placeholders = [{ name = "operatorText", type = "string" }]
+
