@@ -2255,6 +2255,11 @@ Type TCompilerGenericCUnitEmitter
 
 	Function EmbeddedScalarNode:Int(node:TGenericTemplateNode)
 		If Not node Then Return True
+		If node.kind = TEMPLATE_NODE_ASSERT Then
+			If node.children.length < 1 Or node.children.length > 2 Or Not EmbeddedScalarNode(node.children[0]) Then Return False
+			If node.children.length = 1 Then Return True
+			Return StringTemplateType(node.children[1].semanticType) And EmbeddedTypeNode(node.children[1])
+		End If
 		' SizeOf/AlignOf return a scalar even when their compile-time type operand
 		' is a Struct, managed reference, or pointer. The operand is never emitted
 		' as a runtime value, so validate its ABI directly instead of applying the
@@ -2417,7 +2422,7 @@ Type TCompilerGenericCUnitEmitter
 		If EmbeddedTarget(ir) Then
 			Local result:String
 			If includeStddef Then result :+ "#include <stddef.h>~n"
-			Return result + "#include <stdint.h>~n#include <blitzmax/embedded_runtime.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n"
+			Return result + "#include <stdint.h>~n#include <blitzmax/embedded_runtime.h>~nextern void brl_blitz_RuntimeError(const BMXEmbeddedString *message);~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n"
 		End If
 		Local result:String
 		If includeStddef Then result :+ "#include <stddef.h>~n"
@@ -4396,14 +4401,18 @@ Type TCompilerGenericCUnitEmitter
 			finalizerFlags = "BMX_EMBEDDED_TYPE_FLAG_HAS_FINALIZER"
 			finalizer = EmbeddedGenericFinalizerName(ir.specialization)
 		End If
+		Local toStringHook:String = "0"
 		Local compareHook:String = "0"
+		Local sendMessageHook:String = "0"
 		Local hashCodeHook:String = "0"
 		Local equalsHook:String = "0"
+		If EmbeddedGenericObjectHook(ir, "tostring") Then toStringHook = EmbeddedGenericObjectHookName(ir.specialization, "to_string")
 		If EmbeddedGenericObjectHook(ir, "compare") Then compareHook = EmbeddedGenericObjectHookName(ir.specialization, "compare")
+		If EmbeddedGenericObjectHook(ir, "sendmessage") Then sendMessageHook = EmbeddedGenericObjectHookName(ir.specialization, "send_message")
 		If EmbeddedGenericObjectHook(ir, "hashcode") Then hashCodeHook = EmbeddedGenericObjectHookName(ir.specialization, "hash_code")
 		If EmbeddedGenericObjectHook(ir, "equals") Then equalsHook = EmbeddedGenericObjectHookName(ir.specialization, "equals")
-		result.Append("    .value_fields = " + valueFields + ", .value_field_count = " + valueFieldCount + ", .flags = " + finalizerFlags + ", .trace = 0, .finalizer = " + finalizer + ",~n")
-		result.Append("    .compare = " + compareHook + ", .hash_code = " + hashCodeHook + ", .equals = " + equalsHook + "~n};~n~n")
+		result.Append("    .value_fields = " + valueFields + ", .value_field_count = " + valueFieldCount + ", .flags = " + finalizerFlags + ", .trace = 0, .finalizer = " + finalizer + ", .to_string = " + toStringHook + ",~n")
+		result.Append("    .compare = " + compareHook + ", .send_message = " + sendMessageHook + ", .hash_code = " + hashCodeHook + ", .equals = " + equalsHook + "~n};~n~n")
 		result.Append("static void " + abiName + "_initialize(struct " + abiName + "_obj *self) {~n")
 		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
 			result.Append("    self->" + genericField.abiName + " = " + FieldInitializerValue(genericField, ir, diagnostics) + ";~n")
@@ -4456,8 +4465,12 @@ Type TCompilerGenericCUnitEmitter
 		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
 			If genericMethod.isDestructor Or genericMethod.isStatic Or genericMethod.isTypeFunction Or genericMethod.name.ToLower() <> hookName Then Continue
 			Select hookName
+				Case "tostring"
+					If genericMethod.parameters.length = 0 And EmbeddedGenericBuiltinType(genericMethod.returnType, "string") Then Return genericMethod
 				Case "compare", "equals"
 					If genericMethod.parameters.length = 1 And EmbeddedGenericBuiltinType(genericMethod.returnType, "int") And EmbeddedGenericBuiltinType(genericMethod.parameters[0].semanticType, "object") Then Return genericMethod
+				Case "sendmessage"
+					If genericMethod.parameters.length = 2 And EmbeddedGenericBuiltinType(genericMethod.returnType, "object") And EmbeddedGenericBuiltinType(genericMethod.parameters[0].semanticType, "object") And EmbeddedGenericBuiltinType(genericMethod.parameters[1].semanticType, "object") Then Return genericMethod
 				Case "hashcode"
 					If genericMethod.parameters.length = 0 And EmbeddedGenericBuiltinType(genericMethod.returnType, "uint") Then Return genericMethod
 			End Select
@@ -4468,12 +4481,26 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitEmbeddedGenericObjectHooks:String(ir:TCompilerGenericSpecializationIr)
 		If Not ir Then Return ""
 		Local result:String
+		Local toStringMethod:TCompilerGenericMethodIr = EmbeddedGenericObjectHook(ir, "tostring")
+		If toStringMethod Then
+			Local owner:TGenericSpecializationNode = toStringMethod.declaringSpecialization
+			If Not owner Then owner = ir.specialization
+			result :+ "static const BMXEmbeddedString *" + EmbeddedGenericObjectHookName(ir.specialization, "to_string") + "(void *object) {~n"
+			result :+ "    return " + toStringMethod.abiName + "((struct " + owner.readableAbiName + "_obj *)object);~n}~n~n"
+		End If
 		Local compareMethod:TCompilerGenericMethodIr = EmbeddedGenericObjectHook(ir, "compare")
 		If compareMethod Then
 			Local owner:TGenericSpecializationNode = compareMethod.declaringSpecialization
 			If Not owner Then owner = ir.specialization
 			result :+ "static int32_t " + EmbeddedGenericObjectHookName(ir.specialization, "compare") + "(void *object, void *other) {~n"
 			result :+ "    return " + compareMethod.abiName + "((struct " + owner.readableAbiName + "_obj *)object, (" + CType(compareMethod.parameters[0].semanticType, ir) + ")other);~n}~n~n"
+		End If
+		Local sendMessageMethod:TCompilerGenericMethodIr = EmbeddedGenericObjectHook(ir, "sendmessage")
+		If sendMessageMethod Then
+			Local owner:TGenericSpecializationNode = sendMessageMethod.declaringSpecialization
+			If Not owner Then owner = ir.specialization
+			result :+ "static void *" + EmbeddedGenericObjectHookName(ir.specialization, "send_message") + "(void *object, void *message, void *source) {~n"
+			result :+ "    return " + sendMessageMethod.abiName + "((struct " + owner.readableAbiName + "_obj *)object, (" + CType(sendMessageMethod.parameters[0].semanticType, ir) + ")message, (" + CType(sendMessageMethod.parameters[1].semanticType, ir) + ")source);~n}~n~n"
 		End If
 		Local hashCodeMethod:TCompilerGenericMethodIr = EmbeddedGenericObjectHook(ir, "hashcode")
 		If hashCodeMethod Then
@@ -7496,14 +7523,21 @@ Type TCompilerGenericCUnitEmitter
 						diagnostics :+ ["BMXC3067 generic Assert requires a closed truth-compatible condition and optional String message"]
 						Continue
 					End If
-					If ir.specialization.debugInstrumentation Then
-						Local assertMessage:String = "bbStringFromCString(~qAssert failed~q)"
+					If ir.specialization.configuration.buildMode.ToLower() = "debug" Then
+						Local assertMessage:String
+						If EmbeddedTarget(ir) Then
+							assertMessage = EmitStringCodeUnits("65,115,115,101,114,116,32,102,97,105,108,101,100", ir)
+						Else
+							assertMessage = "bbStringFromCString(~qAssert failed~q)"
+						End If
 						If child.children.length = 2 Then
 							If Not child.children[1].semanticType Or child.children[1].semanticType.kind <> TEMPLATE_TYPE_BUILTIN Or child.children[1].semanticType.symbolName.ToLower() <> "string" Then
 								diagnostics :+ ["BMXC3067 generic Assert message requires a closed String expression"]
 								Continue
 							End If
-							If child.children[1].kind = TEMPLATE_NODE_LITERAL Then
+							If EmbeddedTarget(ir) Then
+								assertMessage = EmitExpression(child.children[1], ir, ownerMethod, diagnostics, locals)
+							Else If child.children[1].kind = TEMPLATE_NODE_LITERAL Then
 								assertMessage = "bbStringFromCString(" + child.children[1].valueText + ")"
 							Else
 								assertMessage = EmitExpression(child.children[1], ir, ownerMethod, diagnostics, locals)

@@ -4837,9 +4837,10 @@ Type TCompilerIrLowerer
 				AddUnsupported("BMXC1205", TBccMessages.IrLoweringAssertMessageTypeNotConvertibleToString(TypeName(asserted.message.semanticType)), bound.syntax)
 				Return Null
 			End If
-			' Production assertions are debug instrumentation: release builds
-			' neither evaluate the condition nor the lazy failure message.
-			If Not options Or Not options.debugInstrumentation Then Return Null
+			' Assertions are a debug-build language feature, independent of the
+			' desktop debugger callbacks unavailable on embedded targets. Release
+			' builds evaluate neither the condition nor the lazy failure message.
+			If Not options Or options.buildMode.ToLower() <> "debug" Then Return Null
 			Local resultAssert:TCompilerIrAssert = New TCompilerIrAssert
 			resultAssert.kind = IR_STATEMENT_ASSERT
 			resultAssert.source = SourceOf(bound.syntax)

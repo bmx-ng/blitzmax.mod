@@ -169,6 +169,7 @@ Type TCompilerCBackend
 		result.Append("#include <stddef.h>~n#include <stdint.h>~n")
 		If EmbeddedStringTypes() Then result.Append("#include <blitzmax/embedded_runtime.h>~n")
 		If EmbeddedStringTypes() And (Not irModule.initializationPlan Or irModule.initializationPlan.unitKind = IR_UNIT_APPLICATION) Then result.Append("void bmx_embedded_modules_init(void);~n")
+		If EmbeddedStringTypes() Then result.Append("extern void brl_blitz_RuntimeError(const BMXEmbeddedString *message);~n")
 		result.Append("~n")
 		result.Append(EmitEmbeddedIncbinDeclarations(irModule))
 		result.Append(EmitEmbeddedClassForwards(irModule))
@@ -822,10 +823,6 @@ Type TCompilerCBackend
 
 	Method EmbeddedSlotFunctionPointerType:String(slot:TCompilerIrClassFunctionSlot)
 		If Not slot Then Return ""
-		If slot.callableReturnType.length Then
-			AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoCallableReturnVirtualMethodUnsupported(), slot.source)
-			Return ""
-		End If
 		Local parameters:String
 		If slot.isMethod Then
 			Local receiverClass:TCompilerIrClass = ClassById(slot.receiverClassId)
@@ -844,16 +841,16 @@ Type TCompilerCBackend
 			parameters :+ CParameterType(parameter, slot.source)
 		Next
 		If Not parameters.length Then parameters = "void"
-		Return CType(slot.returnType, slot.source) + " (*)(" + parameters + ")"
+		Return CFunctionPointerDeclaration(slot.returnType, slot.callableReturnType, slot.callableReturnParameters, "", parameters, slot.source, slot.callingConvention, slot.callableReturnCallingConvention)
 	End Method
 
 	Method EmbeddedInterfaceFunctionPointerType:String(interfaceMethod:TCompilerIrInterfaceMethod)
-		If Not interfaceMethod Or interfaceMethod.callableReturnType.length Then Return ""
+		If Not interfaceMethod Then Return ""
 		Local parameters:String = "BMXEmbeddedObject *"
 		For Local parameter:TCompilerIrParameter = EachIn interfaceMethod.parameters
 			parameters :+ ", " + CParameterType(parameter, interfaceMethod.source)
 		Next
-		Return CType(interfaceMethod.returnType, interfaceMethod.source) + " (*)(" + parameters + ")"
+		Return CFunctionPointerDeclaration(interfaceMethod.returnType, interfaceMethod.callableReturnType, interfaceMethod.callableReturnParameters, "", parameters, interfaceMethod.source, interfaceMethod.callingConvention, interfaceMethod.callableReturnCallingConvention)
 	End Method
 
 	Method EmitRuntimeModule:String(irModule:TCompilerIrModule)
@@ -1452,17 +1449,21 @@ Type TCompilerCBackend
 				finalizerFlags = "BMX_EMBEDDED_TYPE_FLAG_HAS_FINALIZER"
 				finalizer = EmbeddedFinalizerName(irClass)
 			End If
+			Local toStringHook:String = "0"
 			Local compareHook:String = "0"
+			Local sendMessageHook:String = "0"
 			Local hashCodeHook:String = "0"
 			Local equalsHook:String = "0"
+			If irClass.toStringFunctionId.length Then toStringHook = EmbeddedObjectToStringName(irClass)
 			If irClass.compareFunctionId.length Then compareHook = EmbeddedObjectCompareName(irClass)
+			If irClass.sendMessageFunctionId.length Then sendMessageHook = EmbeddedObjectSendMessageName(irClass)
 			If irClass.hashCodeFunctionId.length Then hashCodeHook = EmbeddedObjectHashCodeName(irClass)
 			If irClass.equalsFunctionId.length Then equalsHook = EmbeddedObjectEqualsName(irClass)
 			result :+ "    .array_offsets = " + arrayOffsets + ", .array_count = " + arrayCount + ",~n"
 			result :+ "    .string_offsets = " + stringOffsets + ", .string_count = " + stringCount + ",~n"
 			result :+ "    .value_fields = " + valueFieldName + ", .value_field_count = " + valueFieldCount + ", .flags = " + finalizerFlags + ",~n"
-			result :+ "    .trace = 0, .finalizer = " + finalizer + ",~n"
-			result :+ "    .compare = " + compareHook + ", .hash_code = " + hashCodeHook + ", .equals = " + equalsHook + "~n};~n"
+			result :+ "    .trace = 0, .finalizer = " + finalizer + ", .to_string = " + toStringHook + ",~n"
+			result :+ "    .compare = " + compareHook + ", .send_message = " + sendMessageHook + ", .hash_code = " + hashCodeHook + ", .equals = " + equalsHook + "~n};~n"
 			If Not irClass.defaultConstructorFunctionId.length Then result :+ "static void " + ConstructorName(irClass.classId) + "(struct " + ObjectName(irClass.classId) + " *o);~n"
 			result :+ "~n"
 		Next
@@ -1503,8 +1504,16 @@ Type TCompilerCBackend
 		Return "bmx_embedded_compare_" + SafeIdentifier(irClass.classId + "_" + irClass.name)
 	End Method
 
+	Method EmbeddedObjectToStringName:String(irClass:TCompilerIrClass)
+		Return "bmx_embedded_to_string_" + SafeIdentifier(irClass.classId + "_" + irClass.name)
+	End Method
+
 	Method EmbeddedObjectHashCodeName:String(irClass:TCompilerIrClass)
 		Return "bmx_embedded_hash_code_" + SafeIdentifier(irClass.classId + "_" + irClass.name)
+	End Method
+
+	Method EmbeddedObjectSendMessageName:String(irClass:TCompilerIrClass)
+		Return "bmx_embedded_send_message_" + SafeIdentifier(irClass.classId + "_" + irClass.name)
 	End Method
 
 	Method EmbeddedObjectEqualsName:String(irClass:TCompilerIrClass)
@@ -1531,7 +1540,9 @@ Type TCompilerCBackend
 		For Local irClass:TCompilerIrClass = EachIn irModule.classes
 			If EmbeddedClassHasFinalizer(irClass) Then result :+ "static void " + EmbeddedFinalizerName(irClass) + "(void *object);~n"
 			If irClass.isPublished And irClass.abiName.length And EmbeddedClassHasFinalizer(irClass) Then result :+ "void " + EmbeddedBaseFinalizerAbiName(irClass.abiName) + "(void *object);~n"
+			If irClass.toStringFunctionId.length Then result :+ "static const BMXEmbeddedString *" + EmbeddedObjectToStringName(irClass) + "(void *object);~n"
 			If irClass.compareFunctionId.length Then result :+ "static int32_t " + EmbeddedObjectCompareName(irClass) + "(void *object, void *other);~n"
+			If irClass.sendMessageFunctionId.length Then result :+ "static void *" + EmbeddedObjectSendMessageName(irClass) + "(void *object, void *message, void *source);~n"
 			If irClass.hashCodeFunctionId.length Then result :+ "static uint32_t " + EmbeddedObjectHashCodeName(irClass) + "(void *object);~n"
 			If irClass.equalsFunctionId.length Then result :+ "static int32_t " + EmbeddedObjectEqualsName(irClass) + "(void *object, void *other);~n"
 		Next
@@ -1554,9 +1565,19 @@ Type TCompilerCBackend
 				End If
 				result :+ "}~n~n"
 			End If
+			If irClass.toStringFunctionId.length Then
+				result :+ "static const BMXEmbeddedString *" + EmbeddedObjectToStringName(irClass) + "(void *object) {~n"
+				result :+ "    return " + FunctionName(irClass.toStringFunctionId) + "((" + EmbeddedObjectHookReceiverType(irClass, irClass.toStringFunctionId) + ")object);~n"
+				result :+ "}~n~n"
+			End If
 			If irClass.compareFunctionId.length Then
 				result :+ "static int32_t " + EmbeddedObjectCompareName(irClass) + "(void *object, void *other) {~n"
 				result :+ "    return " + FunctionName(irClass.compareFunctionId) + "((" + EmbeddedObjectHookReceiverType(irClass, irClass.compareFunctionId) + ")object, (BMXEmbeddedObject *)other);~n"
+				result :+ "}~n~n"
+			End If
+			If irClass.sendMessageFunctionId.length Then
+				result :+ "static void *" + EmbeddedObjectSendMessageName(irClass) + "(void *object, void *message, void *source) {~n"
+				result :+ "    return " + FunctionName(irClass.sendMessageFunctionId) + "((" + EmbeddedObjectHookReceiverType(irClass, irClass.sendMessageFunctionId) + ")object, (BMXEmbeddedObject *)message, (BMXEmbeddedObject *)source);~n"
 				result :+ "}~n~n"
 			End If
 			If irClass.hashCodeFunctionId.length Then
@@ -5514,10 +5535,6 @@ Type TCompilerCBackend
 		End If
 		Local asserted:TCompilerIrAssert = TCompilerIrAssert(statement)
 		If asserted Then
-			If Not runtimeTypes Then
-				AddDiagnostic("BMXC2078", TBccMessages.CBackendAssertRequiresRuntimeBackend(), asserted.source)
-				Return CompleteStatementOutput(result, "")
-			End If
 			Local capturedAssert:TCompilerCCapturedExpression = CaptureExpression(asserted.condition, True)
 			result.Append(EmitNativeStringPrelude(capturedAssert.nativeStrings, indent))
 			Local assertCondition:String = capturedAssert.expression
@@ -5791,7 +5808,13 @@ Type TCompilerCBackend
 				result.Append(indent + "    for (; " + indexName + " < (BBUINT)" + collectionName + "->scales[0]; " + indexName + " = " + indexName + " + 1) {~n")
 			End If
 			If persistentEach Then result.Append(indent + "        " + elementName + " = " + element + ";~n") Else result.Append(indent + "        " + CType(eachStatement.elementType, eachStatement.source) + " " + elementName + " = " + element + ";~n")
-			If eachStatement.filtersStringObjects Then result.Append(indent + "        if (bbObjectIsString((BBOBJECT)" + elementName + ") == 0) { continue; }~n")
+			If eachStatement.filtersStringObjects
+				If EmbeddedObjectTypes()
+					result.Append(indent + "        if (bmx_embedded_object_is_string((BMXEmbeddedObject *)" + elementName + ") == 0) { continue; }~n")
+				Else
+					result.Append(indent + "        if (bbObjectIsString((BBOBJECT)" + elementName + ") == 0) { continue; }~n")
+				End If
+			End If
 			Local target:String
 			If eachStatement.declaresVariable Then
 				Local name:String = LocalName(eachStatement.variableSymbolId, eachStatement.variableName)
@@ -5803,7 +5826,13 @@ Type TCompilerCBackend
 				target = EmitExpression(eachStatement.target)
 				result.Append(indent + "        " + target + " = " + EmitExpression(eachStatement.elementValue) + ";~n")
 			End If
-			If eachStatement.filtersNullObjects Then result.Append(indent + "        if ((BBOBJECT)" + target + " == (BBOBJECT)&bbNullObject) { continue; }~n")
+			If eachStatement.filtersNullObjects
+				If EmbeddedObjectTypes()
+					result.Append(indent + "        if ((void *)" + target + " == (void *)&bmx_embedded_null_object) { continue; }~n")
+				Else
+					result.Append(indent + "        if ((BBOBJECT)" + target + " == (BBOBJECT)&bbNullObject) { continue; }~n")
+				End If
+			End If
 			result.Append(EmitBlockContents(eachStatement.body, indent + "        "))
 			If eachStatement.hasContinue Then result.Append(indent + "        " + LoopContinueLabel(eachStatement.loopId) + ": ;~n")
 			result.Append(indent + "    }~n")
@@ -5817,6 +5846,9 @@ Type TCompilerCBackend
 			Local indexName:String = TemporaryName(stringEachStatement.indexTemporaryId)
 			Local elementName:String = TemporaryName(stringEachStatement.elementTemporaryId)
 			Local persistentEach:Int = currentRoutine And currentRoutine.isIteratorMoveNext And localNames.Contains(stringEachStatement.collectionTemporaryId)
+			Local collectionType:String = CType("String", stringEachStatement.source)
+			Local indexType:String = CType("UInt", stringEachStatement.source)
+			Local elementType:String = CType("Int", stringEachStatement.source)
 			If persistentEach Then
 				collectionName = String(localNames.ValueForKey(stringEachStatement.collectionTemporaryId))
 				indexName = String(localNames.ValueForKey(stringEachStatement.indexTemporaryId))
@@ -5831,11 +5863,11 @@ Type TCompilerCBackend
 				result.Append(indent + "    " + collectionName + " = " + DebugManagedValue(EmitExpression(stringEachStatement.collection), IR_MANAGED_REFERENCE_STRING, stringEachStatement.collection.semanticType, stringEachStatement.source) + ";~n")
 				result.Append(indent + "    " + indexName + " = 0;~n")
 			Else
-				result.Append(indent + "    BBSTRING " + collectionName + " = " + DebugManagedValue(EmitExpression(stringEachStatement.collection), IR_MANAGED_REFERENCE_STRING, stringEachStatement.collection.semanticType, stringEachStatement.source) + ";~n")
-				result.Append(indent + "    BBUINT " + indexName + " = 0;~n")
+				result.Append(indent + "    " + collectionType + " " + collectionName + " = " + DebugManagedValue(EmitExpression(stringEachStatement.collection), IR_MANAGED_REFERENCE_STRING, stringEachStatement.collection.semanticType, stringEachStatement.source) + ";~n")
+				result.Append(indent + "    " + indexType + " " + indexName + " = 0;~n")
 			End If
-			result.Append(indent + "    for (; " + indexName + " < (BBUINT)" + collectionName + "->length; " + indexName + " = " + indexName + " + 1) {~n")
-			If persistentEach Then result.Append(indent + "        " + elementName + " = (BBINT)" + collectionName + "->buf[" + indexName + "];~n") Else result.Append(indent + "        BBINT " + elementName + " = (BBINT)" + collectionName + "->buf[" + indexName + "];~n")
+			result.Append(indent + "    for (; " + indexName + " < (" + indexType + ")" + collectionName + "->length; " + indexName + " = " + indexName + " + 1) {~n")
+			If persistentEach Then result.Append(indent + "        " + elementName + " = (" + elementType + ")" + collectionName + "->buf[" + indexName + "];~n") Else result.Append(indent + "        " + elementType + " " + elementName + " = (" + elementType + ")" + collectionName + "->buf[" + indexName + "];~n")
 			Local convertedElement:String = "((" + CType(stringEachStatement.variableType, stringEachStatement.source) + ")(" + elementName + "))"
 			If stringEachStatement.declaresVariable Then
 				Local name:String = LocalName(stringEachStatement.variableSymbolId, stringEachStatement.variableName)
@@ -5935,7 +5967,7 @@ Type TCompilerCBackend
 						exceptionName = RegisterEmbeddedExceptionRoot("pico.each.exception." + objectEachStatement.loopId, exceptionName, "__pico_exception", objectEachStatement.source)
 						Local picoFrameName:String = "bmx_embedded_each_" + SafeIdentifier(objectEachStatement.loopId) + "_frame"
 						result.Append(indent + "    BMXEmbeddedExceptionFrame " + picoFrameName + ";~n")
-						result.Append(indent + "    int32_t " + failedName + " = 0;~n")
+						result.Append(indent + "    volatile int32_t " + failedName + " = 0;~n")
 						result.Append(indent + "    bmx_embedded_exception_enter(&" + picoFrameName + ");~n")
 						result.Append(indent + "    switch (setjmp(" + picoFrameName + ".buffer)) {~n")
 						result.Append(indent + "    case 0: {~n")
@@ -5952,7 +5984,13 @@ Type TCompilerCBackend
 			If cleanup And Not persistentEach Then loopIndent :+ "    "
 			result.Append(loopIndent + "while (" + EmitExpression(objectEachStatement.advance) + ") {~n")
 			If persistentEach Then result.Append(loopIndent + "    " + elementName + " = " + EmitExpression(objectEachStatement.current) + ";~n") Else result.Append(loopIndent + "    " + CType(objectEachStatement.elementType, objectEachStatement.source) + " " + elementName + " = " + EmitExpression(objectEachStatement.current) + ";~n")
-			If objectEachStatement.filtersStringObjects Then result.Append(loopIndent + "    if (bbObjectIsString((BBOBJECT)" + elementName + ") == 0) { continue; }~n")
+			If objectEachStatement.filtersStringObjects
+				If EmbeddedObjectTypes()
+					result.Append(loopIndent + "    if (bmx_embedded_object_is_string((BMXEmbeddedObject *)" + elementName + ") == 0) { continue; }~n")
+				Else
+					result.Append(loopIndent + "    if (bbObjectIsString((BBOBJECT)" + elementName + ") == 0) { continue; }~n")
+				End If
+			End If
 			Local convertedElement:String = EmitExpression(objectEachStatement.elementValue)
 			Local target:String
 			If objectEachStatement.declaresVariable Then
@@ -5965,7 +6003,13 @@ Type TCompilerCBackend
 				target = EmitExpression(objectEachStatement.target)
 				result.Append(loopIndent + "    " + target + " = " + convertedElement + ";~n")
 			End If
-			If objectEachStatement.filtersNullObjects Then result.Append(loopIndent + "    if ((BBOBJECT)" + target + " == (BBOBJECT)&bbNullObject) { continue; }~n")
+			If objectEachStatement.filtersNullObjects
+				If EmbeddedObjectTypes()
+					result.Append(loopIndent + "    if ((void *)" + target + " == (void *)&bmx_embedded_null_object) { continue; }~n")
+				Else
+					result.Append(loopIndent + "    if ((BBOBJECT)" + target + " == (BBOBJECT)&bbNullObject) { continue; }~n")
+				End If
+			End If
 			result.Append(EmitBlockContents(objectEachStatement.body, loopIndent + "    "))
 			If objectEachStatement.hasContinue Then result.Append(loopIndent + "    " + LoopContinueLabel(objectEachStatement.loopId) + ": ;~n")
 			result.Append(loopIndent + "}~n")
@@ -6141,7 +6185,7 @@ Type TCompilerCBackend
 		Next
 		RegisterCleanupDebugDepth(usingStatement.resources)
 		result :+ indent + "    BMXEmbeddedExceptionFrame " + frameName + ";~n"
-		result :+ indent + "    int32_t " + failedName + " = 0;~n"
+		result :+ indent + "    volatile int32_t " + failedName + " = 0;~n"
 		result :+ indent + "    bmx_embedded_exception_enter(&" + frameName + ");~n"
 		result :+ indent + "    switch (setjmp(" + frameName + ".buffer)) {~n"
 		result :+ indent + "    case 0: {~n"
@@ -6287,7 +6331,7 @@ Type TCompilerCBackend
 		Local exceptionName:String = RegisterEmbeddedExceptionRoot("pico.try.exception." + tryId, "bmx_embedded_try" + tryId + "_exception", "__pico_exception", guarded.source)
 		Local result:String = indent + "{~n"
 		result :+ indent + "    BMXEmbeddedExceptionFrame " + frameName + ";~n"
-		result :+ indent + "    int32_t " + failedName + " = 0;~n"
+		result :+ indent + "    volatile int32_t " + failedName + " = 0;~n"
 		result :+ indent + "    bmx_embedded_exception_enter(&" + frameName + ");~n"
 		result :+ indent + "    switch (setjmp(" + frameName + ".buffer)) {~n"
 		result :+ indent + "    case 0: {~n"
@@ -6697,9 +6741,9 @@ Type TCompilerCBackend
 							Case IR_OBJECT_SLOT_EQUALS
 								Return "bmx_embedded_object_equals((void *)" + receiver + ", (void *)" + EmitExpression(call.arguments[0]) + ")"
 							Case IR_OBJECT_SLOT_TO_STRING
-								AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectToStringRequiresDynamicString(), call.source)
+								Return "bmx_embedded_object_to_string((void *)" + receiver + ")"
 							Case IR_OBJECT_SLOT_SEND_MESSAGE
-								AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectSendMessageUnsupported(), call.source)
+								Return "bmx_embedded_object_send_message((void *)" + receiver + ", (void *)" + EmitExpression(call.arguments[0]) + ", (void *)" + EmitExpression(call.arguments[1]) + ")"
 						End Select
 						Return CDefaultValue(call.semanticType)
 					End If
@@ -6716,6 +6760,10 @@ Type TCompilerCBackend
 					Local receiverClass:TCompilerIrClass = ClassById(dispatchSlot.receiverClassId)
 					If Not receiverClass Then receiverClass = ClassById(dispatchSlot.declaringClassId)
 					If receiverClass Then receiverArgument = "(struct " + ObjectName(receiverClass.classId) + " *)" + receiver
+					If dispatchSlot.receiverImportedClassId.length Then
+						Local importedReceiver:TCompilerIrImportedClass = ImportedClassById(dispatchSlot.receiverImportedClassId)
+						If importedReceiver Then receiverArgument = "(struct " + importedReceiver.abiName + "_obj *)" + receiver
+					End If
 					result = "((" + pointerType + ")((BMXEmbeddedObject *)" + checkedReceiver + ")->type->methods[" + dispatchIndex + "])(" + receiverArgument
 					If call.arguments.length Then result :+ ", "
 				Else
@@ -7329,8 +7377,7 @@ Type TCompilerCBackend
 		Local objectStringCast:TCompilerIrObjectStringCast = TCompilerIrObjectStringCast(expression)
 		If objectStringCast Then
 			If EmbeddedObjectTypes() Then
-				AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectToStringConversionUnsupported(), objectStringCast.source)
-				Return "&bmx_embedded_empty_string"
+				Return "bmx_embedded_object_to_string((void *)" + EmitExpression(objectStringCast.operand) + ")"
 			End If
 			Return "((BBSTRING)bbObjectStringcast((BBOBJECT)" + EmitExpression(objectStringCast.operand) + "))"
 		End If
@@ -7469,9 +7516,9 @@ Type TCompilerCBackend
 				Case IR_OBJECT_SLOT_EQUALS
 					Return "bmx_embedded_object_equals((void *)" + picoReceiver + ", (void *)" + EmitExpression(call.arguments[0]) + ")"
 				Case IR_OBJECT_SLOT_TO_STRING
-					AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectToStringRequiresDynamicString(), call.source)
+					Return "bmx_embedded_object_to_string((void *)" + picoReceiver + ")"
 				Case IR_OBJECT_SLOT_SEND_MESSAGE
-					AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectSendMessageUnsupported(), call.source)
+					Return "bmx_embedded_object_send_message((void *)" + picoReceiver + ", (void *)" + EmitExpression(call.arguments[0]) + ", (void *)" + EmitExpression(call.arguments[1]) + ")"
 			End Select
 			Return CDefaultValue(call.semanticType)
 		End If
@@ -7547,6 +7594,18 @@ Type TCompilerCBackend
 		Local receiver:String = EmitExpression(call.receiver)
 		Local result:String
 		If EmbeddedObjectTypes() And call.objectSlotKind <> IR_OBJECT_SLOT_NONE Then
+			Select call.objectSlotKind
+				Case IR_OBJECT_SLOT_COMPARE
+					If baseClass.compareFunctionId.length Then Return EmbeddedObjectCompareName(baseClass) + "((void *)" + receiver + ", (void *)" + EmitExpression(call.arguments[0]) + ")"
+				Case IR_OBJECT_SLOT_HASH_CODE
+					If baseClass.hashCodeFunctionId.length Then Return EmbeddedObjectHashCodeName(baseClass) + "((void *)" + receiver + ")"
+				Case IR_OBJECT_SLOT_EQUALS
+					If baseClass.equalsFunctionId.length Then Return EmbeddedObjectEqualsName(baseClass) + "((void *)" + receiver + ", (void *)" + EmitExpression(call.arguments[0]) + ")"
+				Case IR_OBJECT_SLOT_TO_STRING
+					If baseClass.toStringFunctionId.length Then Return EmbeddedObjectToStringName(baseClass) + "((void *)" + receiver + ")"
+				Case IR_OBJECT_SLOT_SEND_MESSAGE
+					If baseClass.sendMessageFunctionId.length Then Return EmbeddedObjectSendMessageName(baseClass) + "((void *)" + receiver + ", (void *)" + EmitExpression(call.arguments[0]) + ", (void *)" + EmitExpression(call.arguments[1]) + ")"
+			End Select
 			AddDiagnostic("BMXC2029", TBccMessages.CBackendPicoObjectSuperDispatchUnsupported(), call.source)
 			Return CDefaultValue(call.semanticType)
 		End If
