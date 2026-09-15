@@ -1824,7 +1824,7 @@ placeholders = [{ name = "callName", type = "string" }, { name = "candidates", t
 id = 262
 name = "binding.no_applicable_overload"
 translated = false
-text = "No applicable overload was found for call '{callName}'.~nArgument types: ({argumentTypes}){candidates}"
+text = "No applicable overload was found for call '{callName}'.\nArgument types: ({argumentTypes}){candidates}"
 placeholders = [{ name = "callName", type = "string" }, { name = "argumentTypes", type = "string" }, { name = "candidates", type = "string" }]
 
 [[message]]
@@ -1840,3 +1840,10 @@ name = "binding.binary_operator_not_defined"
 translated = false
 text = "Operator '{operatorText}' is not defined between types '{leftType}' and '{rightType}'."
 placeholders = [{ name = "operatorText", type = "string" }, { name = "leftType", type = "string" }, { name = "rightType", type = "string" }]
+
+[[message]]
+id = 265
+name = "binding.argument_numeric_narrowing"
+translated = false
+text = "Argument #{argumentNumber} is '{actualType}' but declaration is '{requiredType}'."
+placeholders = [{ name = "argumentNumber", type = "integer" }, { name = "actualType", type = "string" }, { name = "requiredType", type = "string" }]

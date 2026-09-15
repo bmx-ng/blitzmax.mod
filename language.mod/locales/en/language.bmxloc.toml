@@ -1,7 +1,7 @@
 format = 1
 domain = "language"
 locale = "en"
-next_id = 265
+next_id = 266
 
 [[message]]
 id = 1
@@ -2086,7 +2086,7 @@ placeholders = [{ name = "callName", type = "string" }, { name = "candidates", t
 [[message]]
 id = 262
 name = "binding.no_applicable_overload"
-text = "No applicable overload was found for call '{callName}'.~nArgument types: ({argumentTypes}){candidates}"
+text = "No applicable overload was found for call '{callName}'.\nArgument types: ({argumentTypes}){candidates}"
 description = "Reported when overload resolution finds no applicable routine; argumentTypes is a formatted list and candidates is empty or a newline-prefixed formatted list."
 diagnostic_codes = ["BMX3302"]
 placeholders = [{ name = "callName", type = "string" }, { name = "argumentTypes", type = "string" }, { name = "candidates", type = "string" }]
@@ -2106,3 +2106,11 @@ text = "Operator '{operatorText}' is not defined between types '{leftType}' and 
 description = "Reported when no user-defined or built-in binary operator accepts the two operand types."
 diagnostic_codes = ["BMX3305"]
 placeholders = [{ name = "operatorText", type = "string" }, { name = "leftType", type = "string" }, { name = "rightType", type = "string" }]
+
+[[message]]
+id = 265
+name = "binding.argument_numeric_narrowing"
+text = "Argument #{argumentNumber} is '{actualType}' but declaration is '{requiredType}'."
+description = "Reported in -w compatibility mode when a selected routine argument requires a potentially lossy numeric conversion."
+diagnostic_codes = ["BMX3412"]
+placeholders = [{ name = "argumentNumber", type = "integer" }, { name = "actualType", type = "string" }, { name = "requiredType", type = "string" }]

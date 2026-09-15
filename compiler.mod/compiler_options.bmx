@@ -38,6 +38,9 @@ Type TCompilerOptions
 	Field verbose:Int
 	Field gdbDebug:Int
 	Field musl:Int
+	' Production-compatible -w mode: permit otherwise invalid numeric argument
+	' narrowing while retaining a warning in the language diagnostics.
+	Field warnArgumentCasts:Int
 	Field userDefinitions:String
 
 	Rem

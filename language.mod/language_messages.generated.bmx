@@ -269,6 +269,7 @@ Const LANGUAGE_MSG_BINDING_CALL_AMBIGUOUS:Int = 261
 Const LANGUAGE_MSG_BINDING_NO_APPLICABLE_OVERLOAD:Int = 262
 Const LANGUAGE_MSG_BINDING_VARIABLE_ASSIGNED_TO_ITSELF:Int = 263
 Const LANGUAGE_MSG_BINDING_BINARY_OPERATOR_NOT_DEFINED:Int = 264
+Const LANGUAGE_MSG_BINDING_ARGUMENT_NUMERIC_NARROWING:Int = 265
 
 Type TLanguageMessages
 	Function ParserExpressionNestingTooDeep:TLocalisedMessage()
@@ -1055,12 +1056,15 @@ Type TLanguageMessages
 		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_CALL_AMBIGUOUS, "Call '{callName}' is ambiguous between applicable overloads.{candidates}", [TMessageArg.Create("callName", callName), TMessageArg.Create("candidates", candidates)])
 	End Function
 	Function BindingNoApplicableOverload:TLocalisedMessage(callName:String, argumentTypes:String, candidates:String)
-		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_NO_APPLICABLE_OVERLOAD, "No applicable overload was found for call '{callName}'.~~nArgument types: ({argumentTypes}){candidates}", [TMessageArg.Create("callName", callName), TMessageArg.Create("argumentTypes", argumentTypes), TMessageArg.Create("candidates", candidates)])
+		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_NO_APPLICABLE_OVERLOAD, "No applicable overload was found for call '{callName}'.~nArgument types: ({argumentTypes}){candidates}", [TMessageArg.Create("callName", callName), TMessageArg.Create("argumentTypes", argumentTypes), TMessageArg.Create("candidates", candidates)])
 	End Function
 	Function BindingVariableAssignedToItself:TLocalisedMessage(variableName:String, suggestion:String)
 		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_VARIABLE_ASSIGNED_TO_ITSELF, "Variable '{variableName}' is assigned to itself.{suggestion}", [TMessageArg.Create("variableName", variableName), TMessageArg.Create("suggestion", suggestion)])
 	End Function
 	Function BindingBinaryOperatorNotDefined:TLocalisedMessage(operatorText:String, leftType:String, rightType:String)
 		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_BINARY_OPERATOR_NOT_DEFINED, "Operator '{operatorText}' is not defined between types '{leftType}' and '{rightType}'.", [TMessageArg.Create("operatorText", operatorText), TMessageArg.Create("leftType", leftType), TMessageArg.Create("rightType", rightType)])
+	End Function
+	Function BindingArgumentNumericNarrowing:TLocalisedMessage(argumentNumber:Long, actualType:String, requiredType:String)
+		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_ARGUMENT_NUMERIC_NARROWING, "Argument #{argumentNumber} is '{actualType}' but declaration is '{requiredType}'.", [TMessageArg.CreateInt("argumentNumber", argumentNumber), TMessageArg.Create("actualType", actualType), TMessageArg.Create("requiredType", requiredType)])
 	End Function
 End Type

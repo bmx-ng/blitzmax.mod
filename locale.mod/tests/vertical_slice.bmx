@@ -88,6 +88,8 @@ AssertEqual("Thin Function literal cannot capture 'offset'; captured lexical sta
 If captureDiagnostic.localisedMessage.id <> LANGUAGE_MSG_BINDING_THIN_FUNCTION_LITERAL_CANNOT_CAPTURE Then Throw "Unexpected capture message ID"
 
 AssertEqual("Function literal has 2 parameters but target type 'Int(Int)' requires 1.", TLanguageMessages.BindingFunctionLiteralParameterCountMismatch(2, "Int(Int)", 1).Render(germanContext), "integer placeholder fallback")
+AssertEqual("Argument #1 is 'Double' but declaration is 'Int'.", TLanguageMessages.BindingArgumentNumericNarrowing(1, "Double", "Int").Render(germanContext), "argument narrowing warning fallback")
+If TLanguageMessages.BindingArgumentNumericNarrowing(1, "Double", "Int").id <> LANGUAGE_MSG_BINDING_ARGUMENT_NUMERIC_NARROWING Then Throw "Unexpected argument narrowing message ID"
 
 Local memberAnalysis:TLanguageAnalysis = TBlitzMaxLanguage.AnalyzeText("SuperStrict~nType TValue~nEnd Type~nLocal value:TValue = New TValue~nLocal result:Int = value.missing~n", "missing-member.bmx")
 Local memberDiagnostic:TDiagnostic = FindModelDiagnostic(memberAnalysis, "BMX3301")

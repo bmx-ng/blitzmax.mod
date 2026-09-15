@@ -40,17 +40,19 @@ Type TExpressionBinder
 	Field nextYieldFromLocal:Int
 	Field nextDeconstructionLocal:Int
 	Field eachInResolutions:TMap = New TMap
+	Field warnArgumentCasts:Int
 
-	Function Bind:TSemanticModel(model:TSemanticModel, typeResolutionOptions:TTypeResolutionOptions = Null)
+	Function Bind:TSemanticModel(model:TSemanticModel, typeResolutionOptions:TTypeResolutionOptions = Null, warnArgumentCasts:Int = False)
 		Local binder:TExpressionBinder = New TExpressionBinder
 		binder.model = model
+		binder.warnArgumentCasts = warnArgumentCasts
 		binder.typeResolver = New TTypeResolver
 		binder.typeResolver.model = model
 		binder.typeResolver.options = typeResolutionOptions
 		If Not binder.typeResolver.options Then binder.typeResolver.options = New TTypeResolutionOptions
 		binder.inheritanceValidator = New TInheritanceValidator
 		binder.inheritanceValidator.model = model
-		binder.conversions = TConversionClassifier.Create(model)
+		binder.conversions = TConversionClassifier.Create(model, warnArgumentCasts)
 		If model.snapshot Then binder.currentDocument = model.snapshot.rootDocument
 		binder.BindSequence(model.syntaxTree.root.members, model.globalScope)
 		If model.snapshot Then binder.currentDocument = model.snapshot.rootDocument
@@ -1908,6 +1910,7 @@ Type TExpressionBinder
 			bound.left = model.BoundExpression(binary.left)
 			bound.right = model.BoundExpression(binary.right)
 			bound.resolvedCall = model.ResolvedCall(binary)
+			If bound.resolvedCall Then bound.right = BoundArguments([binary.right], bound.resolvedCall)[0]
 			Return bound
 		End If
 		Local creation:TNewExpressionSyntax = TNewExpressionSyntax(expression)
@@ -2110,6 +2113,10 @@ Type TExpressionBinder
 						If conversion.kind = CONVERSION_REFERENCE Then bound = MakeConversion(bound, arguments[index], resolved.parameterTypes[index], CONVERSION_VAR_REFERENCE, True)
 					End If
 				Else
+					Local argumentConversion:TConversion = conversions.ClassifyArgumentExpression(arguments[index], bound.semanticType, resolved.parameterTypes[index])
+					If warnArgumentCasts And argumentConversion.kind = CONVERSION_NUMERIC_NARROWING Then
+						AddDiagnostic("BMX3412", TLanguageMessages.BindingArgumentNumericNarrowing(index + 1, bound.semanticType.DisplayName(), resolved.parameterTypes[index].DisplayName()), arguments[index].span, DIAGNOSTIC_WARNING)
+					End If
 					bound = ApplyImplicitConversion(bound, arguments[index], resolved.parameterTypes[index], False, True)
 				End If
 			End If

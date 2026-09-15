@@ -25,6 +25,9 @@ Type TLanguageAnalysisOptions
 	Field evaluateCompileTime:Int = True
 	Field analyzeControlFlow:Int = True
 	Field analyzeDataFlow:Int = True
+	' Matches production bcc's -w mode: permit lossy numeric argument
+	' conversions and report each selected conversion as a warning.
+	Field warnArgumentCasts:Int
 	Field cancellationToken:TLanguageCancellationToken
 
 	Rem
@@ -179,7 +182,7 @@ Type TBlitzMaxLanguage
 		Local model:TSemanticModel = result.model
 		If Not model Or Not options.bindExpressions Then Return
 		Local started:Int = MilliSecs()
-		TExpressionBinder.Bind(model, options.typeResolution)
+		TExpressionBinder.Bind(model, options.typeResolution, options.warnArgumentCasts)
 		result.bindingMilliseconds = MilliSecs() - started
 		If options.evaluateCompileTime Then
 			started = MilliSecs()

@@ -50,10 +50,12 @@ Type TConversionClassifier
 	Field model:TSemanticModel
 	Field inheritance:TInheritanceValidator
 	Field constantVisiting:TMap = New TMap
+	Field allowArgumentNarrowing:Int
 
-	Function Create:TConversionClassifier(model:TSemanticModel)
+	Function Create:TConversionClassifier(model:TSemanticModel, allowArgumentNarrowing:Int = False)
 		Local result:TConversionClassifier = New TConversionClassifier
 		result.model = model
+		result.allowArgumentNarrowing = allowArgumentNarrowing
 		result.inheritance = New TInheritanceValidator
 		result.inheritance.model = model
 		Return result
@@ -229,14 +231,13 @@ Type TConversionClassifier
 	Method ClassifyArgumentExpression:TConversion(expression:TExpressionSyntax, actual:TSemanticType, required:TSemanticType)
 		Local standard:TConversion = ClassifyExpression(expression, actual, required)
 		If standard.Exists() Then Return standard
-		' BlitzMax permits numeric narrowing at ordinary value-parameter
-		' boundaries just as it does for assignment and Return. Keep it worse
-		' than a widening conversion during overload ranking, so an exact or
-		' lossless overload remains preferred.
-		If NumericRankOf(actual) >= 0 And NumericRankOf(required) >= 0 Then
+		' Production bcc rejects numeric narrowing at an ordinary argument
+		' boundary unless its -w compatibility mode is enabled. When enabled,
+		' keep narrowing worse than a lossless conversion during overload ranking.
+		If allowArgumentNarrowing And NumericRankOf(actual) >= 0 And NumericRankOf(required) >= 0 Then
 			' A context-free integer literal still has to fit its target. This
 			' preserves the established rejection of 256 -> Byte and -1 -> UInt;
-			' genuine typed numeric values retain ordinary narrowing semantics.
+			' genuine typed numeric values retain compatibility-mode narrowing.
 			Local integerValue:Long
 			If IsIntegral(required) And TryIntegerConstant(expression, integerValue) Then Return NoConversion()
 			Return MakeConversion(CONVERSION_NUMERIC_NARROWING, 0, 150)

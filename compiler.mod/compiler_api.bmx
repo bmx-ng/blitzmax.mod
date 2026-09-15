@@ -59,7 +59,9 @@ Type TBlitzMaxCompiler
 		Local result:TCompilerResult = New TCompilerResult
 		If Not resolver Then resolver = TCompilerFileSnapshotResolver.Create(options)
 		Local started:Int = MilliSecs()
-		result.analysis = TBlitzMaxLanguage.BuildAndAnalyze(path, text, resolver, options.SnapshotOptions())
+		Local analysisOptions:TLanguageAnalysisOptions = TLanguageAnalysisOptions.Create()
+		analysisOptions.warnArgumentCasts = options.warnArgumentCasts
+		result.analysis = TBlitzMaxLanguage.BuildAndAnalyze(path, text, resolver, options.SnapshotOptions(), analysisOptions)
 		result.analysisMilliseconds = MilliSecs() - started
 		If result.analysis.Succeeded() Then
 			result.diagnostics :+ ConfiguredSyntaxDiagnostics(result.analysis)

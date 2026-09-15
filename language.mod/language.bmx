@@ -9,7 +9,8 @@ about: Parses and analyses BlitzMax source for compilers, editors, interpreters,
 End Rem
 Module BlitzMax.Language
 
-ModuleInfo "Version: 0.13.14"
+ModuleInfo "Version: 0.13.15"
+ModuleInfo "History: Reject implicit numeric argument narrowing by default and provide production-compatible warning mode."
 ModuleInfo "History: Localise snapshot, dependency, and generic-template loading diagnostics."
 ModuleInfo "History: Complete localisation of lexer, parser, signature, declaration, interface, and overload diagnostics."
 ModuleInfo "History: Localise type-resolution, callable, and Closure diagnostics."

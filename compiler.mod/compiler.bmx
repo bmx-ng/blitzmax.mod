@@ -9,7 +9,8 @@ about: Analyses BlitzMax programs, lowers them to typed compiler IR, and emits C
 End Rem
 Module BlitzMax.Compiler
 
-ModuleInfo "Version: 0.1.1"
+ModuleInfo "Version: 0.1.2"
+ModuleInfo "History: Expose production-compatible warnings for numeric argument narrowing."
 ModuleInfo "History: Complete localisation of C-backend diagnostics."
 ModuleInfo "History: Localise C-backend Object, dispatch, Catch, and assignment diagnostics."
 ModuleInfo "History: Localise C-backend expression, call, and Array diagnostics."
