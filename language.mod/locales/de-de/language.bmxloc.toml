@@ -1833,3 +1833,10 @@ name = "binding.variable_assigned_to_itself"
 translated = false
 text = "Variable '{variableName}' is assigned to itself.{suggestion}"
 placeholders = [{ name = "variableName", type = "string" }, { name = "suggestion", type = "string" }]
+
+[[message]]
+id = 264
+name = "binding.binary_operator_not_defined"
+translated = false
+text = "Operator '{operatorText}' is not defined between types '{leftType}' and '{rightType}'."
+placeholders = [{ name = "operatorText", type = "string" }, { name = "leftType", type = "string" }, { name = "rightType", type = "string" }]

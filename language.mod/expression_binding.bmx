@@ -3665,7 +3665,14 @@ Type TExpressionBinder
 			If resolved Then Return resolved.returnType
 		End If
 		Select operation
-			Case "=", "<>", "<", ">", "<=", ">=", "and", "or" Return model.BuiltinType("Int")
+			Case "=", "<>", "<", ">", "<=", ">="
+				If Not SupportsBuiltinComparison(operation, left, right) Then
+					If left And right And Not TErrorSemanticType(left) And Not TErrorSemanticType(right) Then
+						AddDiagnostic("BMX3305", TLanguageMessages.BindingBinaryOperatorNotDefined(binary.operatorToken.text, left.DisplayName(), right.DisplayName()), binary.span)
+					End If
+				End If
+				Return model.BuiltinType("Int")
+			Case "and", "or" Return model.BuiltinType("Int")
 			Case "+"
 				If IsBuiltin(left, "string") Or IsBuiltin(right, "string") Then Return model.BuiltinType("String")
 				If TPointerSemanticType(left) And TConversionClassifier.IsIntegral(right) Then Return left
@@ -3676,6 +3683,43 @@ Type TExpressionBinder
 				If TPointerSemanticType(left) And TConversionClassifier.IsIntegral(right) Then Return left
 		End Select
 		Return WiderNumericType(left, right)
+	End Method
+
+	Method SupportsBuiltinComparison:Int(operation:String, left:TSemanticType, right:TSemanticType)
+		If Not left Or Not right Or TErrorSemanticType(left) Or TErrorSemanticType(right) Then Return True
+		' An open generic expression cannot be classified until substitution, so
+		' retain its deferred comparison in the generic template.
+		If TTypeParameterSemanticType(left) Or TTypeParameterSemanticType(right) Then Return True
+		If TConversionClassifier.NumericRankOf(left) >= 0 And TConversionClassifier.NumericRankOf(right) >= 0 Then Return True
+		If TConversionClassifier.IsEnum(left) And TConversionClassifier.IsIntegral(right) Then Return True
+		If TConversionClassifier.IsIntegral(left) And TConversionClassifier.IsEnum(right) Then Return True
+		If TConversionClassifier.IsEnum(left) And TConversionClassifier.IsEnum(right) And TGenericRoutineInference.SameType(left, right) Then Return True
+
+		Local leftStruct:TNamedSemanticType = TNamedSemanticType(left)
+		If leftStruct And leftStruct.symbol And leftStruct.symbol.kind = SYMBOL_STRUCT Then Return False
+		Local rightStruct:TNamedSemanticType = TNamedSemanticType(right)
+		If rightStruct And rightStruct.symbol And rightStruct.symbol.kind = SYMBOL_STRUCT Then Return False
+
+		If operation <> "=" And operation <> "<>" Then
+			If TConversionClassifier.IsString(left) Then Return TConversionClassifier.IsString(right) Or TConversionClassifier.NumericRankOf(right) >= 0 Or TConversionClassifier.IsEnum(right)
+			If TConversionClassifier.IsString(right) Then Return TConversionClassifier.NumericRankOf(left) >= 0 Or TConversionClassifier.IsEnum(left)
+			Return TPointerSemanticType(left) And TPointerSemanticType(right)
+		End If
+		' Distinct Interface values can still refer to the same implementing object,
+		' even when neither Interface inherits the other.
+		If leftStruct And rightStruct And leftStruct.symbol And rightStruct.symbol And leftStruct.symbol.kind = SYMBOL_INTERFACE And rightStruct.symbol.kind = SYMBOL_INTERFACE Then Return True
+
+		If TArraySemanticType(left) And TArraySemanticType(right) Then
+			Local leftArray:TArraySemanticType = TArraySemanticType(left)
+			Local rightArray:TArraySemanticType = TArraySemanticType(right)
+			If leftArray.rank = rightArray.rank And TConversionClassifier.IsRuntimeObjectArrayElement(leftArray.elementType) And TConversionClassifier.IsRuntimeObjectArrayElement(rightArray.elementType) Then Return True
+		End If
+		If TPointerSemanticType(left) And TPointerSemanticType(right) Then Return True
+		Return ComparisonConversionExists(left, right)
+	End Method
+
+	Method ComparisonConversionExists:Int(left:TSemanticType, right:TSemanticType)
+		Return conversions.Classify(left, right).Exists() Or conversions.Classify(right, left).Exists()
 	End Method
 
 	Method BindCast:TSemanticType(cast:TCastExpressionSyntax, scope:TScope)

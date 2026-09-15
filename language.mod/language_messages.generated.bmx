@@ -268,6 +268,7 @@ Const LANGUAGE_MSG_BINDING_DYNAMIC_NEW_INSTANCE_DEPRECATED:Int = 260
 Const LANGUAGE_MSG_BINDING_CALL_AMBIGUOUS:Int = 261
 Const LANGUAGE_MSG_BINDING_NO_APPLICABLE_OVERLOAD:Int = 262
 Const LANGUAGE_MSG_BINDING_VARIABLE_ASSIGNED_TO_ITSELF:Int = 263
+Const LANGUAGE_MSG_BINDING_BINARY_OPERATOR_NOT_DEFINED:Int = 264
 
 Type TLanguageMessages
 	Function ParserExpressionNestingTooDeep:TLocalisedMessage()
@@ -1058,5 +1059,8 @@ Type TLanguageMessages
 	End Function
 	Function BindingVariableAssignedToItself:TLocalisedMessage(variableName:String, suggestion:String)
 		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_VARIABLE_ASSIGNED_TO_ITSELF, "Variable '{variableName}' is assigned to itself.{suggestion}", [TMessageArg.Create("variableName", variableName), TMessageArg.Create("suggestion", suggestion)])
+	End Function
+	Function BindingBinaryOperatorNotDefined:TLocalisedMessage(operatorText:String, leftType:String, rightType:String)
+		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_BINARY_OPERATOR_NOT_DEFINED, "Operator '{operatorText}' is not defined between types '{leftType}' and '{rightType}'.", [TMessageArg.Create("operatorText", operatorText), TMessageArg.Create("leftType", leftType), TMessageArg.Create("rightType", rightType)])
 	End Function
 End Type

@@ -1,7 +1,7 @@
 format = 1
 domain = "language"
 locale = "en"
-next_id = 264
+next_id = 265
 
 [[message]]
 id = 1
@@ -2098,3 +2098,11 @@ text = "Variable '{variableName}' is assigned to itself.{suggestion}"
 description = "Reported when an assignment has the same storage on both sides; suggestion is empty or recommends a same-named field."
 diagnostic_codes = ["BMX3411"]
 placeholders = [{ name = "variableName", type = "string" }, { name = "suggestion", type = "string" }]
+
+[[message]]
+id = 264
+name = "binding.binary_operator_not_defined"
+text = "Operator '{operatorText}' is not defined between types '{leftType}' and '{rightType}'."
+description = "Reported when no user-defined or built-in binary operator accepts the two operand types."
+diagnostic_codes = ["BMX3305"]
+placeholders = [{ name = "operatorText", type = "string" }, { name = "leftType", type = "string" }, { name = "rightType", type = "string" }]
