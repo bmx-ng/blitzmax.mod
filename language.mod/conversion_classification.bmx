@@ -631,25 +631,26 @@ Type TConversionClassifier
 	End Function
 
 	Function CanWidenNumeric:Int(source:String, target:String)
+		' Integral edges preserve every source value on both 32- and 64-bit
+		' targets, except the established Size_T -> Long native-count convention.
+		' Byte/Short are unsigned; Long/ULong are always 64-bit, while
+		' LongInt/ULongInt, Size_T, WParam, and LParam depend on the target ABI.
+		' Integer -> floating follows BlitzMax's existing widening policy, which
+		' can round large values. SIMD Float64/Int128/Float128/Double128 are not
+		' scalar numeric destinations.
 		Select source
-			Case "byte" Return InNames(target, ["short", "int", "uint", "long", "ulong", "longint", "ulongint", "int128", "float", "double", "float64", "float128", "double128"])
-			Case "short" Return InNames(target, ["int", "long", "longint", "int128", "float", "double", "float64", "float128", "double128"])
-			Case "int" Return InNames(target, ["long", "longint", "int128", "float", "double", "float64", "float128", "double128"])
-			Case "uint" Return InNames(target, ["int", "long", "ulong", "longint", "ulongint", "int128", "float", "double", "float64", "float128", "double128"])
-			Case "long" Return InNames(target, ["int128", "float", "double", "float64", "float128", "double128"])
-			Case "longint" Return InNames(target, ["long", "int128", "float", "double", "float64", "float128", "double128"])
-			Case "ulong" Return InNames(target, ["int128", "float", "double", "float64", "float128", "double128"])
-			' ULongInt is the legacy unsigned wide-integer spelling. Production
-			' accepts it where the native-width ULong overload is the available
-			' unsigned 64-bit entry point, while retaining distinct ABI tags.
-			Case "ulongint" Return InNames(target, ["ulong", "int128", "float", "double", "float64", "float128", "double128"])
-			' Native buffer sizes are routinely passed to BlitzMax APIs whose count
-			' parameter is Long. This is lossless on 32-bit targets and preserves the
-			' established runtime/API convention on 64-bit targets.
-			Case "size_t" Return target = "long"
-			Case "float" Return InNames(target, ["double", "float64", "float128", "double128"])
-			Case "double", "float64" Return InNames(target, ["float128", "double128"])
-			Case "float128" Return target = "double128"
+			Case "byte" Return InNames(target, ["short", "int", "uint", "long", "ulong", "longint", "ulongint", "size_t", "wparam", "lparam", "float", "double"])
+			Case "short" Return InNames(target, ["int", "uint", "long", "ulong", "longint", "ulongint", "size_t", "wparam", "lparam", "float", "double"])
+			Case "int" Return InNames(target, ["long", "longint", "lparam", "float", "double"])
+			Case "uint" Return InNames(target, ["long", "ulong", "ulongint", "size_t", "wparam", "float", "double"])
+			Case "long" Return InNames(target, ["float", "double"])
+			Case "ulong" Return InNames(target, ["float", "double"])
+			Case "longint" Return InNames(target, ["long", "lparam", "float", "double"])
+			Case "ulongint" Return InNames(target, ["ulong", "size_t", "wparam", "float", "double"])
+			Case "size_t" Return InNames(target, ["long", "wparam", "ulong", "float", "double"])
+			Case "wparam" Return InNames(target, ["size_t", "ulong", "float", "double"])
+			Case "lparam" Return InNames(target, ["long", "float", "double"])
+			Case "float" Return target = "double"
 		End Select
 		Return False
 	End Function
