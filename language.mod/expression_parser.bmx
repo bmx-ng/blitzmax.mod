@@ -160,6 +160,12 @@ Type TBlitzMaxExpressionParser
 			left = ParsePostfix()
 		End If
 
+		left = ParseBinaryContinuation(left, parentPrecedence)
+		expressionDepth :- 1
+		Return left
+	End Method
+
+	Method ParseBinaryContinuation:TExpressionSyntax(left:TExpressionSyntax, parentPrecedence:Int)
 		While position < limit
 			Local precedence:Int = BinaryPrecedence(Current())
 			If precedence = 0 Or precedence < parentPrecedence Then Exit
@@ -174,7 +180,6 @@ Type TBlitzMaxExpressionParser
 			binary.span = Combine(left.span, right.span)
 			left = binary
 		Wend
-		expressionDepth :- 1
 		Return left
 	End Method
 
@@ -901,7 +906,7 @@ Type TBlitzMaxExpressionParser
 		Return True
 	End Method
 
-	Method ParseParenthesizedPrefixCastExpression:TCastExpressionSyntax()
+	Method ParseParenthesizedPrefixCastExpression:TExpressionSyntax()
 		Local node:TCastExpressionSyntax = New TCastExpressionSyntax
 		node.kind = SYNTAX_CAST_EXPRESSION
 		node.openToken = Current()
@@ -912,18 +917,46 @@ Type TBlitzMaxExpressionParser
 			Advance()
 		Wend
 		node.targetType = TBlitzMaxTypeParser.Parse(tokens[typeStart..position])
-		If position < limit And Current().text <> ")" Then node.expression = ParseRange()
+		node.span = node.targetType.span
+		' The opening parenthesis groups the entire expression. A prefix cast
+		' only consumes its high-precedence operand: (Byte Ptr lp = hwnd) is
+		' therefore (Byte Ptr lp) = hwnd, not Byte Ptr(lp = hwnd).
+		If position < limit And Current().text <> ")" Then node.expression = ParseBinary(9)
+		Local expression:TExpressionSyntax = node
+		If node.expression Then
+			node.span = Combine(node.targetType.span, node.expression.span)
+			expression = ParseBinaryContinuation(node, 1)
+			If position < limit And Current().text = ".." Then expression = ParseRangeLiteral(expression, Null)
+		End If
 		If position < limit And Current().text = ")" Then
 			node.closeToken = Current()
 			Advance()
-			node.span = Combine(node.openToken.span, node.closeToken.span)
 		Else
 			Local last:TSourceSpan = node.targetType.span
-			If node.expression Then last = node.expression.span
-			node.span = Combine(node.openToken.span, last)
-			AddDiagnostic("BMX2113", TLanguageMessages.ParserExpectedParenthesisAfterCast(), TSourceSpan.Create(node.span.EndOffset(), 0))
+			If expression Then last = expression.span
+			AddDiagnostic("BMX2113", TLanguageMessages.ParserExpectedParenthesisAfterCast(), TSourceSpan.Create(last.EndOffset(), 0))
 		End If
-		Return node
+		If expression = node Then
+			If node.closeToken Then
+				node.span = Combine(node.openToken.span, node.closeToken.span)
+			Else
+				node.span = Combine(node.openToken.span, node.span)
+			End If
+			Return node
+		End If
+		Local parenthesized:TParenthesizedExpressionSyntax = New TParenthesizedExpressionSyntax
+		parenthesized.kind = SYNTAX_PARENTHESES_EXPRESSION
+		parenthesized.openToken = node.openToken
+		parenthesized.expression = expression
+		parenthesized.closeToken = node.closeToken
+		If node.closeToken Then
+			parenthesized.span = Combine(node.openToken.span, node.closeToken.span)
+		Else
+			parenthesized.span = Combine(node.openToken.span, expression.span)
+		End If
+		node.openToken = Null
+		node.closeToken = Null
+		Return parenthesized
 	End Method
 
 	Method ParseCastExpression:TCastExpressionSyntax()
