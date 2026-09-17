@@ -41,6 +41,9 @@ Type TCompilerOptions
 	' Production-compatible -w mode: permit otherwise invalid numeric argument
 	' narrowing while retaining a warning in the language diagnostics.
 	Field warnArgumentCasts:Int
+	' Production-compatible -nas: without a source mode declaration, use
+	' Strict instead of the default automatic SuperStrict mode.
+	Field noAutoSuperStrict:Int
 	Field userDefinitions:String
 
 	Rem
@@ -76,6 +79,7 @@ Type TCompilerOptions
 		result.targetPlatform = targetPlatform.ToLower()
 		result.conditionalSymbols = conditionalSymbols[..]
 		result.parseConfiguredConditionals = True
+		result.noAutoSuperStrict = noAutoSuperStrict
 		If CompilerEmbeddedTarget(targetPlatform) And Not sourceModuleName.length Then
 			result.implicitImports = ["brl.blitz"]
 			If frameworkModule.length And frameworkModule.ToLower() <> "brl.blitz" Then result.implicitImports :+ [frameworkModule.ToLower()]

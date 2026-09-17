@@ -69,12 +69,13 @@ Type TBlitzMaxSyntaxParser
 	Field pendingMembers:TList = New TList
 	Field sharedConditionalEndToken:TSyntaxToken
 	Field sharedConditionalEndDepth:Int
-	Field sourceMode:Int = SOURCE_MODE_STRICT
+	Field sourceMode:Int = SOURCE_MODE_SUPERSTRICT
 	Field sourceModeDeclaration:TSourceModeSyntax
 
-	Function Parse:TSyntaxParseResult(lexResult:TLexResult)
+	Function Parse:TSyntaxParseResult(lexResult:TLexResult, defaultSourceMode:Int = SOURCE_MODE_SUPERSTRICT)
 		Local parser:TBlitzMaxSyntaxParser = New TBlitzMaxSyntaxParser
 		parser.tokens = lexResult.tokens
+		parser.sourceMode = defaultSourceMode
 		Return parser.ParseCompilationUnit()
 	End Function
 

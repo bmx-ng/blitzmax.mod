@@ -149,10 +149,12 @@ Type TCompilationSnapshotBuilder
 		Local document:TSourceDocumentModel = New TSourceDocumentModel
 		document.path = resolved.path
 		document.isRoot = isRoot
+		Local defaultSourceMode:Int = SOURCE_MODE_SUPERSTRICT
+		If options.noAutoSuperStrict Then defaultSourceMode = SOURCE_MODE_STRICT
 		If options.parseConfiguredConditionals Then
-			document.tree = TBlitzMaxParser.ParseConfiguredText(resolved.text, resolved.path, options.conditionalSymbols).syntaxTree
+			document.tree = TBlitzMaxParser.ParseConfiguredText(resolved.text, resolved.path, options.conditionalSymbols, defaultSourceMode).syntaxTree
 		Else
-			document.tree = TBlitzMaxParser.ParseText(resolved.text, resolved.path).syntaxTree
+			document.tree = TBlitzMaxParser.ParseText(resolved.text, resolved.path, defaultSourceMode).syntaxTree
 		End If
 		document.effectiveSourceMode = document.tree.root.sourceMode
 		If including Then document.effectiveSourceMode = including.effectiveSourceMode

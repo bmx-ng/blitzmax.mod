@@ -42,12 +42,13 @@ Type TBlitzMaxParser
 	bbdoc: Parses BlitzMax source text without selecting conditional-compilation branches.
 	param: The source text to parse.
 	param: The source path used for diagnostics and identity.
+	param: The source mode used when the file has no mode declaration.
 	returns: A syntax tree and its lexical and parse diagnostics.
 	End Rem
-	Function ParseText:TParseResult(text:String, path:String = "")
+	Function ParseText:TParseResult(text:String, path:String = "", defaultSourceMode:Int = SOURCE_MODE_SUPERSTRICT)
 		Local source:TSourceText = TSourceText.Create(text, path)
 		Local lexResult:TLexResult = TBlitzMaxLexer.LexSource(source)
-		Return ParseLexResult(lexResult, source, Null)
+		Return ParseLexResult(lexResult, source, Null, defaultSourceMode)
 	End Function
 
 	Rem
@@ -55,20 +56,21 @@ Type TBlitzMaxParser
 	param: The source text to parse.
 	param: The source path used for diagnostics and identity.
 	param: The case-insensitive symbols considered defined by conditional expressions.
+	param: The source mode used when the file has no mode declaration.
 	returns: A syntax tree and its lexical, conditional-selection, and parse diagnostics.
 	about: Directive lines and inactive source lines are omitted. Every surviving token
 	retains its original source span.
 	End Rem
-	Function ParseConfiguredText:TParseResult(text:String, path:String, conditionalSymbols:String[])
+	Function ParseConfiguredText:TParseResult(text:String, path:String, conditionalSymbols:String[], defaultSourceMode:Int = SOURCE_MODE_SUPERSTRICT)
 		Local source:TSourceText = TSourceText.Create(text, path)
 		Local lexResult:TLexResult = TBlitzMaxLexer.LexSource(source)
 		Local selectionDiagnostics:TDiagnostic[]
 		lexResult = SelectConditionalTokens(lexResult, conditionalSymbols, selectionDiagnostics)
-		Return ParseLexResult(lexResult, source, selectionDiagnostics)
+		Return ParseLexResult(lexResult, source, selectionDiagnostics, defaultSourceMode)
 	End Function
 
-	Function ParseLexResult:TParseResult(lexResult:TLexResult, source:TSourceText, selectionDiagnostics:TDiagnostic[])
-		Local parseResult:TSyntaxParseResult = TBlitzMaxSyntaxParser.Parse(lexResult)
+	Function ParseLexResult:TParseResult(lexResult:TLexResult, source:TSourceText, selectionDiagnostics:TDiagnostic[], defaultSourceMode:Int = SOURCE_MODE_SUPERSTRICT)
+		Local parseResult:TSyntaxParseResult = TBlitzMaxSyntaxParser.Parse(lexResult, defaultSourceMode)
 
 		Local tree:TSyntaxTree = New TSyntaxTree
 		tree.source = source
