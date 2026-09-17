@@ -23,6 +23,7 @@ Type TLspWorkspaceConfiguration
 	Field requireCoreInterface:Int = True
 	Field useDependencySnapshots:Int = True
 	Field warnImplicitDefaultReturns:Int
+	Field noAutoSuperStrict:Int
 
 	Function CreateDefault:TLspWorkspaceConfiguration()
 		Local result:TLspWorkspaceConfiguration = New TLspWorkspaceConfiguration
@@ -46,6 +47,7 @@ Type TLspWorkspaceConfiguration
 		result.requireCoreInterface = requireCoreInterface
 		result.useDependencySnapshots = useDependencySnapshots
 		result.warnImplicitDefaultReturns = warnImplicitDefaultReturns
+		result.noAutoSuperStrict = noAutoSuperStrict
 		Return result
 	End Method
 
@@ -59,6 +61,7 @@ Type TLspWorkspaceConfiguration
 		If settings.Get("requireCoreInterface") Then requireCoreInterface = settings.GetBool("requireCoreInterface")
 		If settings.Get("useDependencySnapshots") Then useDependencySnapshots = settings.GetBool("useDependencySnapshots")
 		If settings.Get("warnImplicitDefaultReturns") Then warnImplicitDefaultReturns = settings.GetBool("warnImplicitDefaultReturns")
+		If settings.Get("noAutoSuperStrict") Then noAutoSuperStrict = settings.GetBool("noAutoSuperStrict")
 		Local symbols:TJSONArray = TJSONArray(settings.Get("conditionalSymbols"))
 		If symbols Then
 			conditionalSymbols = New String[symbols.Size()]
@@ -82,12 +85,14 @@ Type TLspWorkspaceConfiguration
 		result.EnsureConditionalSymbol("bmxng")
 		result.EnsureConditionalSymbol("bmxng2")
 		result.requireCoreInterface = requireCoreInterface
+		result.noAutoSuperStrict = noAutoSuperStrict
 		Return result
 	End Method
 
 	Method AnalysisOptions:TLanguageAnalysisOptions()
 		Local result:TLanguageAnalysisOptions = TLanguageAnalysisOptions.Create()
 		result.typeResolution = New TTypeResolutionOptions
+		result.noAutoSuperStrict = noAutoSuperStrict
 		result.typeResolution.reportUnresolvedTypes = True
 		result.controlFlow = TControlFlowAnalysisOptions.Create()
 		result.controlFlow.reportImplicitDefaultReturns = warnImplicitDefaultReturns

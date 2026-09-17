@@ -28,6 +28,8 @@ Type TLanguageAnalysisOptions
 	' Matches production bcc's -w mode: permit lossy numeric argument
 	' conversions and report each selected conversion as a warning.
 	Field warnArgumentCasts:Int
+	' Use Strict for source without an explicit mode, matching -nas.
+	Field noAutoSuperStrict:Int
 	Field cancellationToken:TLanguageCancellationToken
 
 	Rem
@@ -130,7 +132,9 @@ Type TBlitzMaxLanguage
 	Function AnalyzeText:TLanguageAnalysis(text:String, path:String = "<memory>", options:TLanguageAnalysisOptions = Null)
 		Local result:TLanguageAnalysis = New TLanguageAnalysis
 		Local effective:TLanguageAnalysisOptions = EffectiveOptions(options)
-		Local parsed:TParseResult = TBlitzMaxParser.ParseText(text, path)
+		Local defaultSourceMode:Int = SOURCE_MODE_SUPERSTRICT
+		If effective.noAutoSuperStrict Then defaultSourceMode = SOURCE_MODE_STRICT
+		Local parsed:TParseResult = TBlitzMaxParser.ParseText(text, path, defaultSourceMode)
 		result.syntaxTree = parsed.syntaxTree
 		Local started:Int = MilliSecs()
 		result.model = TBlitzMaxSemanticAnalyzer.Analyze(parsed.syntaxTree, effective.typeResolution, effective.cancellationToken)

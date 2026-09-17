@@ -92,6 +92,9 @@ Type TCompilationSnapshotOptions
 	' Editor consumers leave this disabled so all conditional branches remain
 	' available for navigation, highlighting and completion.
 	Field parseConfiguredConditionals:Int
+	' Match production bcc by default: a source with no mode declaration is
+	' SuperStrict. -nas requests the historical Strict fallback instead.
+	Field noAutoSuperStrict:Int
 	' Build drivers may contribute application-wide imports which are not
 	' written in the root source (a command-line Framework, or the production
 	' default BRL/Pub application framework).
