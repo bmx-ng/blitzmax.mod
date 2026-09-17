@@ -2452,7 +2452,7 @@ Type TExpressionBinder
 		If applicable.Count() = 0 Then
 			Local deferred:TResolvedCall = ResolveDeferredGenericCall(callSyntax, referenceSyntax, arguments, argumentTypes, explicitSyntax, candidates, containingSubstitutions, receiverType)
 			If deferred Then Return deferred
-			If reportFailure And Not ReportUncalledRoutineArguments(arguments, candidates, containingSubstitutions, receiverType) Then
+			If reportFailure And Not ReportUncalledRoutineArguments(arguments, argumentTypes, candidates, containingSubstitutions, receiverType) Then
 				AddDiagnostic("BMX3302", InapplicableCallMessage(callName, arguments, argumentTypes, candidates, containingSubstitutions, receiverType), callSyntax.span)
 			End If
 			Return Null
@@ -2947,12 +2947,12 @@ Type TExpressionBinder
 		Return True
 	End Method
 
-	Method ReportUncalledRoutineArguments:Int(arguments:TExpressionSyntax[], candidates:TSymbol[], containingSubstitutions:TMap, receiverType:TSemanticType)
+	Method ReportUncalledRoutineArguments:Int(arguments:TExpressionSyntax[], argumentTypes:TSemanticType[], candidates:TSymbol[], containingSubstitutions:TMap, receiverType:TSemanticType)
 		If candidates.length = 0 Then Return False
 		Local reported:Int
 		For Local index:Int = 0 Until arguments.length
 			If TOmittedArgumentExpressionSyntax(arguments[index]) Then Continue
-			If CandidatesExpectCallable(index, candidates, containingSubstitutions, receiverType) Then Continue
+			If CandidateAcceptsRoutineArgument(index, arguments[index], argumentTypes[index], candidates, containingSubstitutions, receiverType) Then Continue
 			If ReportUncalledRoutineReference(arguments[index], Null) Then reported = True
 		Next
 		Return reported
@@ -2973,14 +2973,17 @@ Type TExpressionBinder
 		Return result
 	End Function
 
-	Method CandidatesExpectCallable:Int(index:Int, candidates:TSymbol[], containingSubstitutions:TMap, receiverType:TSemanticType)
+	Method CandidateAcceptsRoutineArgument:Int(index:Int, argument:TExpressionSyntax, actual:TSemanticType, candidates:TSymbol[], containingSubstitutions:TMap, receiverType:TSemanticType)
 		For Local routine:TSymbol = EachIn candidates
 			If index >= routine.parameterTypes.length Then Continue
 			Local substitutions:TMap = containingSubstitutions
 			Local declaringReceiver:TSemanticType = MemberDeclaringType(receiverType, routine)
 			If declaringReceiver Then substitutions = TypeSubstitutions(declaringReceiver)
 			Local required:TSemanticType = TGenericRoutineInference.Substitute(routine.parameterTypes[index], substitutions)
-			If TCallableSemanticType(required) Or TTypeParameterSemanticType(required) Then Return True
+			If TCallableSemanticType(required) Or TClosureSemanticType(required) Or TTypeParameterSemanticType(required) Then Return True
+			' A routine reference may be valid for a legacy Byte Ptr callback
+			' parameter even when another argument makes this call inapplicable.
+			If conversions.ClassifyArgumentExpression(argument, actual, required).Exists() Then Return True
 		Next
 		Return False
 	End Method
