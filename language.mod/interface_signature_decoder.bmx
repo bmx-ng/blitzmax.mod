@@ -55,7 +55,9 @@ Type TInterfaceSignatureDecoder
 			text = text[..text.length - 1]
 		Wend
 		If text.EndsWith("&") Then text = text[..text.length - 1]
-		Local tokens:TSyntaxToken[] = LexTokens(text)
+		' Fields and Globals use the same native Interface reference markers
+		' as routine signatures; strip them before resolving the named type.
+		Local tokens:TSyntaxToken[] = NormalizeExternalInterfaceReferenceMarkers(LexTokens(text))
 		If tokens.length < 2 Then Return
 		If record.isStaticArray Then
 			Local separator:Int = FindTokenText(tokens, "&", 1)
