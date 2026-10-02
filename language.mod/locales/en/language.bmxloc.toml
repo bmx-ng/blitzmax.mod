@@ -1,7 +1,7 @@
 format = 1
 domain = "language"
 locale = "en"
-next_id = 266
+next_id = 267
 
 [[message]]
 id = 1
@@ -2114,3 +2114,11 @@ text = "Argument #{argumentNumber} is '{actualType}' but declaration is '{requir
 description = "Reported in -w compatibility mode when a selected routine argument requires a potentially lossy numeric conversion."
 diagnostic_codes = ["BMX3412"]
 placeholders = [{ name = "argumentNumber", type = "integer" }, { name = "actualType", type = "string" }, { name = "requiredType", type = "string" }]
+
+[[message]]
+id = 266
+name = "binding.constant_assignment_not_allowed"
+text = "Constant '{constantName}' cannot be assigned."
+description = "Reported when an assignment targets a Const declaration or Enum member."
+diagnostic_codes = ["BMX3327"]
+placeholders = [{ name = "constantName", type = "string" }]

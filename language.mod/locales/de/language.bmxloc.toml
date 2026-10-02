@@ -1857,3 +1857,10 @@ name = "binding.argument_numeric_narrowing"
 translated = true
 text = "Das Argument #{argumentNumber} ist vom Typ '{actualType}', aber die Deklaration erfordert '{requiredType}'."
 placeholders = [{ name = "argumentNumber", type = "integer" }, { name = "actualType", type = "string" }, { name = "requiredType", type = "string" }]
+
+[[message]]
+id = 266
+name = "binding.constant_assignment_not_allowed"
+translated = true
+text = "Der Konstante '{constantName}' kann kein neuer Wert zugewiesen werden."
+placeholders = [{ name = "constantName", type = "string" }]
