@@ -11,6 +11,9 @@
 *.i2
 *.o
 
+# Interrupted atomic build outputs
+*.bmk-tmp-*
+
 .generics/
 
 # Compiled locale catalogues are release artifacts
