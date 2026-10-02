@@ -270,6 +270,7 @@ Const LANGUAGE_MSG_BINDING_NO_APPLICABLE_OVERLOAD:Int = 262
 Const LANGUAGE_MSG_BINDING_VARIABLE_ASSIGNED_TO_ITSELF:Int = 263
 Const LANGUAGE_MSG_BINDING_BINARY_OPERATOR_NOT_DEFINED:Int = 264
 Const LANGUAGE_MSG_BINDING_ARGUMENT_NUMERIC_NARROWING:Int = 265
+Const LANGUAGE_MSG_BINDING_CONSTANT_ASSIGNMENT_NOT_ALLOWED:Int = 266
 
 Type TLanguageMessages
 	Function ParserExpressionNestingTooDeep:TLocalisedMessage()
@@ -1066,5 +1067,8 @@ Type TLanguageMessages
 	End Function
 	Function BindingArgumentNumericNarrowing:TLocalisedMessage(argumentNumber:Long, actualType:String, requiredType:String)
 		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_ARGUMENT_NUMERIC_NARROWING, "Argument #{argumentNumber} is '{actualType}' but declaration is '{requiredType}'.", [TMessageArg.CreateInt("argumentNumber", argumentNumber), TMessageArg.Create("actualType", actualType), TMessageArg.Create("requiredType", requiredType)])
+	End Function
+	Function BindingConstantAssignmentNotAllowed:TLocalisedMessage(constantName:String)
+		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_CONSTANT_ASSIGNMENT_NOT_ALLOWED, "Constant '{constantName}' cannot be assigned.", [TMessageArg.Create("constantName", constantName)])
 	End Function
 End Type

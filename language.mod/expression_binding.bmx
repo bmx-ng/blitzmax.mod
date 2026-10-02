@@ -910,6 +910,10 @@ Type TExpressionBinder
 			End If
 			If Not leftType Then leftType = BindExpression(assignment.left, scope)
 			Local assignedSymbol:TSymbol = AssignedSymbol(assignment.left)
+			If assignedSymbol And (assignedSymbol.kind = SYMBOL_CONST Or assignedSymbol.kind = SYMBOL_ENUM_MEMBER) Then
+				AddDiagnostic("BMX3327", TLanguageMessages.BindingConstantAssignmentNotAllowed(assignedSymbol.name), assignment.left.span)
+				Return
+			End If
 			If assignedSymbol And assignedSymbol.isReadOnly And Not CanAssignReadOnlyField(assignedSymbol, scope) Then
 				AddDiagnostic("BMX3315", TLanguageMessages.BindingReadonlyFieldAssignmentRequiresConstructor(assignedSymbol.name), assignment.left.span)
 			End If
