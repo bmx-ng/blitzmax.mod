@@ -1,7 +1,7 @@
 format = 1
 domain = "language"
 locale = "en"
-next_id = 267
+next_id = 268
 
 [[message]]
 id = 1
@@ -2122,3 +2122,11 @@ text = "Constant '{constantName}' cannot be assigned."
 description = "Reported when an assignment targets a Const declaration or Enum member."
 diagnostic_codes = ["BMX3327"]
 placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 267
+name = "inheritance.override_return_type_mismatch"
+text = "Method '{methodName}' return type '{declaredReturnType}' does not match inherited return type '{inheritedReturnType}'."
+description = "Reported when a derived method has the same parameters as an inherited method but an incompatible return type."
+diagnostic_codes = ["BMX3219"]
+placeholders = [{ name = "methodName", type = "string" }, { name = "declaredReturnType", type = "string" }, { name = "inheritedReturnType", type = "string" }]

@@ -17,15 +17,20 @@ End Type
 
 Type TInheritanceValidator
 	Field model:TSemanticModel
+	Field options:TTypeResolutionOptions
 	Field diagnostics:TList = New TList
 	Field visitStates:TMap = New TMap
 	Field reportedCycles:TMap = New TMap
+	Field returnMismatchRoutines:TMap = New TMap
 	Field currentPath:String
 
-	Function Validate:TSemanticModel(model:TSemanticModel)
+	Function Validate:TSemanticModel(model:TSemanticModel, options:TTypeResolutionOptions = Null)
 		Local validator:TInheritanceValidator = New TInheritanceValidator
 		validator.model = model
+		validator.options = options
+		If Not validator.options Then validator.options = New TTypeResolutionOptions
 		validator.BuildInformation(model.globalScope)
+		validator.NormalizeOverrideReturns(model.globalScope)
 		validator.ComputeAbstractTypes(model.globalScope)
 		validator.ValidateDeclarations(model.globalScope)
 		validator.ValidateOverrides(model.globalScope)
@@ -34,6 +39,92 @@ Type TInheritanceValidator
 		validator.ValidatePublicContracts(model.globalScope)
 		model.diagnostics = MergeDiagnostics(model.diagnostics, DiagnosticsToArray(validator.diagnostics))
 		Return model
+	End Function
+
+	Method NormalizeOverrideReturns(scope:TScope)
+		For Local routine:TSymbol = EachIn scope.declaredSymbols
+			If routine.kind <> SYMBOL_ROUTINE Or routine.isImported Then Continue
+			Local declaration:TRoutineDeclarationSyntax = TRoutineDeclarationSyntax(routine.declaration)
+			If Not declaration Or Not declaration.isMethod Or routine.name.ToLower() = "new" Or routine.name.ToLower() = "delete" Then Continue
+			Local owner:TSymbol
+			If routine.containingScope And routine.containingScope.kind = SCOPE_TYPE Then owner = routine.containingScope.owner
+			Local info:TTypeInheritanceInfo = model.InheritanceInfo(owner)
+			If Not info Then Continue
+			Local inheritedType:TNamedSemanticType
+			Local inherited:TSymbol
+			For Local edge:TInheritanceEdge = EachIn CombinedEdges(info)
+				inherited = InheritedRoutineWithMatchingParameters(routine, edge.semanticType, inheritedType, 0)
+				If inherited Then Exit
+			Next
+			If Not inherited Or Not inheritedType Then Continue
+			Local expectedReturn:TSemanticType = InheritedReturnType(routine, inherited, inheritedType)
+			If OverrideReturnMatches(routine.declaredType, expectedReturn) Then Continue
+			If CanUpgradeStrictReturn(routine, expectedReturn) And Not options.noStrictUpgrade Then
+				routine.declaredType = expectedReturn
+				Continue
+			End If
+			currentPath = routine.originPath
+			AddDiagnostic("BMX3219", TLanguageMessages.InheritanceOverrideReturnTypeMismatch(routine.name, routine.declaredType.DisplayName(), expectedReturn.DisplayName()), routine.nameToken.span)
+			returnMismatchRoutines.Insert(routine, routine)
+		Next
+		For Local child:TScope = EachIn scope.children
+			NormalizeOverrideReturns(child)
+		Next
+	End Method
+
+	Method InheritedRoutineWithMatchingParameters:TSymbol(routine:TSymbol, inheritedType:TSemanticType, matchedType:TNamedSemanticType Var, depth:Int)
+		If depth > 64 Then Return Null
+		Local inherited:TNamedSemanticType = RuntimeNamedType(inheritedType)
+		If Not inherited Or Not inherited.symbol Or Not inherited.symbol.memberScope Then Return Null
+		For Local candidate:TSymbol = EachIn inherited.symbol.memberScope.LookupLocal(routine.name)
+			If candidate.kind = SYMBOL_ROUTINE And routine.callingConvention = candidate.callingConvention And OverrideParametersMatch(routine, candidate, inherited) Then
+				matchedType = inherited
+				Return candidate
+			End If
+		Next
+		Local inheritedInfo:TTypeInheritanceInfo = model.InheritanceInfo(inherited.symbol)
+		If Not inheritedInfo Then Return Null
+		Local ownerParameters:TSymbol[] = DeclaredTypeParameters(inherited.symbol)
+		For Local edge:TInheritanceEdge = EachIn CombinedEdges(inheritedInfo)
+			Local nextType:TSemanticType = Substitute(edge.semanticType, ownerParameters, inherited.typeArguments)
+			Local candidate:TSymbol = InheritedRoutineWithMatchingParameters(routine, nextType, matchedType, depth + 1)
+			If candidate Then Return candidate
+		Next
+		Return Null
+	End Method
+
+	Method InheritedReturnType:TSemanticType(routine:TSymbol, inherited:TSymbol, inheritedType:TNamedSemanticType)
+		Local ownerParameters:TSymbol[] = DeclaredTypeParameters(inheritedType.symbol)
+		Local candidateRoutineParameters:TSymbol[] = DeclaredTypeParameters(inherited)
+		Local routineTypeArguments:TSemanticType[] = TypeParameterTypes(DeclaredTypeParameters(routine))
+		Local result:TSemanticType = Substitute(inherited.declaredType, ownerParameters, inheritedType.typeArguments)
+		Return Substitute(result, candidateRoutineParameters, routineTypeArguments)
+	End Method
+
+	Method OverrideReturnMatches:Int(actual:TSemanticType, expected:TSemanticType)
+		If SameType(actual, expected) Then Return True
+		Return IsSubtype(actual, expected, 0)
+	End Method
+
+	Method CanUpgradeStrictReturn:Int(routine:TSymbol, expected:TSemanticType)
+		If Not SameType(routine.declaredType, model.BuiltinType("Int")) Or Not SameType(expected, model.BuiltinType("Void")) Then Return False
+		Local declaration:TRoutineDeclarationSyntax = TRoutineDeclarationSyntax(routine.declaration)
+		If Not declaration Or Not declaration.signature Or declaration.signature.returnType Or declaration.signature.callableReturnType Then Return False
+		Return SourceModeForPath(routine.originPath) = SOURCE_MODE_STRICT
+	End Method
+
+	Method SourceModeForPath:Int(path:String)
+		If model.snapshot Then
+			For Local document:TSourceDocumentModel = EachIn model.snapshot.documents
+				If document And SamePath(document.path, path) Then Return document.effectiveSourceMode
+			Next
+		End If
+		If model.syntaxTree And model.syntaxTree.root Then Return model.syntaxTree.root.sourceMode
+		Return SOURCE_MODE_STRICT
+	End Method
+
+	Function SamePath:Int(left:String, right:String)
+		Return left.Replace("\\", "/") = right.Replace("\\", "/")
 	End Function
 
 	Method ValidatePublicContracts(scope:TScope)
@@ -170,7 +261,7 @@ Type TInheritanceValidator
 				overridden = OverriddenRoutine(routine, model.BuiltinType("Object"), 0)
 				If Not overridden Then implicitStructObjectOverride = IsImplicitStructObjectOverride(routine)
 			End If
-			If Not overridden And Not implicitStructObjectOverride Then
+			If Not overridden And Not implicitStructObjectOverride And Not returnMismatchRoutines.Contains(routine) Then
 				AddDiagnostic("BMX3211", TLanguageMessages.InheritanceOverrideMethodNotFound(routine.name), overrideToken.span)
 			Else If overridden And Not VisibilityIncludes(routine.visibility, overridden.visibility) Then
 				AddDiagnostic("BMX3212", TLanguageMessages.InheritanceOverrideReducesVisibility(routine.name, TSymbolAccessibility.VisibilityName(overridden.visibility), TSymbolAccessibility.VisibilityName(routine.visibility)), overrideToken.span)

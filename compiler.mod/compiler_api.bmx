@@ -61,6 +61,8 @@ Type TBlitzMaxCompiler
 		Local started:Int = MilliSecs()
 		Local analysisOptions:TLanguageAnalysisOptions = TLanguageAnalysisOptions.Create()
 		analysisOptions.warnArgumentCasts = options.warnArgumentCasts
+		analysisOptions.typeResolution = New TTypeResolutionOptions
+		analysisOptions.typeResolution.noStrictUpgrade = options.noStrictUpgrade
 		result.analysis = TBlitzMaxLanguage.BuildAndAnalyze(path, text, resolver, options.SnapshotOptions(), analysisOptions)
 		result.analysisMilliseconds = MilliSecs() - started
 		If result.analysis.Succeeded() Then

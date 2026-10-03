@@ -1,6 +1,6 @@
 format = 1
 domain = "language"
-next_id = 267
+next_id = 268
 
 [ids]
 "1" = "parser.expression_nesting_too_deep"
@@ -269,3 +269,4 @@ next_id = 267
 "264" = "binding.binary_operator_not_defined"
 "265" = "binding.argument_numeric_narrowing"
 "266" = "binding.constant_assignment_not_allowed"
+"267" = "inheritance.override_return_type_mismatch"
