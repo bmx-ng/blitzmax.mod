@@ -15,13 +15,13 @@ Type TBlitzMaxSemanticAnalyzer
 		If LanguageCancellationRequested(cancellationToken) Then Return model
 		model = TTypeResolver.Bind(model, options)
 		If LanguageCancellationRequested(cancellationToken) Then Return model
-		Return TInheritanceValidator.Validate(model)
+		Return TInheritanceValidator.Validate(model, options)
 	End Function
 
 	Function Analyze:TSemanticModel(tree:TSyntaxTree, options:TTypeResolutionOptions = Null, cancellationToken:TLanguageCancellationToken = Null)
 		If LanguageCancellationRequested(cancellationToken) Then Return TDeclarationCollector.Collect(tree)
 		Local model:TSemanticModel = TTypeResolver.Bind(TDeclarationCollector.Collect(tree), options)
 		If LanguageCancellationRequested(cancellationToken) Then Return model
-		Return TInheritanceValidator.Validate(model)
+		Return TInheritanceValidator.Validate(model, options)
 	End Function
 End Type

@@ -1864,3 +1864,10 @@ name = "binding.constant_assignment_not_allowed"
 translated = true
 text = "Der Konstante '{constantName}' kann kein neuer Wert zugewiesen werden."
 placeholders = [{ name = "constantName", type = "string" }]
+
+[[message]]
+id = 267
+name = "inheritance.override_return_type_mismatch"
+translated = false
+text = "Method '{methodName}' return type '{declaredReturnType}' does not match inherited return type '{inheritedReturnType}'."
+placeholders = [{ name = "methodName", type = "string" }, { name = "declaredReturnType", type = "string" }, { name = "inheritedReturnType", type = "string" }]

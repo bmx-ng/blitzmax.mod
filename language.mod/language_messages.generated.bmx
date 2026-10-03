@@ -271,6 +271,7 @@ Const LANGUAGE_MSG_BINDING_VARIABLE_ASSIGNED_TO_ITSELF:Int = 263
 Const LANGUAGE_MSG_BINDING_BINARY_OPERATOR_NOT_DEFINED:Int = 264
 Const LANGUAGE_MSG_BINDING_ARGUMENT_NUMERIC_NARROWING:Int = 265
 Const LANGUAGE_MSG_BINDING_CONSTANT_ASSIGNMENT_NOT_ALLOWED:Int = 266
+Const LANGUAGE_MSG_INHERITANCE_OVERRIDE_RETURN_TYPE_MISMATCH:Int = 267
 
 Type TLanguageMessages
 	Function ParserExpressionNestingTooDeep:TLocalisedMessage()
@@ -1070,5 +1071,8 @@ Type TLanguageMessages
 	End Function
 	Function BindingConstantAssignmentNotAllowed:TLocalisedMessage(constantName:String)
 		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_CONSTANT_ASSIGNMENT_NOT_ALLOWED, "Constant '{constantName}' cannot be assigned.", [TMessageArg.Create("constantName", constantName)])
+	End Function
+	Function InheritanceOverrideReturnTypeMismatch:TLocalisedMessage(methodName:String, declaredReturnType:String, inheritedReturnType:String)
+		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_INHERITANCE_OVERRIDE_RETURN_TYPE_MISMATCH, "Method '{methodName}' return type '{declaredReturnType}' does not match inherited return type '{inheritedReturnType}'.", [TMessageArg.Create("methodName", methodName), TMessageArg.Create("declaredReturnType", declaredReturnType), TMessageArg.Create("inheritedReturnType", inheritedReturnType)])
 	End Function
 End Type

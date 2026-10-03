@@ -44,6 +44,9 @@ Type TCompilerOptions
 	' Production-compatible -nas: without a source mode declaration, use
 	' Strict instead of the default automatic SuperStrict mode.
 	Field noAutoSuperStrict:Int
+	' Production-compatible -s/-nostrictupgrade: reject an implicit-Int Strict
+	' method where production would normally upgrade it to an inherited Void.
+	Field noStrictUpgrade:Int
 	Field userDefinitions:String
 
 	Rem

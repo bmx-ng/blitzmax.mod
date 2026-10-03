@@ -11,6 +11,9 @@ Import "symbol_accessibility.bmx"
 
 Type TTypeResolutionOptions
 	Field reportUnresolvedTypes:Int
+	' Preserve Strict's implicit Int return instead of upgrading it to match an
+	' inherited SuperStrict Void method. This matches production bcc's -s mode.
+	Field noStrictUpgrade:Int
 End Type
 
 Type TTypeCandidateCacheEntry
