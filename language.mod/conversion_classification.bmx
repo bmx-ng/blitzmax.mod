@@ -627,7 +627,26 @@ Type TConversionClassifier
 		Local toRank:Int = NumericRank(toName)
 		If fromRank < 0 Or toRank < 0 Then Return -1
 		If Not CanWidenNumeric(fromName, toName) Then Return -1
-		Return Max(1, toRank - fromRank)
+		Local distance:Int = Max(1, toRank - fromRank)
+		' When two integral destinations cover the same source range, retain the
+		' source's signedness. This makes unsigned Byte/Short/UInt promotion choose
+		' UInt/ULong rather than becoming ambiguous with Int/Long.
+		Local fromSignedness:Int = IntegralSignedness(fromName)
+		Local toSignedness:Int = IntegralSignedness(toName)
+		If fromSignedness >= 0 And toSignedness >= 0 And fromSignedness <> toSignedness Then distance :+ 1
+		' Float is the preferred real destination for compact and native C integer
+		' types. BlitzMax's fixed 64-bit Long/ULong lane instead prefers Double,
+		' matching production bcc and avoiding the more severe loss of precision.
+		If (fromName = "long" Or fromName = "ulong") And toName = "float" Then distance :+ 2
+		Return distance
+	End Function
+
+	Function IntegralSignedness:Int(name:String)
+		Select name
+			Case "byte", "short", "uint", "ulong", "ulongint", "size_t", "wparam" Return 0
+			Case "int", "long", "longint", "lparam", "int128" Return 1
+		End Select
+		Return -1
 	End Function
 
 	Function CanWidenNumeric:Int(source:String, target:String)

@@ -1914,7 +1914,13 @@ Type TExpressionBinder
 			bound.left = model.BoundExpression(binary.left)
 			bound.right = model.BoundExpression(binary.right)
 			bound.resolvedCall = model.ResolvedCall(binary)
-			If bound.resolvedCall Then bound.right = BoundArguments([binary.right], bound.resolvedCall)[0]
+			If bound.resolvedCall Then
+				bound.right = BoundArguments([binary.right], bound.resolvedCall)[0]
+			Else If bound.left And bound.right And TConversionClassifier.NumericRankOf(bound.left.semanticType) >= 0 And TConversionClassifier.NumericRankOf(bound.right.semanticType) >= 0 Then
+				Local balancedType:TSemanticType = WiderNumericType(bound.left.semanticType, bound.right.semanticType)
+				bound.left = ApplyImplicitConversion(bound.left, binary.left, balancedType, True)
+				bound.right = ApplyImplicitConversion(bound.right, binary.right, balancedType, True)
+			End If
 			Return bound
 		End If
 		Local creation:TNewExpressionSyntax = TNewExpressionSyntax(expression)
@@ -2192,13 +2198,19 @@ Type TExpressionBinder
 		Local binary:TBoundBinaryExpression = TBoundBinaryExpression(operand)
 		Local binarySyntax:TBinaryExpressionSyntax = TBinaryExpressionSyntax(syntax)
 		If binary And binarySyntax Then
-			binary.left = ApplyImplicitConversion(binary.left, binarySyntax.left, required)
-			binary.right = ApplyImplicitConversion(binary.right, binarySyntax.right, required)
+			binary.left = ApplyImplicitConversion(UnwrapBalancedNumericConversion(binary.left), binarySyntax.left, required)
+			binary.right = ApplyImplicitConversion(UnwrapBalancedNumericConversion(binary.right), binarySyntax.right, required)
 			binary.semanticType = required
 			Return binary
 		End If
 		Return MakeConversion(operand, syntax, required, CONVERSION_CONTEXTUAL_NUMERIC_EXPRESSION, True)
 	End Method
+
+	Function UnwrapBalancedNumericConversion:TBoundExpression(operand:TBoundExpression)
+		Local conversion:TBoundConversionExpression = TBoundConversionExpression(operand)
+		If conversion And conversion.implicitConversion And conversion.operand And TConversionClassifier.NumericRankOf(conversion.operand.semanticType) >= 0 And TConversionClassifier.NumericRankOf(conversion.semanticType) >= 0 Then Return conversion.operand
+		Return operand
+	End Function
 
 	Method BindMember:TSemanticType(member:TMemberAccessExpressionSyntax, scope:TScope)
 		Local selectedScope:TScope = StaticMemberScope(member.expression, scope)
@@ -3769,11 +3781,28 @@ Type TExpressionBinder
 		If Not first Then Return second
 		If Not second Then Return first
 		If TGenericRoutineInference.SameType(first, second) Then Return first
-		Local firstRank:Int = NumericRank(first)
-		Local secondRank:Int = NumericRank(second)
-		If firstRank < 0 Or secondRank < 0 Then Return first
-		If secondRank > firstRank Then Return second
-		Return first
+		Local firstBuiltin:TBuiltinSemanticType = TBuiltinSemanticType(first)
+		Local secondBuiltin:TBuiltinSemanticType = TBuiltinSemanticType(second)
+		If Not firstBuiltin Or Not secondBuiltin Or NumericRank(first) < 0 Or NumericRank(second) < 0 Then Return first
+		Local firstName:String = firstBuiltin.name.ToLower()
+		Local secondName:String = secondBuiltin.name.ToLower()
+		' Numeric balancing must be independent of operand order. Follow the same
+		' promotion lanes used by production expressions, including the unsigned
+		' result required when a UInt is combined with a fixed 64-bit Long.
+		If firstName = "double" Or secondName = "double" Then Return model.BuiltinType("Double")
+		If firstName = "float" Or secondName = "float" Then Return model.BuiltinType("Float")
+		If firstName = "ulong" Or secondName = "ulong" Then Return model.BuiltinType("ULong")
+		If firstName = "size_t" Or secondName = "size_t" Then Return model.BuiltinType("Size_T")
+		If firstName = "wparam" Or secondName = "wparam" Then Return model.BuiltinType("WParam")
+		If (firstName = "long" And secondName = "uint") Or (firstName = "uint" And secondName = "long") Then Return model.BuiltinType("ULong")
+		If firstName = "lparam" Or secondName = "lparam" Then Return model.BuiltinType("LParam")
+		If firstName = "ulongint" Or secondName = "ulongint" Then Return model.BuiltinType("ULongInt")
+		If firstName = "long" Or secondName = "long" Then Return model.BuiltinType("Long")
+		If firstName = "longint" Or secondName = "longint" Then Return model.BuiltinType("LongInt")
+		If firstName = "uint" Or secondName = "uint" Then Return model.BuiltinType("UInt")
+		If firstName = "int" Or secondName = "int" Then Return model.BuiltinType("Int")
+		If firstName = "short" Or secondName = "short" Then Return model.BuiltinType("Short")
+		Return model.BuiltinType("Byte")
 	End Method
 
 	Function NumericRank:Int(value:TSemanticType)
