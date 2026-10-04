@@ -637,7 +637,7 @@ Type TConversionClassifier
 		' Float is the preferred real destination for compact and native C integer
 		' types. BlitzMax's fixed 64-bit Long/ULong lane instead prefers Double,
 		' matching production bcc and avoiding the more severe loss of precision.
-		If (fromName = "long" Or fromName = "ulong") And toName = "float" Then distance :+ 2
+		If (fromName = "long" Or fromName = "ulong") And toName = "float" Then distance :+ 3
 		Return distance
 	End Function
 
