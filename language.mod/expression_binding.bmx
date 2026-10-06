@@ -3686,7 +3686,7 @@ Type TExpressionBinder
 		Local left:TSemanticType = BindExpression(binary.left, scope)
 		Local right:TSemanticType = BindExpression(binary.right, scope)
 		Local operation:String = binary.operatorToken.text.ToLower()
-		If TNamedSemanticType(left) Then
+		If TNamedSemanticType(left) And Not TConversionClassifier.IsNull(right) Then
 			Local resolved:TResolvedCall = ResolveOperator(binary, binary.left, binary.operatorToken.text, left, [binary.right], [right], scope)
 			If resolved Then Return resolved.returnType
 		End If
