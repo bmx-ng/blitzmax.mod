@@ -4399,7 +4399,7 @@ Type TCompilerCBackend
 		If DebugEnabled() Then body :+ "    bbOnDebugLeaveScope();~n"
 		body :+ EmitEmbeddedRootFrameLeave("    ")
 		If currentIsMain Then body :+ "    return 0;~n"
-		If Not currentIsMain And Not routine.isAbstract And Not iteratorSpecial And routine.returnType.ToLower() <> "void" Then
+		If Not currentIsMain And Not routine.isAbstract And Not iteratorSpecial And routine.returnType.ToLower() <> "void" And Not BlockReturnsOnAllPaths(routine.body) Then
 			body :+ "    return " + CurrentReturnDefault(routine.source) + ";~n"
 		End If
 		Local result:String = EmitGdbLineDirective(routine.source, "")
@@ -4637,6 +4637,46 @@ Type TCompilerCBackend
 		result :+ stepIndent + "if (" + failedName + ") bbExThrow((BBObject *)" + exceptionName + ");~n"
 		result :+ indent + "}~n"
 		Return result
+	End Method
+
+	Method BlockReturnsOnAllPaths:Int(block:TCompilerIrBlock)
+		If Not block Then Return False
+		For Local statement:TCompilerIrStatement = EachIn block.statements
+			If StatementReturnsOnAllPaths(statement) Then Return True
+		Next
+		Return False
+	End Method
+
+	Method StatementReturnsOnAllPaths:Int(statement:TCompilerIrStatement)
+		If TCompilerIrReturn(statement) Then Return True
+		Local conditional:TCompilerIrIf = TCompilerIrIf(statement)
+		If conditional Then
+			If Not conditional.elseBody Or Not BlockReturnsOnAllPaths(conditional.thenBody) Or Not BlockReturnsOnAllPaths(conditional.elseBody) Then Return False
+			For Local clause:TCompilerIrConditionalClause = EachIn conditional.elseIfClauses
+				If Not clause Or Not BlockReturnsOnAllPaths(clause.body) Then Return False
+			Next
+			Return True
+		End If
+		Local selected:TCompilerIrSelect = TCompilerIrSelect(statement)
+		If selected Then
+			If Not selected.defaultBody Then Return False
+			For Local selectedCase:TCompilerIrSelectCase = EachIn selected.cases
+				If Not selectedCase Or Not BlockReturnsOnAllPaths(selectedCase.body) Then Return False
+			Next
+			Return BlockReturnsOnAllPaths(selected.defaultBody)
+		End If
+		Local attempted:TCompilerIrTry = TCompilerIrTry(statement)
+		If attempted Then
+			If BlockReturnsOnAllPaths(attempted.finallyBody) Then Return True
+			If Not BlockReturnsOnAllPaths(attempted.body) Then Return False
+			For Local caught:TCompilerIrCatch = EachIn attempted.catches
+				If Not caught Or Not BlockReturnsOnAllPaths(caught.body) Then Return False
+			Next
+			Return True
+		End If
+		Local usingStatement:TCompilerIrUsing = TCompilerIrUsing(statement)
+		If usingStatement Then Return BlockReturnsOnAllPaths(usingStatement.body)
+		Return False
 	End Method
 
 	Method EmitIteratorOwnedCleanup:String(factory:TCompilerIrFunction, indent:String)
@@ -6251,6 +6291,12 @@ Type TCompilerCBackend
 		Return CDefaultValue(currentReturnType)
 	End Method
 
+	Method IsLiteralZeroLengthArray:Int(arrayNew:TCompilerIrArrayNew)
+		If Not arrayNew Or arrayNew.rank <> 1 Or arrayNew.dimensions.length <> 1 Then Return False
+		Local dimension:TCompilerIrLiteral = TCompilerIrLiteral(arrayNew.dimensions[0])
+		Return dimension And dimension.text = "0"
+	End Method
+
 	Method EmitTryFinally:String(guarded:TCompilerIrTry, indent:String)
 		If EmbeddedObjectTypes() Then Return EmitEmbeddedTryFinally(guarded, indent)
 		If currentRoutine And currentRoutine.isIteratorMoveNext And guarded.retainedInIterator Then Return EmitIteratorTryFinally(guarded, indent)
@@ -6961,6 +7007,7 @@ Type TCompilerCBackend
 					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoArrayElementTypeUnsupported(arrayNew.elementType), arrayNew.source)
 					Return "&bmx_embedded_empty_array"
 				End If
+				If IsLiteralZeroLengthArray(arrayNew) Then Return "&bmx_embedded_empty_array"
 				Local initializer:String = "0"
 				If arrayNew.structId.length Then
 					Local elementStruct:TCompilerIrStruct = StructById(arrayNew.structId)
@@ -6987,6 +7034,7 @@ Type TCompilerCBackend
 				End If
 				Return "bmx_embedded_array_new_1d((int32_t)(" + EmitExpression(arrayNew.dimensions[0]) + "), (uint32_t)sizeof(" + CType(arrayNew.elementType, arrayNew.source) + "), " + EmbeddedArrayElementKind(arrayNew.elementType) + ", " + initializer + ", " + valueDescriptor + ")"
 			End If
+			If IsLiteralZeroLengthArray(arrayNew) Then Return "&bbEmptyArray"
 			If arrayNew.rank = 1 And arrayNew.dimensions.length = 1 Then
 				If arrayNew.enumId.length Then
 					Local arrayEnum:TCompilerIrEnum = EnumById(arrayNew.enumId)
