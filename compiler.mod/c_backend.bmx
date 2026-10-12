@@ -4399,7 +4399,7 @@ Type TCompilerCBackend
 		If DebugEnabled() Then body :+ "    bbOnDebugLeaveScope();~n"
 		body :+ EmitEmbeddedRootFrameLeave("    ")
 		If currentIsMain Then body :+ "    return 0;~n"
-		If Not currentIsMain And Not routine.isAbstract And Not iteratorSpecial And routine.returnType.ToLower() <> "void" Then
+		If Not currentIsMain And Not routine.isAbstract And Not iteratorSpecial And routine.returnType.ToLower() <> "void" And Not BlockEndsWithExplicitReturn(routine.body) Then
 			body :+ "    return " + CurrentReturnDefault(routine.source) + ";~n"
 		End If
 		Local result:String = EmitGdbLineDirective(routine.source, "")
@@ -4637,6 +4637,11 @@ Type TCompilerCBackend
 		result :+ stepIndent + "if (" + failedName + ") bbExThrow((BBObject *)" + exceptionName + ");~n"
 		result :+ indent + "}~n"
 		Return result
+	End Method
+
+	Method BlockEndsWithExplicitReturn:Int(block:TCompilerIrBlock)
+		If Not block Or Not block.statements.length Then Return False
+		Return TCompilerIrReturn(block.statements[block.statements.length - 1]) <> Null
 	End Method
 
 	Method EmitIteratorOwnedCleanup:String(factory:TCompilerIrFunction, indent:String)
@@ -6251,6 +6256,12 @@ Type TCompilerCBackend
 		Return CDefaultValue(currentReturnType)
 	End Method
 
+	Method IsLiteralZeroLengthArray:Int(arrayNew:TCompilerIrArrayNew)
+		If Not arrayNew Or arrayNew.rank <> 1 Or arrayNew.dimensions.length <> 1 Then Return False
+		Local dimension:TCompilerIrLiteral = TCompilerIrLiteral(arrayNew.dimensions[0])
+		Return dimension And dimension.text = "0"
+	End Method
+
 	Method EmitTryFinally:String(guarded:TCompilerIrTry, indent:String)
 		If EmbeddedObjectTypes() Then Return EmitEmbeddedTryFinally(guarded, indent)
 		If currentRoutine And currentRoutine.isIteratorMoveNext And guarded.retainedInIterator Then Return EmitIteratorTryFinally(guarded, indent)
@@ -6961,6 +6972,7 @@ Type TCompilerCBackend
 					AddDiagnostic("BMXC2028", TBccMessages.CBackendPicoArrayElementTypeUnsupported(arrayNew.elementType), arrayNew.source)
 					Return "&bmx_embedded_empty_array"
 				End If
+				If IsLiteralZeroLengthArray(arrayNew) Then Return "&bmx_embedded_empty_array"
 				Local initializer:String = "0"
 				If arrayNew.structId.length Then
 					Local elementStruct:TCompilerIrStruct = StructById(arrayNew.structId)
@@ -6987,6 +6999,7 @@ Type TCompilerCBackend
 				End If
 				Return "bmx_embedded_array_new_1d((int32_t)(" + EmitExpression(arrayNew.dimensions[0]) + "), (uint32_t)sizeof(" + CType(arrayNew.elementType, arrayNew.source) + "), " + EmbeddedArrayElementKind(arrayNew.elementType) + ", " + initializer + ", " + valueDescriptor + ")"
 			End If
+			If IsLiteralZeroLengthArray(arrayNew) Then Return "&bbEmptyArray"
 			If arrayNew.rank = 1 And arrayNew.dimensions.length = 1 Then
 				If arrayNew.enumId.length Then
 					Local arrayEnum:TCompilerIrEnum = EnumById(arrayNew.enumId)
