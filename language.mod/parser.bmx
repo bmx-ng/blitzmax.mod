@@ -2503,9 +2503,10 @@ Type TBlitzMaxSyntaxParser
 		Local callableOpen:Int = FindTopLevelToken(node.typeTokens, "(", 0)
 		If callableOpen >= 0 Then
 			node.callableType = TBlitzMaxSignatureParser.ParseCallableType(node.typeTokens, diagnostics)
+			If Not isStaticArray And node.callableType Then node.arrayDimensions = ParseDeclaratorArrayDimensions(node.callableType.suffixes)
 		Else
 			node.declaredType = parsedType
-			If Not isStaticArray Then node.arrayDimensions = ParseDeclaratorArrayDimensions(node.declaredType)
+			If Not isStaticArray And node.declaredType Then node.arrayDimensions = ParseDeclaratorArrayDimensions(node.declaredType.suffixes)
 		End If
 		If assignmentIndex >= 0 Then
 			node.assignmentToken = values[assignmentIndex]
@@ -2516,15 +2517,15 @@ Type TBlitzMaxSyntaxParser
 		Return node
 	End Method
 
-	Method ParseDeclaratorArrayDimensions:TExpressionSyntax[](declaredType:TTypeReferenceSyntax)
-		If Not declaredType Or Not declaredType.suffixes.length Then Return New TExpressionSyntax[0]
+	Method ParseDeclaratorArrayDimensions:TExpressionSyntax[](suffixes:TTypeSuffixSyntax[])
+		If Not suffixes.length Then Return New TExpressionSyntax[0]
 		' Production BlitzMax accepts the allocated dimension on either side of
 		' an otherwise empty nested-array suffix: T[][4] and T[4][] both create
 		' the four-element outer array. Find the rightmost suffix which actually
 		' carries a dimension instead of requiring the final suffix to do so.
 		Local suffix:TTypeSuffixSyntax
-		For Local suffixIndex:Int = declaredType.suffixes.length - 1 To 0 Step -1
-			Local candidate:TTypeSuffixSyntax = declaredType.suffixes[suffixIndex]
+		For Local suffixIndex:Int = suffixes.length - 1 To 0 Step -1
+			Local candidate:TTypeSuffixSyntax = suffixes[suffixIndex]
 			If Not candidate Or candidate.suffixKind <> TYPE_SUFFIX_ARRAY Or candidate.tokens.length < 3 Then Continue
 			For Local tokenIndex:Int = 1 Until candidate.tokens.length - 1
 				If candidate.tokens[tokenIndex].text <> "," Then suffix = candidate; Exit
