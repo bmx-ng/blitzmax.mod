@@ -914,10 +914,13 @@ Type TCompilerCBackend
 		AppendGlobals(irModule, result)
 		AppendDataSection(irModule, result)
 		result.Append(EmitCoverageCatalog(irModule))
+		' Class constructor prologues can allocate Struct Array fields declared
+		' with dimensions (for example, Field values:SValue[256]). Emit the
+		' element initializers before those constructors reference them.
+		result.Append(EmitStructArrayInitializers(irModule))
 		AppendRuntimeClasses(irModule, False, result)
 		result.Append(EmitRuntimeStructDebugScopes(irModule))
 		result.Append(EmitStructNewHelpers(irModule))
-		result.Append(EmitStructArrayInitializers(irModule))
 		For Local routine:TCompilerIrFunction = EachIn irModule.functions
 			If routine.isGlobalEntry Then Continue
 			result.Append(EmitFunction(routine)).Append("~n")
