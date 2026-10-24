@@ -3826,6 +3826,8 @@ Type TExpressionBinder
 
 	Method Lookup:TSymbol[](scope:TScope, name:String, reference:TSyntaxNode = Null)
 		Local values:TSymbol[]
+		Local enclosingRoutine:TSymbol = EnclosingRoutine(scope)
+		Local staticRoutine:Int = enclosingRoutine And Not IsInstanceRoutine(enclosingRoutine) And Not activeFunctionLiteralScope
 		Local candidateScope:TScope = scope
 		While candidateScope
 			Local localValues:TSymbol[] = candidateScope.LookupLocal(name)
@@ -3833,12 +3835,14 @@ Type TExpressionBinder
 			For Local value:TSymbol = EachIn localValues
 				If value = initializerExcludedSymbol Then Continue
 				If reference And value.kind = SYMBOL_LOCAL And value.declaration And value.declaration.span.start > reference.span.start Then Continue
+				If staticRoutine And candidateScope.kind = SCOPE_TYPE And RequiresInstanceReceiver(value) Then Continue
 				retained :+ [value]
 			Next
 			If retained.length Then Return retained
 			candidateScope = candidateScope.parent
 		Wend
 		values = MemberSymbols(SelfType(scope), name)
+		If staticRoutine Then values = WithoutInstanceReceivers(values)
 		If values.length Then Return AccessibleSymbols(values, scope)
 		For Local imported:TScope = EachIn model.directImportedScopes
 			values = imported.LookupLocal(name)
@@ -3851,6 +3855,20 @@ Type TExpressionBinder
 		Next
 		Return New TSymbol[0]
 	End Method
+
+	Function RequiresInstanceReceiver:Int(symbol:TSymbol)
+		If Not symbol Then Return False
+		If symbol.kind = SYMBOL_FIELD Then Return True
+		Return symbol.kind = SYMBOL_ROUTINE And IsInstanceRoutine(symbol)
+	End Function
+
+	Function WithoutInstanceReceivers:TSymbol[](symbols:TSymbol[])
+		Local result:TSymbol[]
+		For Local symbol:TSymbol = EachIn symbols
+			If Not RequiresInstanceReceiver(symbol) Then result :+ [symbol]
+		Next
+		Return result
+	End Function
 
 	Method IsDirectImportedScope:Int(scope:TScope)
 		For Local direct:TScope = EachIn model.directImportedScopes
