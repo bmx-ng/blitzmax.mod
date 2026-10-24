@@ -1,0 +1,467 @@
+' Copyright (c) 2026 Bruce A Henderson and contributors
+' SPDX-License-Identifier: Zlib
+
+SuperStrict
+
+Import Text.Json
+Import BRL.Map
+Import BlitzMax.Language
+Import "documents.bmx"
+Import "positions.bmx"
+
+' Formatting uses parsed block ownership and token spans. It never infers
+' block structure from existing indentation or keyword text in comments.
+Type TBlitzMaxLspFormatting
+	Function Query:TJSONArray(document:TLspDocument, thenStyle:String = "preserve", endStyle:String = "preserve", inlineIfStyle:String = "preserve", tabSize:Int = 4, insertSpaces:Int = False, formatIndent:Int = True, spaceAfterComma:Int = True, caseIndent:String = "indented", metadataBraceSpacing:String = "preserve", callParenSpacing:String = "preserve", assignmentSpacing:String = "preserve", binarySpacing:String = "preserve", trimTrailingWhitespace:Int = True, declarationBlankLines:String = "preserve", controlBlankLines:String = "preserve")
+		Local edits:TJSONArray = JsonArray()
+		If Not document Then Return edits
+		Local parsed:TParseResult = TBlitzMaxParser.ParseText(document.text, document.path)
+		If Not parsed Or Not parsed.syntaxTree Or parsed.syntaxTree.diagnostics.length Then Return edits
+		Local source:TSourceText = parsed.syntaxTree.source
+		Local navigator:TSyntaxNavigator = TSyntaxNavigator.Create(parsed.syntaxTree)
+		If Not navigator Then Return edits
+		thenStyle = thenStyle.ToLower()
+		endStyle = endStyle.ToLower()
+		inlineIfStyle = inlineIfStyle.ToLower()
+		caseIndent = caseIndent.ToLower()
+		metadataBraceSpacing = metadataBraceSpacing.ToLower()
+		callParenSpacing = callParenSpacing.ToLower()
+		assignmentSpacing = assignmentSpacing.ToLower()
+		binarySpacing = binarySpacing.ToLower()
+		declarationBlankLines = declarationBlankLines.ToLower()
+		controlBlankLines = controlBlankLines.ToLower()
+		Local spacingEdits:TJSONArray = JsonArray()
+		If spaceAfterComma Then FormatCommaSpacing(spacingEdits, source, parsed.syntaxTree.root.tokens)
+		FormatDelimiterSpacing(spacingEdits, source, parsed.syntaxTree.root.tokens, navigator, metadataBraceSpacing, callParenSpacing)
+		FormatOperatorSpacing(spacingEdits, source, parsed.syntaxTree.root.tokens, navigator, assignmentSpacing, binarySpacing)
+		Local expandedLines:TMap = New TMap
+		Local coveredTrailingLines:TMap = New TMap
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local statement:TIfStatementSyntax = TIfStatementSyntax(node)
+			If statement Then
+				If statement.singleLine Then
+					If inlineIfStyle = "expand" Then ExpandInlineIf(edits, source, navigator, statement, thenStyle, endStyle, tabSize, insertSpaces, formatIndent, caseIndent, spacingEdits, expandedLines)
+				Else
+					FormatThen(edits, source, statement.condition, statement.thenToken, thenStyle, trimTrailingWhitespace, coveredTrailingLines)
+				End If
+			End If
+			Local elseIfClause:TElseIfClauseSyntax = TElseIfClauseSyntax(node)
+			If elseIfClause Then FormatThen(edits, source, elseIfClause.condition, elseIfClause.thenToken, thenStyle, trimTrailingWhitespace, coveredTrailingLines)
+			Local terminator:TBlockTerminatorSyntax = TBlockTerminatorSyntax(node)
+			If terminator Then FormatEnd(edits, source, terminator, endStyle)
+		Next
+		If declarationBlankLines <> "preserve" Or controlBlankLines <> "preserve" Then FormatBlankLines(edits, source, navigator, declarationBlankLines, controlBlankLines, coveredTrailingLines)
+		If formatIndent Then FormatIndentation(edits, source, parsed.syntaxTree.root.tokens, navigator, tabSize, insertSpaces, caseIndent, expandedLines)
+		If trimTrailingWhitespace Then FormatTrailingWhitespace(edits, source, parsed.syntaxTree.root.tokens, expandedLines, coveredTrailingLines)
+		For Local index:Int = 0 Until spacingEdits.Size()
+			Local edit:TJSONObject = TJSONObject(spacingEdits.Get(index))
+			Local range:TJSONObject = TJSONObject(edit.Get("range"))
+			Local startPosition:TJSONObject = TJSONObject(range.Get("start"))
+			If Not expandedLines.Contains(String(startPosition.GetInteger("line"))) Then edits.Append(edit)
+		Next
+		Return ProtectMultilineStrings(edits, source, parsed.syntaxTree.root.tokens)
+	End Function
+
+	Function FormatBlankLines(edits:TJSONArray, source:TSourceText, navigator:TSyntaxNavigator, declarationStyle:String, controlStyle:String, coveredTrailingLines:TMap)
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local siblings:TSyntaxNode[]
+			Local unit:TCompilationUnitSyntax = TCompilationUnitSyntax(node)
+			If unit Then siblings = unit.members
+			Local block:TBlockSyntax = TBlockSyntax(node)
+			If block Then siblings = block.statements
+			If siblings.length < 2 Then Continue
+			For Local index:Int = 0 Until siblings.length - 1
+				Local current:TSyntaxNode = siblings[index]
+				Local following:TSyntaxNode = siblings[index + 1]
+				If Not current Or Not following Or Not current.span Or Not following.span Then Continue
+				Local style:String
+				If TRoutineDeclarationSyntax(current) Or TTypeDeclarationSyntax(current) Or TEnumDeclarationSyntax(current) Or TExternBlockSyntax(current) Then
+					style = declarationStyle
+				Else If TIfStatementSyntax(current) Or TForStatementSyntax(current) Or TWhileStatementSyntax(current) Or TRepeatStatementSyntax(current) Or TSelectStatementSyntax(current) Or TTryStatementSyntax(current) Or TUsingStatementSyntax(current) Then
+					style = controlStyle
+				End If
+				If style <> "one" And style <> "none" Then Continue
+				Local finish:Int = current.span.EndOffset()
+				Local start:Int = following.span.start
+				If finish >= start Then Continue
+				Local closeLine:Int = source.Position(Max(0, finish - 1)).line
+				Local nextLine:Int = source.Position(start).line
+				If nextLine <= closeLine Then Continue
+				Local lineEnd:Int = source.Offset(closeLine, 2147483647)
+				Local nextLineStart:Int = source.Offset(nextLine, 0)
+				If finish > lineEnd Or nextLineStart < lineEnd Then Continue
+				' Leave comments, directives and other content between siblings in place.
+				Local onlyWhitespace:Int = True
+				For Local offset:Int = lineEnd Until nextLineStart
+					Local character:Int = source.text[offset]
+					If character <> 32 And character <> 9 And character <> 10 And character <> 13 Then onlyWhitespace = False; Exit
+				Next
+				If Not onlyWhitespace Then Continue
+				Local newline:String = "~n"
+				If lineEnd < source.text.length And source.text[lineEnd] = 13 Then newline = "~r~n"
+				Local desired:String = newline
+				If style = "one" Then desired :+ newline
+				If source.text[lineEnd..nextLineStart] = desired Then Continue
+				AppendEdit(edits, source, lineEnd, nextLineStart, desired)
+				For Local line:Int = closeLine + 1 Until nextLine
+					coveredTrailingLines.Insert(String(line), String(line))
+				Next
+			Next
+		Next
+	End Function
+
+	Function FormatOperatorSpacing(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, assignmentStyle:String, binaryStyle:String)
+		If (assignmentStyle <> "spaced" And assignmentStyle <> "compact") And (binaryStyle <> "spaced" And binaryStyle <> "compact") Then Return
+		Local tokenIndexes:TMap = New TMap
+		For Local index:Int = 0 Until tokens.length
+			tokenIndexes.Insert(String(tokens[index].span.start), String(index))
+		Next
+		Local seen:TMap = New TMap
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local operatorToken:TSyntaxToken
+			Local style:String
+			Local assignment:TAssignmentStatementSyntax = TAssignmentStatementSyntax(node)
+			If assignment Then operatorToken = assignment.operatorToken; style = assignmentStyle
+			Local declarator:TVariableDeclaratorSyntax = TVariableDeclaratorSyntax(node)
+			If declarator Then operatorToken = declarator.assignmentToken; style = assignmentStyle
+			Local parameter:TParameterSyntax = TParameterSyntax(node)
+			If parameter Then operatorToken = parameter.assignmentToken; style = assignmentStyle
+			Local enumValue:TEnumValueSyntax = TEnumValueSyntax(node)
+			If enumValue Then operatorToken = enumValue.assignmentToken; style = assignmentStyle
+			Local forHeader:TForHeaderSyntax = TForHeaderSyntax(node)
+			If forHeader Then operatorToken = forHeader.assignmentToken; style = assignmentStyle
+			Local binary:TBinaryExpressionSyntax = TBinaryExpressionSyntax(node)
+			If binary Then operatorToken = binary.operatorToken; style = binaryStyle
+			If Not operatorToken Or (style <> "spaced" And style <> "compact") Then Continue
+			Local key:String = String(operatorToken.span.start)
+			If seen.Contains(key) Or Not tokenIndexes.Contains(key) Then Continue
+			seen.Insert(key, key)
+			Local index:Int = Int(String(tokenIndexes.ValueForKey(key)))
+			If index = 0 Or index >= tokens.length - 1 Then Continue
+			Local previous:TSyntaxToken = tokens[index - 1]
+			Local following:TSyntaxToken = tokens[index + 1]
+			If previous.kind = TOKEN_NEWLINE Or following.kind = TOKEN_NEWLINE Then Continue
+			If following.text = ".." Or following.text = "_" Then Continue
+			Local line:Int = source.Position(operatorToken.span.start).line
+			If source.Position(previous.span.start).line <> line Or source.Position(following.span.start).line <> line Then Continue
+			Local replacement:String = " "
+			If style = "compact" And CanCompactOperator(previous, operatorToken, following) Then replacement = ""
+			FormatHorizontalGap(edits, source, previous, operatorToken, replacement)
+			FormatHorizontalGap(edits, source, operatorToken, following, replacement)
+		Next
+	End Function
+
+	Function CanCompactOperator:Int(previous:TSyntaxToken, operatorToken:TSyntaxToken, following:TSyntaxToken)
+		If previous.kind = TOKEN_MULTILINE_STRING_LITERAL Or following.kind = TOKEN_MULTILINE_STRING_LITERAL Then Return False
+		Local lexed:TSyntaxToken[] = TBlitzMaxLexer.Lex(previous.text + operatorToken.text + following.text).tokens
+		If lexed.length <> 4 Then Return False
+		If lexed[0].kind <> previous.kind Or lexed[0].text <> previous.text Then Return False
+		If lexed[1].kind <> operatorToken.kind Or lexed[1].text <> operatorToken.text Then Return False
+		If lexed[2].kind <> following.kind Or lexed[2].text <> following.text Then Return False
+		Return lexed[3].kind = TOKEN_EOF
+	End Function
+
+	Function FormatCommaSpacing(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[])
+		For Local index:Int = 0 Until tokens.length - 1
+			Local comma:TSyntaxToken = tokens[index]
+			If comma.kind <> TOKEN_SYMBOL Or comma.text <> "," Then Continue
+			Local start:Int
+			Local finish:Int
+			If CommaSpacingRange(source, tokens, index, start, finish) Then AppendEdit(edits, source, start, finish, " ")
+		Next
+	End Function
+
+	Function CommaSpacingRange:Int(source:TSourceText, tokens:TSyntaxToken[], index:Int, start:Int Var, finish:Int Var)
+		Local comma:TSyntaxToken = tokens[index]
+		If comma.kind <> TOKEN_SYMBOL Or comma.text <> "," Then Return False
+		Local nextToken:TSyntaxToken = tokens[index + 1]
+		If nextToken.kind = TOKEN_EOF Or nextToken.kind = TOKEN_NEWLINE Then Return False
+		If nextToken.text = ")" Or nextToken.text = "]" Or nextToken.text = "}" Or nextToken.text = ";" Then Return False
+		If source.Position(comma.span.start).line <> source.Position(nextToken.span.start).line Then Return False
+		start = comma.span.EndOffset()
+		finish = nextToken.span.start
+		Local gap:String = source.text[start..finish]
+		For Local character:Int = 0 Until gap.length
+			If gap[character] <> 32 And gap[character] <> 9 Then Return False
+		Next
+		Return gap <> " "
+	End Function
+
+	Function FormatDelimiterSpacing(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, braceStyle:String, callStyle:String)
+		Local tokenIndexes:TMap = New TMap
+		Local braceStack:Int[]
+		For Local index:Int = 0 Until tokens.length
+			Local token:TSyntaxToken = tokens[index]
+			tokenIndexes.Insert(String(token.span.start), String(index))
+			If token.text = "{" Then
+				braceStack :+ [index]
+			Else If token.text = "}" And braceStack.length Then
+				Local openIndex:Int = braceStack[braceStack.length - 1]
+				braceStack = braceStack[..braceStack.length - 1]
+				FormatDelimiterPair(edits, source, tokens, openIndex, index, braceStyle)
+			End If
+		Next
+		Local seen:TMap = New TMap
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local openToken:TSyntaxToken
+			Local closeToken:TSyntaxToken
+			Local call:TCallExpressionSyntax = TCallExpressionSyntax(node)
+			If call Then openToken = call.openToken; closeToken = call.closeToken
+			Local constructor:TNewExpressionSyntax = TNewExpressionSyntax(node)
+			If constructor Then openToken = constructor.openParenToken; closeToken = constructor.closeParenToken
+			If Not openToken Or Not closeToken Then Continue
+			Local key:String = String(openToken.span.start)
+			If seen.Contains(key) Or Not tokenIndexes.Contains(key) Or Not tokenIndexes.Contains(String(closeToken.span.start)) Then Continue
+			seen.Insert(key, key)
+			FormatDelimiterPair(edits, source, tokens, Int(String(tokenIndexes.ValueForKey(key))), Int(String(tokenIndexes.ValueForKey(String(closeToken.span.start)))), callStyle)
+		Next
+	End Function
+
+	Function FormatDelimiterPair(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], openIndex:Int, closeIndex:Int, style:String)
+		If style <> "spaced" And style <> "compact" Then Return
+		If closeIndex <= openIndex + 1 Then Return
+		If source.Position(tokens[openIndex].span.start).line <> source.Position(tokens[closeIndex].span.start).line Then Return
+		Local replacement:String
+		If style = "spaced" Then replacement = " "
+		FormatHorizontalGap(edits, source, tokens[openIndex], tokens[openIndex + 1], replacement)
+		FormatHorizontalGap(edits, source, tokens[closeIndex - 1], tokens[closeIndex], replacement)
+	End Function
+
+	Function FormatHorizontalGap(edits:TJSONArray, source:TSourceText, left:TSyntaxToken, right:TSyntaxToken, replacement:String)
+		Local start:Int = left.span.EndOffset()
+		Local finish:Int = right.span.start
+		If source.Position(start).line <> source.Position(finish).line Then Return
+		Local gap:String = source.text[start..finish]
+		For Local character:Int = 0 Until gap.length
+			If gap[character] <> 32 And gap[character] <> 9 Then Return
+		Next
+		If gap <> replacement Then AppendEdit(edits, source, start, finish, replacement)
+	End Function
+
+	Function TextWithEdits:String(source:TSourceText, start:Int, finish:Int, edits:TJSONArray)
+		Local result:String = source.text[start..finish]
+		Local preceding:Int = finish + 1
+		For Local count:Int = 0 Until edits.Size()
+			Local chosen:TJSONObject
+			Local chosenStart:Int = -1
+			Local chosenEnd:Int
+			For Local index:Int = 0 Until edits.Size()
+				Local edit:TJSONObject = TJSONObject(edits.Get(index))
+				Local range:TJSONObject = TJSONObject(edit.Get("range"))
+				Local startPosition:TJSONObject = TJSONObject(range.Get("start"))
+				Local endPosition:TJSONObject = TJSONObject(range.Get("end"))
+				Local editStart:Int = TLspPositions.Offset(source, Int(startPosition.GetInteger("line")), Int(startPosition.GetInteger("character")))
+				Local editEnd:Int = TLspPositions.Offset(source, Int(endPosition.GetInteger("line")), Int(endPosition.GetInteger("character")))
+				If editStart < start Or editEnd > finish Or editStart >= preceding Or editStart <= chosenStart Then Continue
+				chosen = edit
+				chosenStart = editStart
+				chosenEnd = editEnd
+			Next
+			If Not chosen Then Exit
+			result = result[..chosenStart - start] + chosen.GetString("newText") + result[chosenEnd - start..]
+			preceding = chosenStart
+		Next
+		Return result
+	End Function
+
+	' The whitespace before a triple-quoted string's closing delimiter is part
+	' of its value. Leave every physical line occupied by one untouched, even
+	' when another formatting rule proposes an edit on that line.
+	Function ProtectMultilineStrings:TJSONArray(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[])
+		Local safeEdits:TJSONArray = JsonArray()
+		For Local index:Int = 0 Until edits.Size()
+			Local edit:TJSONObject = TJSONObject(edits.Get(index))
+			Local range:TJSONObject = TJSONObject(edit.Get("range"))
+			Local startPosition:TJSONObject = TJSONObject(range.Get("start"))
+			Local endPosition:TJSONObject = TJSONObject(range.Get("end"))
+			Local editStart:Int = TLspPositions.Offset(source, Int(startPosition.GetInteger("line")), Int(startPosition.GetInteger("character")))
+			Local editEnd:Int = TLspPositions.Offset(source, Int(endPosition.GetInteger("line")), Int(endPosition.GetInteger("character")))
+			Local startLine:Int = source.Position(editStart).line
+			Local endLine:Int = source.Position(Max(editStart, editEnd - 1)).line
+			Local touchesString:Int
+			For Local token:TSyntaxToken = EachIn tokens
+				If token.kind <> TOKEN_MULTILINE_STRING_LITERAL Then Continue
+				Local tokenStartLine:Int = source.Position(token.span.start).line
+				Local tokenEndLine:Int = source.Position(Max(token.span.start, token.span.EndOffset() - 1)).line
+				If startLine <= tokenEndLine And endLine >= tokenStartLine Then
+					touchesString = True
+					Exit
+				End If
+			Next
+			If Not touchesString Then safeEdits.Append(edit)
+		Next
+		Return safeEdits
+	End Function
+
+	Function FormatTrailingWhitespace(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], expandedLines:TMap, coveredTrailingLines:TMap)
+		Local protectedLines:TMap = New TMap
+		For Local token:TSyntaxToken = EachIn tokens
+			If token.kind = TOKEN_MULTILINE_STRING_LITERAL Or token.kind = TOKEN_NATIVE_LINE Or token.kind = TOKEN_PRAGMA Or token.kind = TOKEN_DIRECTIVE Then MarkSpanLines(protectedLines, source, token.span)
+			If token.leadingTrivia Then
+				For Local trivia:TSyntaxTrivia = EachIn token.leadingTrivia
+					If trivia.kind = TRIVIA_BLOCK_COMMENT Then MarkSpanLines(protectedLines, source, trivia.span)
+				Next
+			End If
+			If token.trailingTrivia Then
+				For Local trivia:TSyntaxTrivia = EachIn token.trailingTrivia
+					If trivia.kind = TRIVIA_BLOCK_COMMENT Then MarkSpanLines(protectedLines, source, trivia.span)
+				Next
+			End If
+		Next
+		For Local line:Int = 0 Until source.LineCount()
+			Local key:String = String(line)
+			If protectedLines.Contains(key) Or expandedLines.Contains(key) Or coveredTrailingLines.Contains(key) Then Continue
+			Local lineStart:Int = source.Offset(line, 0)
+			Local lineEnd:Int = source.Offset(line, 2147483647)
+			Local start:Int = lineEnd
+			While start > lineStart And (source.text[start - 1] = 32 Or source.text[start - 1] = 9)
+				start :- 1
+			Wend
+			If start < lineEnd Then AppendEdit(edits, source, start, lineEnd, "")
+		Next
+	End Function
+
+	Function MarkSpanLines(lines:TMap, source:TSourceText, span:TSourceSpan)
+		If Not span Then Return
+		Local startLine:Int = source.Position(span.start).line
+		Local endLine:Int = source.Position(Max(span.start, span.EndOffset() - 1)).line
+		For Local line:Int = startLine To endLine
+			lines.Insert(String(line), String(line))
+		Next
+	End Function
+
+	Function ExpandInlineIf(edits:TJSONArray, source:TSourceText, navigator:TSyntaxNavigator, statement:TIfStatementSyntax, thenStyle:String, endStyle:String, tabSize:Int, insertSpaces:Int, formatIndent:Int, caseIndent:String, spacingEdits:TJSONArray, expandedLines:TMap)
+		If Not statement.ifToken Or Not statement.thenToken Or Not statement.thenBlock Or statement.elseClause Then Return
+		If statement.thenBlock.statements.length <> 1 Then Return
+		Local bodyStatement:TSyntaxNode = statement.thenBlock.statements[0]
+		If Not TCallStatementSyntax(bodyStatement) And Not TAssignmentStatementSyntax(bodyStatement) And Not TReturnStatementSyntax(bodyStatement) And Not TThrowStatementSyntax(bodyStatement) And Not TExitStatementSyntax(bodyStatement) And Not TContinueStatementSyntax(bodyStatement) Then Return
+		Local body:TSourceSpan = bodyStatement.span
+		If Not body Then Return
+		Local line:Int = source.Position(statement.ifToken.span.start).line
+		Local lineStart:Int = source.Offset(line, 0)
+		Local lineEnd:Int = source.Offset(line, 2147483647)
+		If source.Position(body.EndOffset()).line <> line Then Return
+		If source.text[lineStart..statement.ifToken.span.start].Trim().length Then Return
+		If source.text[body.EndOffset()..lineEnd].Trim().length Then Return
+		If source.text[statement.thenToken.span.EndOffset()..body.start].Trim().length Then Return
+		Local indent:String = source.text[lineStart..statement.ifToken.span.start]
+		If formatIndent Then indent = IndentText(IndentationDepth(navigator, statement, caseIndent), tabSize, insertSpaces)
+		Local stepIndent:String = IndentText(1, tabSize, insertSpaces)
+		Local newline:String = "~n"
+		If lineEnd < source.text.length And source.text[lineEnd] = 13 Then newline = "~r~n"
+		Local headerEnd:Int = statement.thenToken.span.EndOffset()
+		If thenStyle = "remove" Then headerEnd = statement.thenToken.span.start
+		Local header:String = TextWithEdits(source, statement.ifToken.span.start, headerEnd, spacingEdits).Trim()
+		Local ending:String = "End If"
+		If endStyle = "combined" Then ending = "EndIf"
+		Local bodyText:String = TextWithEdits(source, body.start, body.EndOffset(), spacingEdits).Trim()
+		Local expanded:String = indent + header + newline + indent + stepIndent + bodyText + newline + indent + ending
+		AppendEdit(edits, source, lineStart, lineEnd, expanded)
+		expandedLines.Insert(String(line), String(line))
+	End Function
+
+	Function FormatIndentation(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, tabSize:Int, insertSpaces:Int, caseIndent:String, expandedLines:TMap)
+		Local anchors:TMap = New TMap
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			If node.span And IsIndentationAnchor(node, navigator.Parent(node)) Then anchors.Insert(String(node.span.start), node)
+		Next
+		Local previousLine:Int = -1
+		For Local token:TSyntaxToken = EachIn tokens
+			If token.kind = TOKEN_EOF Or token.kind = TOKEN_NEWLINE Then Continue
+			Local line:Int = source.Position(token.span.start).line
+			If line = previousLine Then Continue
+			previousLine = line
+			If expandedLines.Contains(String(line)) Then Continue
+			If token.kind = TOKEN_DIRECTIVE Or token.kind = TOKEN_NATIVE_LINE Or token.kind = TOKEN_PRAGMA Or token.kind = TOKEN_MULTILINE_STRING_LITERAL Then Continue
+			Local lineStart:Int = source.Offset(line, 0)
+			If token.span.start < lineStart Then Continue
+			Local original:String = source.text[lineStart..token.span.start]
+			For Local index:Int = 0 Until original.length
+				If original[index] <> 32 And original[index] <> 9 Then original = ""; Exit
+			Next
+			If token.span.start > lineStart And Not original.length Then Continue
+			Local anchor:TSyntaxNode = TSyntaxNode(anchors.ValueForKey(String(token.span.start)))
+			If Not anchor Then Continue
+			Local desired:String = IndentText(IndentationDepth(navigator, anchor, caseIndent), tabSize, insertSpaces)
+			If original <> desired Then AppendEdit(edits, source, lineStart, token.span.start, desired)
+		Next
+	End Function
+
+	Function IndentationDepth:Int(navigator:TSyntaxNavigator, node:TSyntaxNode, caseIndent:String)
+		Local depth:Int
+		Local caseDepth:Int
+		For Local ancestor:TSyntaxNode = EachIn navigator.Ancestors(node)
+			If TBlockSyntax(ancestor) Then depth :+ 1
+			If TCaseClauseSyntax(ancestor) Or TDefaultClauseSyntax(ancestor) Then caseDepth :+ 1
+		Next
+		If caseIndent <> "aligned" Then depth :+ caseDepth
+		Return depth
+	End Function
+
+	Function IndentText:String(depth:Int, tabSize:Int, insertSpaces:Int)
+		Local unit:String = "~t"
+		If insertSpaces Then
+			unit = ""
+			For Local index:Int = 0 Until Max(1, Min(tabSize, 16)); unit :+ " "; Next
+		End If
+		Local result:String
+		For Local index:Int = 0 Until depth; result :+ unit; Next
+		Return result
+	End Function
+
+	Function IsIndentationAnchor:Int(node:TSyntaxNode, parent:TSyntaxNode)
+		If TBlockSyntax(parent) Or TCompilationUnitSyntax(parent) Then Return True
+		If TBlockTerminatorSyntax(node) Or TElseIfClauseSyntax(node) Or TElseClauseSyntax(node) Or TCaseClauseSyntax(node) Or TDefaultClauseSyntax(node) Or TCatchClauseSyntax(node) Or TFinallyClauseSyntax(node) Then Return True
+		Return False
+	End Function
+
+	Function FormatThen(edits:TJSONArray, source:TSourceText, condition:TExpressionSyntax, thenToken:TSyntaxToken, style:String, trimTrailingWhitespace:Int, coveredTrailingLines:TMap)
+		If Not condition Or Not condition.span Then Return
+		If style = "add" And Not thenToken Then
+			Local finish:Int = condition.span.EndOffset()
+			Local line:Int = source.Position(finish).line
+			Local lineEnd:Int = source.Offset(line, 2147483647)
+			' Only add Then when the rest of the physical header is whitespace or
+			' a comment. An unrecognised trailing token is left untouched.
+			Local tail:String = source.text[finish..lineEnd].Trim()
+			If tail.length And Not tail.StartsWith("'") Then Return
+			If trimTrailingWhitespace And Not tail.length And lineEnd > finish Then
+				AppendEdit(edits, source, finish, lineEnd, " Then")
+				coveredTrailingLines.Insert(String(line), String(line))
+			Else
+				AppendEdit(edits, source, finish, finish, " Then")
+			End If
+		Else If style = "remove" And thenToken Then
+			Local start:Int = thenToken.span.start
+			While start > condition.span.EndOffset() And (source.text[start - 1] = 32 Or source.text[start - 1] = 9)
+				start :- 1
+			Wend
+			AppendEdit(edits, source, start, thenToken.span.EndOffset(), "")
+		End If
+	End Function
+
+	Function FormatEnd(edits:TJSONArray, source:TSourceText, terminator:TBlockTerminatorSyntax, style:String)
+		If Not terminator.endToken Or Not terminator.endToken.span Then Return
+		If style = "combined" And terminator.blockToken Then
+			Local start:Int = terminator.endToken.span.EndOffset()
+			Local finish:Int = terminator.blockToken.span.start
+			' Comments and newlines between End and the block name are significant.
+			For Local index:Int = start Until finish
+				If source.text[index] <> 32 And source.text[index] <> 9 Then Return
+		Next
+			AppendEdit(edits, source, start, finish, "")
+		Else If style = "spaced" And Not terminator.blockToken Then
+			Local original:String = terminator.endToken.text
+			If original.ToLower().StartsWith("end") And original.length > 3 Then
+				AppendEdit(edits, source, terminator.endToken.span.start + 3, terminator.endToken.span.start + 3, " ")
+			End If
+		End If
+	End Function
+
+	Function AppendEdit(edits:TJSONArray, source:TSourceText, start:Int, finish:Int, replacement:String)
+		Local edit:TJSONObject = JsonObject()
+		edit.Set("range", TLspPositions.Range(source, TSourceSpan.Create(start, finish - start)))
+		edit.Set("newText", replacement)
+		edits.Append(edit)
+	End Function
+End Type
