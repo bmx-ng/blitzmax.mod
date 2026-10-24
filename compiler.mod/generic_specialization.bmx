@@ -6460,6 +6460,7 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitStaticFieldInitializers:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, indent:String, threadedOnly:Int = False)
 		If Not ir Then Return ""
 		Local result:String
+		Local temporaries:TMap = New TMap
 		For Local staticField:TCompilerGenericFieldIr = EachIn ir.staticFields
 			If staticField.declaringSpecialization And staticField.declaringSpecialization <> ir.specialization Then Continue
 			If threadedOnly And Not staticField.isThreadedGlobal Then Continue
@@ -6474,6 +6475,7 @@ Type TCompilerGenericCUnitEmitter
 				Local indexName:String = "bmx_static_" + TCompilerAbiNamer.Sanitize(staticField.name.ToLower()) + "_index"
 				result :+ indent + "for (BBUINT " + indexName + " = 0; " + indexName + " < (BBUINT)" + staticField.semanticType.staticArrayLength + "; ++" + indexName + ") " + staticField.abiName + "[" + indexName + "] = " + elementDefault + ";~n"
 			Else
+				result :+ EmitArrayLiteralTemporaryDeclarations(staticField.initializer, temporaries, ir, indent)
 				result :+ indent + staticField.abiName + " = " + FieldInitializerValue(staticField, ir, diagnostics) + ";~n"
 			End If
 		Next
