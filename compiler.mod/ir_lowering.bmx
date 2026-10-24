@@ -1076,7 +1076,14 @@ Type TCompilerIrLowerer
 				EnsureImportedRuntimeClass(value.runtimeAbiName)
 				Return "@runtime-class:" + value.runtimeAbiName
 			End If
-			If value.runtimeKind = TEMPLATE_RUNTIME_INTERFACE And value.runtimeAbiName.length Then Return "@runtime-interface:" + value.runtimeAbiName
+			If value.runtimeKind = TEMPLATE_RUNTIME_INTERFACE And value.runtimeAbiName.length Then
+				Local runtimeType:String = "@runtime-interface:" + value.runtimeAbiName
+				' A generic specialization can carry an interface supplied by an
+				' imported module without otherwise referring to that interface in
+				' this source unit. Make its managed ABI visible to the C backend.
+				If Not EnsureImportedRuntimeInterface(value.runtimeAbiName) Then RegisterOpaqueInterfaceType(runtimeType)
+				Return runtimeType
+			End If
 			If value.runtimeKind = TEMPLATE_RUNTIME_STRUCT And value.runtimeAbiName.length Then
 				EnsureImportedRuntimeStruct(value.runtimeAbiName)
 				Return "@runtime-struct:" + value.runtimeAbiName
