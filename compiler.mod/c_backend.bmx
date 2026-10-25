@@ -7756,6 +7756,7 @@ Type TCompilerCBackend
 		While materialization
 			RegisterTemporary(materialization)
 			result :+ indent + TemporaryName(materialization.temporaryId) + " = " + EmitExpression(materialization.value) + ";~n"
+			result :+ EmitGdbLineDirective(assignment.source, indent)
 			preparedTemporaryValues.Insert(materialization.temporaryId, materialization)
 			target = materialization.expression
 			materialization = TCompilerIrMaterialize(target)
@@ -7765,6 +7766,7 @@ Type TCompilerCBackend
 		While materialization
 			RegisterTemporary(materialization)
 			result :+ indent + TemporaryName(materialization.temporaryId) + " = " + EmitExpression(materialization.value) + ";~n"
+			result :+ EmitGdbLineDirective(assignment.source, indent)
 			preparedTemporaryValues.Insert(materialization.temporaryId, materialization)
 			valueExpression = materialization.expression
 			materialization = TCompilerIrMaterialize(valueExpression)

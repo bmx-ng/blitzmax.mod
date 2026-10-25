@@ -7929,6 +7929,17 @@ Type TCompilerIrLowerer
 		Local chainedImported:TCompilerIrImportedConstructor
 		If Not chained Then chainedImported = ImportedConstructor(symbol, useSyntax)
 		If Not chained And Not chainedImported Then Return Null
+		' An inherited constructor may be declared more than one level above the
+		' allocated Type.  Preserve an initializer layer for every intervening
+		' source Type instead of chaining the most-derived wrapper straight to the
+		' declaring ancestor and leaving the intermediate fields uninitialized.
+		If owner.baseClassId.length And (Not chained Or chained.ownerClassId <> owner.baseClassId) Then
+			Local baseOwner:TCompilerIrClass = ClassById(owner.baseClassId)
+			Local inheritedBase:TCompilerIrFunction = InheritedConstructor(baseOwner, symbol, useSyntax)
+			If Not inheritedBase Then Return Null
+			chained = inheritedBase
+			chainedImported = Null
+		End If
 		Local routine:TCompilerIrFunction = New TCompilerIrFunction
 		routine.functionId = "fn" + nextFunctionId
 		nextFunctionId :+ 1
