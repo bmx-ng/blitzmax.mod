@@ -25,9 +25,23 @@ interface and build-artifact emission, and the native C backend.
 Import BlitzMax.Compiler
 ```
 
+### BlitzMax.Format
+
+Formats BlitzMax source with parser-aware rules. It accepts source text and a
+`TBlitzMaxFormatOptions` object, and returns either formatted text or edits
+using source offsets. It does not require an LSP document or editor.
+
+```blitzmax
+Import BlitzMax.Format
+
+Local options:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
+options.thenStyle = "add"
+Local formatted:String = TBlitzMaxFormatter.FormatText(source, "example.bmx", options)
+```
+
 ### BlitzMax.LSP
 
-Builds on `BlitzMax.Language` with reusable Language Server Protocol support,
+Builds on `BlitzMax.Language` and `BlitzMax.Format` with reusable Language Server Protocol support,
 including diagnostics, completion, hover, navigation, rename, references,
 semantic tokens, inlay hints, workspace symbols, and installed-module
 discovery.
@@ -40,6 +54,8 @@ The dependency direction is intentionally one-way:
 
 ```text
 BlitzMax.Compiler -> BlitzMax.Language
+BlitzMax.Format   -> BlitzMax.Language
+BlitzMax.LSP      -> BlitzMax.Format
 BlitzMax.LSP      -> BlitzMax.Language
 ```
 
@@ -56,6 +72,7 @@ BlitzMax/
     blitzmax.mod/
       language.mod/
       compiler.mod/
+      format.mod/
       lsp.mod/
 ```
 
@@ -64,6 +81,7 @@ Build the modules with bmk2, for example:
 ```sh
 bmk makemods -a -r BlitzMax.Language
 bmk makemods -a -r BlitzMax.Compiler
+bmk makemods -a -r BlitzMax.Format
 bmk makemods -a -r BlitzMax.LSP
 ```
 

@@ -1,0 +1,59 @@
+BlitzMax.Format formats BlitzMax source text using the syntax model in
+#BlitzMax.Language. It does not depend on the language server or an editor.
+
+Create a #TBlitzMaxFormatOptions object to select formatting rules. A new
+options object contains the defaults. Pass it to #TBlitzMaxFormatter.FormatText
+to receive formatted text, or call #TBlitzMaxFormatter.Query to receive
+#TBlitzMaxFormatEdits for an editor or another tool to apply.
+
+## Format source text
+
+Import the module, set only the options you want to change, and pass it a
+source String. The formatter does not modify the original String.
+
+```blitzmax
+SuperStrict
+
+Framework BRL.StandardIO
+Import BlitzMax.Format
+
+Local source:String = "SuperStrict~nIf True~nPrint ~qhello~q~nEnd If~n"
+Local options:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
+options.thenStyle = "add"
+
+Local formatted:String = TBlitzMaxFormatter.FormatText(source, "example.bmx", options)
+Print formatted
+```
+
+This adds `Then` and indents the `Print` statement using the default tab style.
+The formatted source is:
+
+```blitzmax
+SuperStrict
+If True Then
+	Print "hello"
+End If
+```
+
+## Work with edits
+
+An editor can request edits and apply them itself. Using the `source` and
+`options` from the example above:
+
+```blitzmax
+Local edits:TBlitzMaxFormatEdits = TBlitzMaxFormatter.Query(source, "example.bmx", options)
+For Local edit:TBlitzMaxFormatEdit = EachIn edits.items
+	Print String(edit.start) + ".." + String(edit.finish) + ": " + edit.newText
+Next
+
+' Apply all edits in one step when a formatted String is needed.
+Local formattedFromEdits:String = edits.Apply(source)
+```
+
+Edit start and finish positions are offsets into the original BlitzMax String.
+Call #TBlitzMaxFormatEdits.Apply to apply all returned edits safely. Protocol
+clients can convert these offsets to their own position encoding.
+
+If the parser reports syntax errors, the formatter returns no edits and
+FormatText returns the source unchanged. Multiline string contents and other
+protected source regions retain their layout.

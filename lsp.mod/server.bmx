@@ -5,6 +5,7 @@ SuperStrict
 
 Import BRL.FileSystem
 Import BRL.TextStream
+Import BlitzMax.Format
 Import BlitzMax.Locale
 Import Text.Json
 Import "protocol.bmx"
@@ -27,7 +28,6 @@ Import "rename.bmx"
 Import "document_links.bmx"
 Import "references.bmx"
 Import "code_actions.bmx"
-Import "formatting.bmx"
 
 Const LSP_STATE_CREATED:Int = 0
 Const LSP_STATE_INITIALIZED:Int = 1
@@ -346,7 +346,7 @@ Type TBlitzMaxLspServer
 		capabilities.Set("workspace", workspace)
 		Local serverInfo:TJSONObject = JsonObject()
 		serverInfo.Set("name", "BlitzMax Language Server")
-		serverInfo.Set("version", "0.24.14")
+		serverInfo.Set("version", "0.24.15")
 		Local result:TJSONObject = JsonObject()
 		result.Set("capabilities", capabilities)
 		result.Set("serverInfo", serverInfo)
@@ -398,15 +398,23 @@ Type TBlitzMaxLspServer
 
 	Method FormatDocumentEdits:TJSONArray(document:TLspDocument, params:TJSONObject)
 		Local workspace:TLspWorkspaceContext = DocumentWorkspace(document)
-		Local options:TJSONObject = TJSONObject(params.Get("options"))
-		Local tabSize:Int = 4
-		Local insertSpaces:Int
-		If options Then
-			tabSize = Int(options.GetInteger("tabSize"))
-			insertSpaces = options.GetBool("insertSpaces")
+		Local options:TBlitzMaxFormatOptions = workspace.configuration.formatOptions.Copy()
+		Local editorOptions:TJSONObject = TJSONObject(params.Get("options"))
+		If editorOptions Then
+			options.tabSize = Int(editorOptions.GetInteger("tabSize"))
+			options.insertSpaces = editorOptions.GetBool("insertSpaces")
 		End If
-		Local edits:TJSONArray = TBlitzMaxLspFormatting.Query(document, workspace.configuration.formatThenStyle, workspace.configuration.formatEndStyle, workspace.configuration.formatInlineIfStyle, tabSize, insertSpaces, workspace.configuration.formatIndent, workspace.configuration.formatSpaceAfterComma, workspace.configuration.formatCaseIndent, workspace.configuration.formatMetadataBraceSpacing, workspace.configuration.formatCallParenSpacing, workspace.configuration.formatAssignmentSpacing, workspace.configuration.formatBinarySpacing, workspace.configuration.formatTrimTrailingWhitespace, workspace.configuration.formatDeclarationBlankLines, workspace.configuration.formatControlBlankLines)
-		Return edits
+		Local nativeEdits:TBlitzMaxFormatEdits = TBlitzMaxFormatter.Query(document.text, document.path, options)
+		Local source:TSourceText = TSourceText.Create(document.text, document.path)
+		Local result:TJSONArray = JsonArray()
+		For Local index:Int = 0 Until nativeEdits.Size()
+			Local nativeEdit:TBlitzMaxFormatEdit = nativeEdits.Get(index)
+			Local edit:TJSONObject = JsonObject()
+			edit.Set("range", TLspPositions.Range(source, TSourceSpan.Create(nativeEdit.start, nativeEdit.finish - nativeEdit.start)))
+			edit.Set("newText", nativeEdit.newText)
+			result.Append(edit)
+		Next
+		Return result
 	End Method
 
 	Method Definition:String[](id:TJSON, params:TJSONObject)

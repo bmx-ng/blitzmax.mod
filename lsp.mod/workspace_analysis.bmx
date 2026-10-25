@@ -9,6 +9,7 @@ Import BRL.MaxUtil
 Import BRL.Stream
 Import BRL.TextStream
 Import Text.Json
+Import BlitzMax.Format
 Import BlitzMax.Language
 Import "protocol.bmx"
 Import "documents.bmx"
@@ -24,19 +25,7 @@ Type TLspWorkspaceConfiguration
 	Field useDependencySnapshots:Int = True
 	Field warnImplicitDefaultReturns:Int
 	Field noAutoSuperStrict:Int
-	Field formatThenStyle:String = "preserve"
-	Field formatEndStyle:String = "preserve"
-	Field formatInlineIfStyle:String = "preserve"
-	Field formatIndent:Int = True
-	Field formatSpaceAfterComma:Int = True
-	Field formatCaseIndent:String = "indented"
-	Field formatMetadataBraceSpacing:String = "preserve"
-	Field formatCallParenSpacing:String = "preserve"
-	Field formatAssignmentSpacing:String = "preserve"
-	Field formatBinarySpacing:String = "preserve"
-	Field formatTrimTrailingWhitespace:Int = True
-	Field formatDeclarationBlankLines:String = "preserve"
-	Field formatControlBlankLines:String = "preserve"
+	Field formatOptions:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
 
 	Function CreateDefault:TLspWorkspaceConfiguration()
 		Local result:TLspWorkspaceConfiguration = New TLspWorkspaceConfiguration
@@ -61,19 +50,7 @@ Type TLspWorkspaceConfiguration
 		result.useDependencySnapshots = useDependencySnapshots
 		result.warnImplicitDefaultReturns = warnImplicitDefaultReturns
 		result.noAutoSuperStrict = noAutoSuperStrict
-		result.formatThenStyle = formatThenStyle
-		result.formatEndStyle = formatEndStyle
-		result.formatInlineIfStyle = formatInlineIfStyle
-		result.formatIndent = formatIndent
-		result.formatSpaceAfterComma = formatSpaceAfterComma
-		result.formatCaseIndent = formatCaseIndent
-		result.formatMetadataBraceSpacing = formatMetadataBraceSpacing
-		result.formatCallParenSpacing = formatCallParenSpacing
-		result.formatAssignmentSpacing = formatAssignmentSpacing
-		result.formatBinarySpacing = formatBinarySpacing
-		result.formatTrimTrailingWhitespace = formatTrimTrailingWhitespace
-		result.formatDeclarationBlankLines = formatDeclarationBlankLines
-		result.formatControlBlankLines = formatControlBlankLines
+		result.formatOptions = formatOptions.Copy()
 		Return result
 	End Method
 
@@ -88,19 +65,19 @@ Type TLspWorkspaceConfiguration
 		If settings.Get("useDependencySnapshots") Then useDependencySnapshots = settings.GetBool("useDependencySnapshots")
 		If settings.Get("warnImplicitDefaultReturns") Then warnImplicitDefaultReturns = settings.GetBool("warnImplicitDefaultReturns")
 		If settings.Get("noAutoSuperStrict") Then noAutoSuperStrict = settings.GetBool("noAutoSuperStrict")
-		If settings.Get("formatThenStyle") Then formatThenStyle = settings.GetString("formatThenStyle").ToLower()
-		If settings.Get("formatEndStyle") Then formatEndStyle = settings.GetString("formatEndStyle").ToLower()
-		If settings.Get("formatInlineIfStyle") Then formatInlineIfStyle = settings.GetString("formatInlineIfStyle").ToLower()
-		If settings.Get("formatIndent") Then formatIndent = settings.GetBool("formatIndent")
-		If settings.Get("formatSpaceAfterComma") Then formatSpaceAfterComma = settings.GetBool("formatSpaceAfterComma")
-		If settings.Get("formatCaseIndent") Then formatCaseIndent = settings.GetString("formatCaseIndent").ToLower()
-		If settings.Get("formatMetadataBraceSpacing") Then formatMetadataBraceSpacing = settings.GetString("formatMetadataBraceSpacing").ToLower()
-		If settings.Get("formatCallParenSpacing") Then formatCallParenSpacing = settings.GetString("formatCallParenSpacing").ToLower()
-		If settings.Get("formatAssignmentSpacing") Then formatAssignmentSpacing = settings.GetString("formatAssignmentSpacing").ToLower()
-		If settings.Get("formatBinarySpacing") Then formatBinarySpacing = settings.GetString("formatBinarySpacing").ToLower()
-		If settings.Get("formatTrimTrailingWhitespace") Then formatTrimTrailingWhitespace = settings.GetBool("formatTrimTrailingWhitespace")
-		If settings.Get("formatDeclarationBlankLines") Then formatDeclarationBlankLines = settings.GetString("formatDeclarationBlankLines").ToLower()
-		If settings.Get("formatControlBlankLines") Then formatControlBlankLines = settings.GetString("formatControlBlankLines").ToLower()
+		If settings.Get("formatThenStyle") Then formatOptions.thenStyle = settings.GetString("formatThenStyle").ToLower()
+		If settings.Get("formatEndStyle") Then formatOptions.endStyle = settings.GetString("formatEndStyle").ToLower()
+		If settings.Get("formatInlineIfStyle") Then formatOptions.inlineIfStyle = settings.GetString("formatInlineIfStyle").ToLower()
+		If settings.Get("formatIndent") Then formatOptions.indent = settings.GetBool("formatIndent")
+		If settings.Get("formatSpaceAfterComma") Then formatOptions.spaceAfterComma = settings.GetBool("formatSpaceAfterComma")
+		If settings.Get("formatCaseIndent") Then formatOptions.caseIndent = settings.GetString("formatCaseIndent").ToLower()
+		If settings.Get("formatMetadataBraceSpacing") Then formatOptions.metadataBraceSpacing = settings.GetString("formatMetadataBraceSpacing").ToLower()
+		If settings.Get("formatCallParenSpacing") Then formatOptions.callParenSpacing = settings.GetString("formatCallParenSpacing").ToLower()
+		If settings.Get("formatAssignmentSpacing") Then formatOptions.assignmentSpacing = settings.GetString("formatAssignmentSpacing").ToLower()
+		If settings.Get("formatBinarySpacing") Then formatOptions.binarySpacing = settings.GetString("formatBinarySpacing").ToLower()
+		If settings.Get("formatTrimTrailingWhitespace") Then formatOptions.trimTrailingWhitespace = settings.GetBool("formatTrimTrailingWhitespace")
+		If settings.Get("formatDeclarationBlankLines") Then formatOptions.declarationBlankLines = settings.GetString("formatDeclarationBlankLines").ToLower()
+		If settings.Get("formatControlBlankLines") Then formatOptions.controlBlankLines = settings.GetString("formatControlBlankLines").ToLower()
 		Local symbols:TJSONArray = TJSONArray(settings.Get("conditionalSymbols"))
 		If symbols Then
 			conditionalSymbols = New String[symbols.Size()]
