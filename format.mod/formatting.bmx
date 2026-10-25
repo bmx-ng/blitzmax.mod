@@ -3,34 +3,137 @@
 
 SuperStrict
 
-Import Text.Json
 Import BRL.Map
 Import BlitzMax.Language
-Import "documents.bmx"
-Import "positions.bmx"
+
+Rem
+bbdoc: Configures parser-aware formatting independently of an editor.
+about: A new instance contains the default styles; copy it before applying temporary overrides.
+End Rem
+Type TBlitzMaxFormatOptions
+	Field thenStyle:String = "preserve"
+	Field endStyle:String = "preserve"
+	Field inlineIfStyle:String = "preserve"
+	Field tabSize:Int = 4
+	Field insertSpaces:Int
+	Field indent:Int = True
+	Field spaceAfterComma:Int = True
+	Field caseIndent:String = "indented"
+	Field metadataBraceSpacing:String = "preserve"
+	Field callParenSpacing:String = "preserve"
+	Field assignmentSpacing:String = "preserve"
+	Field binarySpacing:String = "preserve"
+	Field trimTrailingWhitespace:Int = True
+	Field declarationBlankLines:String = "preserve"
+	Field controlBlankLines:String = "preserve"
+
+	Method Copy:TBlitzMaxFormatOptions()
+		Local result:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
+		result.thenStyle = thenStyle
+		result.endStyle = endStyle
+		result.inlineIfStyle = inlineIfStyle
+		result.tabSize = tabSize
+		result.insertSpaces = insertSpaces
+		result.indent = indent
+		result.spaceAfterComma = spaceAfterComma
+		result.caseIndent = caseIndent
+		result.metadataBraceSpacing = metadataBraceSpacing
+		result.callParenSpacing = callParenSpacing
+		result.assignmentSpacing = assignmentSpacing
+		result.binarySpacing = binarySpacing
+		result.trimTrailingWhitespace = trimTrailingWhitespace
+		result.declarationBlankLines = declarationBlankLines
+		result.controlBlankLines = controlBlankLines
+		Return result
+	End Method
+End Type
+
+Rem
+bbdoc: A replacement using offsets into the original source String.
+End Rem
+Type TBlitzMaxFormatEdit
+	Field start:Int
+	Field finish:Int
+	Field newText:String
+
+	Function Create:TBlitzMaxFormatEdit(start:Int, finish:Int, newText:String)
+		Local result:TBlitzMaxFormatEdit = New TBlitzMaxFormatEdit
+		result.start = start
+		result.finish = finish
+		result.newText = newText
+		Return result
+	End Function
+End Type
+
+Rem
+bbdoc: A collection of non-overlapping source edits.
+End Rem
+Type TBlitzMaxFormatEdits
+	Field items:TBlitzMaxFormatEdit[]
+
+	Method Append(edit:TBlitzMaxFormatEdit)
+		items :+ [edit]
+	End Method
+
+	Method Size:Int()
+		Return items.length
+	End Method
+
+	Method Get:TBlitzMaxFormatEdit(index:Int)
+		Return items[index]
+	End Method
+
+	Method Apply:String(text:String)
+		Local result:String = text
+		Local preceding:Int = text.length + 1
+		For Local count:Int = 0 Until items.length
+			Local chosen:TBlitzMaxFormatEdit
+			For Local edit:TBlitzMaxFormatEdit = EachIn items
+				If edit.start >= preceding Or (chosen And edit.start <= chosen.start) Then Continue
+				chosen = edit
+			Next
+			If Not chosen Or chosen.start < 0 Or chosen.finish < chosen.start Or chosen.finish > text.length Or chosen.finish > preceding Then Throw "Overlapping or invalid formatting edits"
+			result = result[..chosen.start] + chosen.newText + result[chosen.finish..]
+			preceding = chosen.start
+		Next
+		Return result
+	End Method
+End Type
 
 ' Formatting uses parsed block ownership and token spans. It never infers
 ' block structure from existing indentation or keyword text in comments.
-Type TBlitzMaxLspFormatting
-	Function Query:TJSONArray(document:TLspDocument, thenStyle:String = "preserve", endStyle:String = "preserve", inlineIfStyle:String = "preserve", tabSize:Int = 4, insertSpaces:Int = False, formatIndent:Int = True, spaceAfterComma:Int = True, caseIndent:String = "indented", metadataBraceSpacing:String = "preserve", callParenSpacing:String = "preserve", assignmentSpacing:String = "preserve", binarySpacing:String = "preserve", trimTrailingWhitespace:Int = True, declarationBlankLines:String = "preserve", controlBlankLines:String = "preserve")
-		Local edits:TJSONArray = JsonArray()
-		If Not document Then Return edits
-		Local parsed:TParseResult = TBlitzMaxParser.ParseText(document.text, document.path)
+Rem
+bbdoc: Formats BlitzMax source without an LSP document or JSON protocol.
+End Rem
+Type TBlitzMaxFormatter
+	Function FormatText:String(text:String, path:String = "", options:TBlitzMaxFormatOptions = Null)
+		Return Query(text, path, options).Apply(text)
+	End Function
+
+	Function Query:TBlitzMaxFormatEdits(text:String, path:String = "", options:TBlitzMaxFormatOptions = Null)
+		Local edits:TBlitzMaxFormatEdits = New TBlitzMaxFormatEdits
+		If Not options Then options = New TBlitzMaxFormatOptions
+		Local thenStyle:String = options.thenStyle.ToLower()
+		Local endStyle:String = options.endStyle.ToLower()
+		Local inlineIfStyle:String = options.inlineIfStyle.ToLower()
+		Local tabSize:Int = options.tabSize
+		Local insertSpaces:Int = options.insertSpaces
+		Local formatIndent:Int = options.indent
+		Local spaceAfterComma:Int = options.spaceAfterComma
+		Local caseIndent:String = options.caseIndent.ToLower()
+		Local metadataBraceSpacing:String = options.metadataBraceSpacing.ToLower()
+		Local callParenSpacing:String = options.callParenSpacing.ToLower()
+		Local assignmentSpacing:String = options.assignmentSpacing.ToLower()
+		Local binarySpacing:String = options.binarySpacing.ToLower()
+		Local trimTrailingWhitespace:Int = options.trimTrailingWhitespace
+		Local declarationBlankLines:String = options.declarationBlankLines.ToLower()
+		Local controlBlankLines:String = options.controlBlankLines.ToLower()
+		Local parsed:TParseResult = TBlitzMaxParser.ParseText(text, path)
 		If Not parsed Or Not parsed.syntaxTree Or parsed.syntaxTree.diagnostics.length Then Return edits
 		Local source:TSourceText = parsed.syntaxTree.source
 		Local navigator:TSyntaxNavigator = TSyntaxNavigator.Create(parsed.syntaxTree)
 		If Not navigator Then Return edits
-		thenStyle = thenStyle.ToLower()
-		endStyle = endStyle.ToLower()
-		inlineIfStyle = inlineIfStyle.ToLower()
-		caseIndent = caseIndent.ToLower()
-		metadataBraceSpacing = metadataBraceSpacing.ToLower()
-		callParenSpacing = callParenSpacing.ToLower()
-		assignmentSpacing = assignmentSpacing.ToLower()
-		binarySpacing = binarySpacing.ToLower()
-		declarationBlankLines = declarationBlankLines.ToLower()
-		controlBlankLines = controlBlankLines.ToLower()
-		Local spacingEdits:TJSONArray = JsonArray()
+		Local spacingEdits:TBlitzMaxFormatEdits = New TBlitzMaxFormatEdits
 		If spaceAfterComma Then FormatCommaSpacing(spacingEdits, source, parsed.syntaxTree.root.tokens)
 		FormatDelimiterSpacing(spacingEdits, source, parsed.syntaxTree.root.tokens, navigator, metadataBraceSpacing, callParenSpacing)
 		FormatOperatorSpacing(spacingEdits, source, parsed.syntaxTree.root.tokens, navigator, assignmentSpacing, binarySpacing)
@@ -54,15 +157,13 @@ Type TBlitzMaxLspFormatting
 		If formatIndent Then FormatIndentation(edits, source, parsed.syntaxTree.root.tokens, navigator, tabSize, insertSpaces, caseIndent, expandedLines)
 		If trimTrailingWhitespace Then FormatTrailingWhitespace(edits, source, parsed.syntaxTree.root.tokens, expandedLines, coveredTrailingLines)
 		For Local index:Int = 0 Until spacingEdits.Size()
-			Local edit:TJSONObject = TJSONObject(spacingEdits.Get(index))
-			Local range:TJSONObject = TJSONObject(edit.Get("range"))
-			Local startPosition:TJSONObject = TJSONObject(range.Get("start"))
-			If Not expandedLines.Contains(String(startPosition.GetInteger("line"))) Then edits.Append(edit)
+				Local edit:TBlitzMaxFormatEdit = spacingEdits.Get(index)
+				If Not expandedLines.Contains(String(source.Position(edit.start).line)) Then edits.Append(edit)
 		Next
 		Return ProtectMultilineStrings(edits, source, parsed.syntaxTree.root.tokens)
 	End Function
 
-	Function FormatBlankLines(edits:TJSONArray, source:TSourceText, navigator:TSyntaxNavigator, declarationStyle:String, controlStyle:String, coveredTrailingLines:TMap)
+	Function FormatBlankLines(edits:TBlitzMaxFormatEdits, source:TSourceText, navigator:TSyntaxNavigator, declarationStyle:String, controlStyle:String, coveredTrailingLines:TMap)
 		For Local node:TSyntaxNode = EachIn navigator.nodes
 			Local siblings:TSyntaxNode[]
 			Local unit:TCompilationUnitSyntax = TCompilationUnitSyntax(node)
@@ -110,7 +211,7 @@ Type TBlitzMaxLspFormatting
 		Next
 	End Function
 
-	Function FormatOperatorSpacing(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, assignmentStyle:String, binaryStyle:String)
+	Function FormatOperatorSpacing(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, assignmentStyle:String, binaryStyle:String)
 		If (assignmentStyle <> "spaced" And assignmentStyle <> "compact") And (binaryStyle <> "spaced" And binaryStyle <> "compact") Then Return
 		Local tokenIndexes:TMap = New TMap
 		For Local index:Int = 0 Until tokens.length
@@ -161,7 +262,7 @@ Type TBlitzMaxLspFormatting
 		Return lexed[3].kind = TOKEN_EOF
 	End Function
 
-	Function FormatCommaSpacing(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[])
+	Function FormatCommaSpacing(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[])
 		For Local index:Int = 0 Until tokens.length - 1
 			Local comma:TSyntaxToken = tokens[index]
 			If comma.kind <> TOKEN_SYMBOL Or comma.text <> "," Then Continue
@@ -187,7 +288,7 @@ Type TBlitzMaxLspFormatting
 		Return gap <> " "
 	End Function
 
-	Function FormatDelimiterSpacing(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, braceStyle:String, callStyle:String)
+	Function FormatDelimiterSpacing(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, braceStyle:String, callStyle:String)
 		Local tokenIndexes:TMap = New TMap
 		Local braceStack:Int[]
 		For Local index:Int = 0 Until tokens.length
@@ -217,7 +318,7 @@ Type TBlitzMaxLspFormatting
 		Next
 	End Function
 
-	Function FormatDelimiterPair(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], openIndex:Int, closeIndex:Int, style:String)
+	Function FormatDelimiterPair(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], openIndex:Int, closeIndex:Int, style:String)
 		If style <> "spaced" And style <> "compact" Then Return
 		If closeIndex <= openIndex + 1 Then Return
 		If source.Position(tokens[openIndex].span.start).line <> source.Position(tokens[closeIndex].span.start).line Then Return
@@ -227,7 +328,7 @@ Type TBlitzMaxLspFormatting
 		FormatHorizontalGap(edits, source, tokens[closeIndex - 1], tokens[closeIndex], replacement)
 	End Function
 
-	Function FormatHorizontalGap(edits:TJSONArray, source:TSourceText, left:TSyntaxToken, right:TSyntaxToken, replacement:String)
+	Function FormatHorizontalGap(edits:TBlitzMaxFormatEdits, source:TSourceText, left:TSyntaxToken, right:TSyntaxToken, replacement:String)
 		Local start:Int = left.span.EndOffset()
 		Local finish:Int = right.span.start
 		If source.Position(start).line <> source.Position(finish).line Then Return
@@ -238,27 +339,24 @@ Type TBlitzMaxLspFormatting
 		If gap <> replacement Then AppendEdit(edits, source, start, finish, replacement)
 	End Function
 
-	Function TextWithEdits:String(source:TSourceText, start:Int, finish:Int, edits:TJSONArray)
+	Function TextWithEdits:String(source:TSourceText, start:Int, finish:Int, edits:TBlitzMaxFormatEdits)
 		Local result:String = source.text[start..finish]
 		Local preceding:Int = finish + 1
 		For Local count:Int = 0 Until edits.Size()
-			Local chosen:TJSONObject
+			Local chosen:TBlitzMaxFormatEdit
 			Local chosenStart:Int = -1
 			Local chosenEnd:Int
 			For Local index:Int = 0 Until edits.Size()
-				Local edit:TJSONObject = TJSONObject(edits.Get(index))
-				Local range:TJSONObject = TJSONObject(edit.Get("range"))
-				Local startPosition:TJSONObject = TJSONObject(range.Get("start"))
-				Local endPosition:TJSONObject = TJSONObject(range.Get("end"))
-				Local editStart:Int = TLspPositions.Offset(source, Int(startPosition.GetInteger("line")), Int(startPosition.GetInteger("character")))
-				Local editEnd:Int = TLspPositions.Offset(source, Int(endPosition.GetInteger("line")), Int(endPosition.GetInteger("character")))
+				Local edit:TBlitzMaxFormatEdit = edits.Get(index)
+				Local editStart:Int = edit.start
+				Local editEnd:Int = edit.finish
 				If editStart < start Or editEnd > finish Or editStart >= preceding Or editStart <= chosenStart Then Continue
 				chosen = edit
 				chosenStart = editStart
 				chosenEnd = editEnd
 			Next
 			If Not chosen Then Exit
-			result = result[..chosenStart - start] + chosen.GetString("newText") + result[chosenEnd - start..]
+			result = result[..chosenStart - start] + chosen.newText + result[chosenEnd - start..]
 			preceding = chosenStart
 		Next
 		Return result
@@ -267,15 +365,12 @@ Type TBlitzMaxLspFormatting
 	' The whitespace before a triple-quoted string's closing delimiter is part
 	' of its value. Leave every physical line occupied by one untouched, even
 	' when another formatting rule proposes an edit on that line.
-	Function ProtectMultilineStrings:TJSONArray(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[])
-		Local safeEdits:TJSONArray = JsonArray()
+	Function ProtectMultilineStrings:TBlitzMaxFormatEdits(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[])
+		Local safeEdits:TBlitzMaxFormatEdits = New TBlitzMaxFormatEdits
 		For Local index:Int = 0 Until edits.Size()
-			Local edit:TJSONObject = TJSONObject(edits.Get(index))
-			Local range:TJSONObject = TJSONObject(edit.Get("range"))
-			Local startPosition:TJSONObject = TJSONObject(range.Get("start"))
-			Local endPosition:TJSONObject = TJSONObject(range.Get("end"))
-			Local editStart:Int = TLspPositions.Offset(source, Int(startPosition.GetInteger("line")), Int(startPosition.GetInteger("character")))
-			Local editEnd:Int = TLspPositions.Offset(source, Int(endPosition.GetInteger("line")), Int(endPosition.GetInteger("character")))
+			Local edit:TBlitzMaxFormatEdit = edits.Get(index)
+			Local editStart:Int = edit.start
+			Local editEnd:Int = edit.finish
 			Local startLine:Int = source.Position(editStart).line
 			Local endLine:Int = source.Position(Max(editStart, editEnd - 1)).line
 			Local touchesString:Int
@@ -293,7 +388,7 @@ Type TBlitzMaxLspFormatting
 		Return safeEdits
 	End Function
 
-	Function FormatTrailingWhitespace(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], expandedLines:TMap, coveredTrailingLines:TMap)
+	Function FormatTrailingWhitespace(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], expandedLines:TMap, coveredTrailingLines:TMap)
 		Local protectedLines:TMap = New TMap
 		For Local token:TSyntaxToken = EachIn tokens
 			If token.kind = TOKEN_MULTILINE_STRING_LITERAL Or token.kind = TOKEN_NATIVE_LINE Or token.kind = TOKEN_PRAGMA Or token.kind = TOKEN_DIRECTIVE Then MarkSpanLines(protectedLines, source, token.span)
@@ -330,7 +425,7 @@ Type TBlitzMaxLspFormatting
 		Next
 	End Function
 
-	Function ExpandInlineIf(edits:TJSONArray, source:TSourceText, navigator:TSyntaxNavigator, statement:TIfStatementSyntax, thenStyle:String, endStyle:String, tabSize:Int, insertSpaces:Int, formatIndent:Int, caseIndent:String, spacingEdits:TJSONArray, expandedLines:TMap)
+	Function ExpandInlineIf(edits:TBlitzMaxFormatEdits, source:TSourceText, navigator:TSyntaxNavigator, statement:TIfStatementSyntax, thenStyle:String, endStyle:String, tabSize:Int, insertSpaces:Int, formatIndent:Int, caseIndent:String, spacingEdits:TBlitzMaxFormatEdits, expandedLines:TMap)
 		If Not statement.ifToken Or Not statement.thenToken Or Not statement.thenBlock Or statement.elseClause Then Return
 		If statement.thenBlock.statements.length <> 1 Then Return
 		Local bodyStatement:TSyntaxNode = statement.thenBlock.statements[0]
@@ -360,7 +455,7 @@ Type TBlitzMaxLspFormatting
 		expandedLines.Insert(String(line), String(line))
 	End Function
 
-	Function FormatIndentation(edits:TJSONArray, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, tabSize:Int, insertSpaces:Int, caseIndent:String, expandedLines:TMap)
+	Function FormatIndentation(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, tabSize:Int, insertSpaces:Int, caseIndent:String, expandedLines:TMap)
 		Local anchors:TMap = New TMap
 		For Local node:TSyntaxNode = EachIn navigator.nodes
 			If node.span And IsIndentationAnchor(node, navigator.Parent(node)) Then anchors.Insert(String(node.span.start), node)
@@ -415,7 +510,7 @@ Type TBlitzMaxLspFormatting
 		Return False
 	End Function
 
-	Function FormatThen(edits:TJSONArray, source:TSourceText, condition:TExpressionSyntax, thenToken:TSyntaxToken, style:String, trimTrailingWhitespace:Int, coveredTrailingLines:TMap)
+	Function FormatThen(edits:TBlitzMaxFormatEdits, source:TSourceText, condition:TExpressionSyntax, thenToken:TSyntaxToken, style:String, trimTrailingWhitespace:Int, coveredTrailingLines:TMap)
 		If Not condition Or Not condition.span Then Return
 		If style = "add" And Not thenToken Then
 			Local finish:Int = condition.span.EndOffset()
@@ -440,7 +535,7 @@ Type TBlitzMaxLspFormatting
 		End If
 	End Function
 
-	Function FormatEnd(edits:TJSONArray, source:TSourceText, terminator:TBlockTerminatorSyntax, style:String)
+	Function FormatEnd(edits:TBlitzMaxFormatEdits, source:TSourceText, terminator:TBlockTerminatorSyntax, style:String)
 		If Not terminator.endToken Or Not terminator.endToken.span Then Return
 		If style = "combined" And terminator.blockToken Then
 			Local start:Int = terminator.endToken.span.EndOffset()
@@ -458,10 +553,7 @@ Type TBlitzMaxLspFormatting
 		End If
 	End Function
 
-	Function AppendEdit(edits:TJSONArray, source:TSourceText, start:Int, finish:Int, replacement:String)
-		Local edit:TJSONObject = JsonObject()
-		edit.Set("range", TLspPositions.Range(source, TSourceSpan.Create(start, finish - start)))
-		edit.Set("newText", replacement)
-		edits.Append(edit)
+	Function AppendEdit(edits:TBlitzMaxFormatEdits, source:TSourceText, start:Int, finish:Int, replacement:String)
+		edits.Append(TBlitzMaxFormatEdit.Create(start, finish, replacement))
 	End Function
 End Type

@@ -9,7 +9,8 @@ about: Provides protocol framing, document and workspace services, and an embedd
 End Rem
 Module BlitzMax.LSP
 
-ModuleInfo "Version: 0.24.20"
+ModuleInfo "Version: 0.24.21"
+ModuleInfo "History: Use the standalone BlitzMax.Format engine for document and range formatting."
 ModuleInfo "History: Add configurable blank lines between declarations and after control blocks."
 ModuleInfo "History: Trim trailing whitespace outside protected multiline and native text."
 ModuleInfo "History: Add token-safe compact spacing for assignment and binary operators."
@@ -28,6 +29,7 @@ ModuleInfo "Copyright: 2026 Bruce A Henderson and contributors"
 Import BRL.Map
 Import BRL.Stream
 Import Text.Json
+Import BlitzMax.Format
 Import BlitzMax.Language
 
 Import "bls_messages.generated.bmx"
@@ -56,5 +58,4 @@ Import "rename.bmx"
 Import "document_links.bmx"
 Import "references.bmx"
 Import "code_actions.bmx"
-Import "formatting.bmx"
 Import "server.bmx"

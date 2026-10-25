@@ -1,0 +1,15 @@
+BlitzMax.Format formats BlitzMax source text using the syntax model in
+#BlitzMax.Language. It does not depend on the language server or an editor.
+
+Create a #TBlitzMaxFormatOptions object to select formatting rules. A new
+options object contains the defaults. Pass it to #TBlitzMaxFormatter.FormatText
+to receive formatted text, or call #TBlitzMaxFormatter.Query to receive
+#TBlitzMaxFormatEdits for an editor or another tool to apply.
+
+Edit start and finish positions are offsets into the original BlitzMax String.
+Call #TBlitzMaxFormatEdits.Apply to apply all returned edits safely. Protocol
+clients can convert these offsets to their own position encoding.
+
+If the parser reports syntax errors, the formatter returns no edits and
+FormatText returns the source unchanged. Multiline string contents and other
+protected source regions retain their layout.

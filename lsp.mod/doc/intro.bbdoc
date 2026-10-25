@@ -15,3 +15,4 @@ The module also exposes small JSON-RPC construction helpers such as #JsonRespons
 
 Consumers that need syntax trees, semantic models, diagnostics, or source navigation
 without the LSP protocol should use #BlitzMax.Language directly.
+Consumers that need formatting without LSP should use #BlitzMax.Format.
