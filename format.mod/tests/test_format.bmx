@@ -21,6 +21,15 @@ Check(edits.Apply(source) = expected, "edits apply without LSP positions or JSON
 Check(TBlitzMaxFormatter.FormatText(source, "probe.bmx") = expected, "convenience API returns formatted source")
 Check(TBlitzMaxFormatter.FormatText(expected, "probe.bmx") = expected, "standalone formatting is idempotent")
 
+Local inlineSource:String = "SuperStrict~nFunction Probe()~nIf True Then Print ~qone~q~nIf True Then Print ~qtwo~q~nPrint ~qdone~q~nEnd Function~n"
+Local inlineExpected:String = "SuperStrict~nFunction Probe()~n~tIf True Then~n~t~tPrint ~qone~q~n~tEnd If~n~n~tIf True Then~n~t~tPrint ~qtwo~q~n~tEnd If~n~n~tPrint ~qdone~q~nEnd Function~n"
+Local inlineOptions:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
+inlineOptions.inlineIfStyle = "expand"
+inlineOptions.controlBlankLines = "one"
+Check(TBlitzMaxFormatter.FormatText(inlineSource, "probe.bmx", inlineOptions) = inlineExpected, "expanded inline If blocks receive blank lines before sibling statements")
+Check(TBlitzMaxFormatter.FormatText(inlineExpected, "probe.bmx", inlineOptions) = inlineExpected, "combined inline expansion and blank lines are idempotent")
+Check(TBlitzMaxParser.ParseText(inlineExpected).syntaxTree.diagnostics.length = 0, "combined formatting remains parseable")
+
 Local custom:TBlitzMaxFormatOptions = defaults.Copy()
 custom.thenStyle = "add"
 custom.endStyle = "combined"
