@@ -399,7 +399,17 @@ Type TCompilerIrLowerer
 		Local unitName:String = "_bb_main"
 		If analysis.model And analysis.model.moduleName.length Then unitName = ModuleSourceUnitName(analysis.model.moduleName, sourceUnitName)
 		If unitName.StartsWith("__") Then unitName = unitName[1..]
-		CollectIncbinRequestsFromNodes(analysis.syntaxTree.root.members, unitName, ordinal)
+		If documents.length Then
+			' Includes are part of the same compilation unit. Preserve the snapshot's
+			' root-first, depth-first document order so the resource symbols match
+			' bmk's aggregate Incbin packaging unit.
+			For Local document:TSourceDocumentModel = EachIn documents
+				If Not document Or Not document.tree Or Not document.tree.root Then Continue
+				CollectIncbinRequestsFromNodes(document.tree.root.members, unitName, ordinal)
+			Next
+		Else
+			CollectIncbinRequestsFromNodes(analysis.syntaxTree.root.members, unitName, ordinal)
+		End If
 	End Method
 
 	Method CollectIncbinRequestsFromNodes(nodes:TSyntaxNode[], unitName:String, ordinal:Int Var)
