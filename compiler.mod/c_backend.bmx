@@ -3288,6 +3288,14 @@ Type TCompilerCBackend
 					fieldsOffset = "offsetof(struct " + objectName + ", " + firstName + ")"
 					objectSize = "offsetof(struct " + objectName + ", " + lastName + ") - " + fieldsOffset + " + sizeof(((struct " + objectName + " *)0)->" + lastName + ")"
 				End If
+				Local destructorName:String = EffectiveDestructorName(irClass)
+				If destructorName <> "bbObjectDtor" Then
+					' Wasm indirect calls require an exact return signature. A Delete
+					' method may return BBINT, while BBClass.dtor returns void.
+					Local destructorAdapterName:String = descriptorName + "_dtor"
+					result.Append("static void " + destructorAdapterName + "(BBOBJECT o) { " + destructorName + "((" + EffectiveDestructorReceiverType(irClass) + ")o); }~n")
+					destructorName = destructorAdapterName
+				End If
 				result.Append("struct " + className + " " + descriptorName + " = {~n")
 				Local superDescriptor:String = "&bbObjectClass"
 				If irClass.baseClassId.length Then superDescriptor = "(BBClass *)&" + String(descriptorNames.ValueForKey(irClass.baseClassId))
@@ -3298,7 +3306,6 @@ Type TCompilerCBackend
 				result.Append("    " + superDescriptor + ", bbObjectFree, (BBDebugScope *)&" + typeDebugScopeName + ", sizeof(struct " + objectName + "),~n")
 				Local defaultConstructorName:String = constructorName
 				If irClass.defaultConstructorFunctionId.length Then defaultConstructorName = FunctionName(irClass.defaultConstructorFunctionId)
-				Local destructorName:String = EffectiveDestructorName(irClass)
 				result.Append("    (void (*)(BBOBJECT))" + defaultConstructorName + ", (void (*)(BBOBJECT))" + destructorName + ", " + ObjectSlotFunction(irClass.toStringFunctionId, "bbObjectToString", "BBSTRING (*)(BBOBJECT)") + ", " + ObjectSlotFunction(irClass.compareFunctionId, "bbObjectCompare", "int (*)(BBOBJECT, BBOBJECT)") + ",~n")
 				Local interfaceTable:String = "0"
 				If irClass.interfaceImplementations.length Then interfaceTable = "&" + ClassInterfaceTableName(irClass.classId)
