@@ -3828,6 +3828,7 @@ Type TExpressionBinder
 		Local values:TSymbol[]
 		Local enclosingRoutine:TSymbol = EnclosingRoutine(scope)
 		Local staticRoutine:Int = enclosingRoutine And Not IsInstanceRoutine(enclosingRoutine) And Not activeFunctionLiteralScope
+		Local outsideStaticRoutine:Int
 		Local candidateScope:TScope = scope
 		While candidateScope
 			Local localValues:TSymbol[] = candidateScope.LookupLocal(name)
@@ -3835,10 +3836,12 @@ Type TExpressionBinder
 			For Local value:TSymbol = EachIn localValues
 				If value = initializerExcludedSymbol Then Continue
 				If reference And value.kind = SYMBOL_LOCAL And value.declaration And value.declaration.span.start > reference.span.start Then Continue
+				If outsideStaticRoutine And (value.kind = SYMBOL_LOCAL Or value.kind = SYMBOL_PARAMETER Or value.kind = SYMBOL_CATCH_PARAMETER) Then Continue
 				If staticRoutine And candidateScope.kind = SCOPE_TYPE And RequiresInstanceReceiver(value) Then Continue
 				retained :+ [value]
 			Next
 			If retained.length Then Return retained
+			If staticRoutine And candidateScope.kind = SCOPE_ROUTINE And candidateScope.owner = enclosingRoutine Then outsideStaticRoutine = True
 			candidateScope = candidateScope.parent
 		Wend
 		values = MemberSymbols(SelfType(scope), name)
