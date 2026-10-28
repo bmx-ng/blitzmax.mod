@@ -30,6 +30,19 @@ Check(TBlitzMaxFormatter.FormatText(inlineSource, "probe.bmx", inlineOptions) = 
 Check(TBlitzMaxFormatter.FormatText(inlineExpected, "probe.bmx", inlineOptions) = inlineExpected, "combined inline expansion and blank lines are idempotent")
 Check(TBlitzMaxParser.ParseText(inlineExpected).syntaxTree.diagnostics.length = 0, "combined formatting remains parseable")
 
+Local commentsSource:String = "SuperStrict~nType TProbe~n ' method description~nMethod Run()~n' body description~nRem~n  keep relative spacing~nEnd Rem~nPrint ~qready~q ' trailing comment~nEnd Method~nEnd Type~n"
+Local commentsExpected:String = "SuperStrict~nType TProbe~n~t' method description~n~tMethod Run()~n~t~t' body description~n~t~tRem~n~t~t  keep relative spacing~n~t~tEnd Rem~n~t~tPrint ~qready~q ' trailing comment~n~tEnd Method~nEnd Type~n"
+Check(TBlitzMaxFormatter.FormatText(commentsSource) = commentsExpected, "standalone formatter aligns line comments and shifts Rem blocks without changing their internal spacing")
+Check(TBlitzMaxFormatter.FormatText(commentsExpected) = commentsExpected, "comment indentation is idempotent")
+Check(TBlitzMaxParser.ParseText(commentsExpected).syntaxTree.diagnostics.length = 0, "indented comments remain parseable")
+Local commentCrLf:String = "SuperStrict~r~nType TProbe~r~n ' note~r~nMethod Run()~r~nEnd Method~r~nEnd Type~r~n"
+Check(TBlitzMaxFormatter.FormatText(commentCrLf) = "SuperStrict~r~nType TProbe~r~n~t' note~r~n~tMethod Run()~r~n~tEnd Method~r~nEnd Type~r~n", "comment indentation preserves CRLF")
+Local commentBeforeClose:String = "SuperStrict~nType TProbe~nMethod Run()~n' inside method~nEnd Method~n' inside type~nEnd Type~n"
+Check(TBlitzMaxFormatter.FormatText(commentBeforeClose) = "SuperStrict~nType TProbe~n~tMethod Run()~n~t~t' inside method~n~tEnd Method~n~t' inside type~nEnd Type~n", "comments before closing lines stay inside their blocks")
+Local noIndent:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
+noIndent.indent = False
+Check(TBlitzMaxFormatter.FormatText(commentsSource, "probe.bmx", noIndent) = commentsSource, "disabling indentation also preserves comment indentation")
+
 Local custom:TBlitzMaxFormatOptions = defaults.Copy()
 custom.thenStyle = "add"
 custom.endStyle = "combined"

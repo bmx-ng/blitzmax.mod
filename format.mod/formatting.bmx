@@ -155,6 +155,7 @@ Type TBlitzMaxFormatter
 		Next
 		If declarationBlankLines <> "preserve" Or controlBlankLines <> "preserve" Then FormatBlankLines(edits, source, navigator, declarationBlankLines, controlBlankLines, coveredTrailingLines)
 		If formatIndent Then FormatIndentation(edits, source, parsed.syntaxTree.root.tokens, navigator, tabSize, insertSpaces, caseIndent, expandedLines)
+		If formatIndent Then FormatCommentIndentation(edits, source, parsed.syntaxTree.root.tokens, navigator, tabSize, insertSpaces, caseIndent, expandedLines)
 		If trimTrailingWhitespace Then FormatTrailingWhitespace(edits, source, parsed.syntaxTree.root.tokens, expandedLines, coveredTrailingLines)
 		For Local index:Int = 0 Until spacingEdits.Size()
 				Local edit:TBlitzMaxFormatEdit = spacingEdits.Get(index)
@@ -479,6 +480,53 @@ Type TBlitzMaxFormatter
 			If Not anchor Then Continue
 			Local desired:String = IndentText(IndentationDepth(navigator, anchor, caseIndent), tabSize, insertSpaces)
 			If original <> desired Then AppendEdit(edits, source, lineStart, token.span.start, desired)
+		Next
+	End Function
+
+	Function FormatCommentIndentation(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, tabSize:Int, insertSpaces:Int, caseIndent:String, expandedLines:TMap)
+		Local anchors:TMap = New TMap
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			If node.span And IsIndentationAnchor(node, navigator.Parent(node)) Then anchors.Insert(String(node.span.start), node)
+		Next
+		Local orderedAnchors:TSyntaxNode[]
+		For Local token:TSyntaxToken = EachIn tokens
+			Local anchor:TSyntaxNode = TSyntaxNode(anchors.ValueForKey(String(token.span.start)))
+			If anchor Then orderedAnchors :+ [anchor]
+		Next
+		Local nextAnchorIndex:Int
+		For Local token:TSyntaxToken = EachIn tokens
+			If Not token.leadingTrivia Then Continue
+			For Local trivia:TSyntaxTrivia = EachIn token.leadingTrivia
+				If trivia.kind <> TRIVIA_LINE_COMMENT And trivia.kind <> TRIVIA_BLOCK_COMMENT Then Continue
+				Local firstLine:Int = source.Position(trivia.span.start).line
+				Local firstStart:Int = source.Offset(firstLine, 0)
+				Local originalIndent:String = source.text[firstStart..trivia.span.start]
+				If originalIndent.Trim().length Then Continue
+				While nextAnchorIndex < orderedAnchors.length And orderedAnchors[nextAnchorIndex].span.start < trivia.span.EndOffset()
+					nextAnchorIndex :+ 1
+				Wend
+				If nextAnchorIndex = orderedAnchors.length Then Continue
+				Local following:TSyntaxNode = orderedAnchors[nextAnchorIndex]
+				Local depth:Int = IndentationDepth(navigator, following, caseIndent)
+				If TBlockTerminatorSyntax(following) Then depth :+ 1
+				Local desiredIndent:String = IndentText(depth, tabSize, insertSpaces)
+				Local lastLine:Int = firstLine
+				If trivia.kind = TRIVIA_BLOCK_COMMENT Then lastLine = source.Position(Max(trivia.span.start, trivia.span.EndOffset() - 1)).line
+				For Local line:Int = firstLine To lastLine
+					If expandedLines.Contains(String(line)) Then Continue
+					Local lineStart:Int = source.Offset(line, 0)
+					Local lineEnd:Int = source.Offset(line, 2147483647)
+					Local contentStart:Int = lineStart
+					While contentStart < lineEnd And (source.text[contentStart] = 32 Or source.text[contentStart] = 9)
+						contentStart :+ 1
+					Wend
+					If contentStart = lineEnd Then Continue
+					Local indent:String = source.text[lineStart..contentStart]
+					If Not indent.StartsWith(originalIndent) Then Continue
+					Local replacement:String = desiredIndent + indent[originalIndent.length..]
+					If replacement <> indent Then AppendEdit(edits, source, lineStart, contentStart, replacement)
+				Next
+			Next
 		Next
 	End Function
 
