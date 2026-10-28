@@ -248,7 +248,9 @@ End Function
 Function AddCompilerConditional(symbols:String[] Var, name:String)
 	name = name.Trim().ToLower()
 	If Not name.length Then Return
-	For Local existing:String = EachIn symbols
+	' Production bcc mis-emits EachIn over an array Var parameter as BBARRAY*.
+	Local currentSymbols:String[] = symbols
+	For Local existing:String = EachIn currentSymbols
 		If existing.ToLower() = name Then Return
 	Next
 	symbols :+ [name]

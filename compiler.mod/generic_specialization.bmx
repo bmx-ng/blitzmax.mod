@@ -1079,7 +1079,8 @@ Type TCompilerGenericSpecializationLowerer
 
 	Function AppendRuntimeInterface(values:TTemplateTypeReference[] Var, candidate:TTemplateTypeReference)
 		If Not candidate Or Not candidate.runtimeAbiName.length Then Return
-		For Local existing:TTemplateTypeReference = EachIn values
+		Local currentValues:TTemplateTypeReference[] = values
+		For Local existing:TTemplateTypeReference = EachIn currentValues
 			If existing.runtimeAbiName.ToLower() = candidate.runtimeAbiName.ToLower() Then Return
 		Next
 		values :+ [candidate]
@@ -1376,7 +1377,8 @@ Type TCompilerGenericSpecializationLowerer
 		Local closed:TTemplateTypeReference = TTemplateTypeSubstitution.Apply(value, node.key.containingTypeArguments, node.key.typeArguments)
 		If Not closed Or closed.runtimeKind <> TEMPLATE_RUNTIME_INTERFACE Or Not closed.runtimeAbiName.length Then Return
 		If ReferencedSpecialization(closed, ir) Then Return
-		For Local existing:TTemplateTypeReference = EachIn result
+		Local currentResult:TTemplateTypeReference[] = result
+		For Local existing:TTemplateTypeReference = EachIn currentResult
 			If existing.runtimeAbiName.ToLower() = closed.runtimeAbiName.ToLower() Then Return
 		Next
 		result :+ [closed]
@@ -6982,12 +6984,13 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitGenericDebugFunctionScope:String(body:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, declarations:TGenericTemplateNode[] Var, indent:String, diagnostics:String[] Var)
 		If Not ir Or Not ir.specialization Or Not ir.specialization.debugInstrumentation Or Not ownerMethod Then Return ""
 		CollectGenericDebugLocals(body, declarations, New TMap)
+		Local currentDeclarations:TGenericTemplateNode[] = declarations
 		Local debugNames:TMap = New TMap
 		Local additionalCaptures:TCompilerGenericClosureCaptureIr[]
 		For Local parameter:TGenericTemplateValueParameter = EachIn ownerMethod.parameters
 			debugNames.Insert(parameter.name.ToLower(), parameter)
 		Next
-		For Local declaration:TGenericTemplateNode = EachIn declarations
+		For Local declaration:TGenericTemplateNode = EachIn currentDeclarations
 			debugNames.Insert(declaration.valueText.ToLower(), declaration)
 		Next
 		If ownerMethod.receiverType And Not ownerMethod.isStatic And Not ownerMethod.isTypeFunction Then debugNames.Insert("self", ownerMethod)
@@ -7001,7 +7004,7 @@ Type TCompilerGenericCUnitEmitter
 		Local declarationCount:Int = declarations.length + ownerMethod.parameters.length + additionalCaptures.length
 		If ownerMethod.receiverType And Not ownerMethod.isStatic And Not ownerMethod.isTypeFunction Then declarationCount :+ 1
 		Local result:TStringBuilder = New TStringBuilder(2048)
-		For Local declaration:TGenericTemplateNode = EachIn declarations
+		For Local declaration:TGenericTemplateNode = EachIn currentDeclarations
 			If ClosureCaptureForName(ownerMethod, declaration.valueText) Then Continue
 			Local name:String = GenericLocalName(declaration, ir)
 			If declaration.semanticType.kind = TEMPLATE_TYPE_STATIC_ARRAY Then
@@ -7030,7 +7033,7 @@ Type TCompilerGenericCUnitEmitter
 			If capture Then parameterAddress = "&" + ClosureCaptureExpression(ownerMethod, capture)
 			result.Append(indent + "        { " + kind + ", " + CQuoted(parameter.name) + ", " + CQuoted(tag) + ", .var_address = " + parameterAddress + ", .reflection_wrapper = 0 },~n")
 		Next
-		For Local declaration:TGenericTemplateNode = EachIn declarations
+		For Local declaration:TGenericTemplateNode = EachIn currentDeclarations
 			Local localAddress:String = "&" + GenericLocalName(declaration, ir)
 			Local capture:TCompilerGenericClosureCaptureIr = ClosureCaptureForName(ownerMethod, declaration.valueText)
 			If capture Then localAddress = "&" + ClosureCaptureExpression(ownerMethod, capture)
