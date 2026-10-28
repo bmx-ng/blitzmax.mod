@@ -10477,7 +10477,7 @@ Type TCompilerGenericCUnitEmitter
 		End If
 		If Not ScalarNumericType(left) Or Not ScalarNumericType(right) Then Return False
 		Select operatorText.ToLower()
-			Case "mod", "shl", "shr", "sar", "|", "&", "^", "and", "or", "xor"
+			Case "mod", "shl", "shr", "sar", "|", "&", "~~", "^", "and", "or", "xor"
 				Return ScalarIntegralType(left) And ScalarIntegralType(right)
 			Case "+", "-", "*", "/", "<", "<=", ">", ">=", "=", "<>"
 				Return True
@@ -10501,6 +10501,8 @@ Type TCompilerGenericCUnitEmitter
 		Select operatorText.ToLower()
 			Case "+", "-", "*", "/", "<", "<=", ">", ">=", "|", "&", "^"
 				Return operatorText
+			Case "~~"
+				Return "^"
 			Case "="
 				Return "=="
 			Case "<>"
@@ -10528,6 +10530,7 @@ Type TCompilerGenericCUnitEmitter
 			Case ":-" Return "-="
 			Case ":*" Return "*="
 			Case ":/" Return "/="
+			Case ":~~" Return "^="
 		End Select
 		Return ""
 	End Function
@@ -12579,7 +12582,7 @@ Type TCompilerGenericTemplateBuilder
 				result.children = [call]
 				Return result
 			End If
-			If assignment.operatorText <> "=" And assignment.operatorText <> ":+" And assignment.operatorText <> ":-" And assignment.operatorText <> ":*" And assignment.operatorText <> ":/" Then
+			If assignment.operatorText <> "=" And assignment.operatorText <> ":+" And assignment.operatorText <> ":-" And assignment.operatorText <> ":*" And assignment.operatorText <> ":/" And assignment.operatorText <> ":~~" Then
 				diagnostics :+ ["BMXC3049 generic sequential assignment operator '" + assignment.operatorText + "' is outside the first local-body slice"]
 				Return Null
 			End If
