@@ -6375,6 +6375,7 @@ Type TCompilerCBackend
 		result :+ indent + "            bbExThrow((BBObject *)" + exceptionName + ");~n"
 		result :+ indent + "        }~n"
 		result :+ indent + "    } break;~n"
+		result :+ indent + "    default: bbExThrowCString(~qInvalid exception state~q);~n"
 		result :+ indent + "    }~n"
 		Return result + indent + "}~n"
 	End Method
