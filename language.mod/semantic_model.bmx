@@ -590,6 +590,7 @@ Type TBoundAssignmentStatement Extends TBoundStatement
 	Field operatorText:String
 	Field resolvedCall:TResolvedCall
 	Field indexAccess:TResolvedIndexAccess
+	Field indexSetterAccess:TResolvedIndexAccess
 End Type
 
 Type TBoundExpressionStatement Extends TBoundStatement
