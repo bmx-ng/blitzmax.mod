@@ -9608,6 +9608,7 @@ Type TCompilerIrLowerer
 					dependency.interfacePath = edge.target.path
 					If logicalName.EndsWith(".bmx") Then
 						dependency.logicalName = writtenLogicalName
+						dependency.sourceUnitPath = sourceUnitPath
 						Local sourceDirectory:String = ExtractDir(sourceUnitPath)
 						If sourceDirectory.length Then sourceDirectory :+ "/"
 						dependency.headerPath = sourceDirectory + ".bmx/" + StripExt(StripDir(edge.target.path)) + ".h"
@@ -10337,9 +10338,10 @@ Type TCompilerIrLowerer
 		' Prefer the resolved interface identity.  It remains correct for
 		' imports written inside included files and for dependencies interned
 		' first through another relative route.
-		If dependency And dependency.path.length And analysis And analysis.snapshot And analysis.snapshot.rootDocument And options And options.sourceUnitPath.length Then
+		If dependency And dependency.path.length And analysis And analysis.snapshot And analysis.snapshot.rootDocument Then
 			Local rootPath:String = analysis.snapshot.rootDocument.path.Replace("\\", "/")
-			Local rootUnitPath:String = options.sourceUnitPath.Replace("\\", "/")
+			Local rootUnitPath:String = StripDir(rootPath)
+			If options And options.sourceUnitPath.length Then rootUnitPath = options.sourceUnitPath.Replace("\\", "/")
 			While rootUnitPath.StartsWith("./")
 				rootUnitPath = rootUnitPath[2..]
 			Wend

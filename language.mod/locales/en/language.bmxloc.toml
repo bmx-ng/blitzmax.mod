@@ -1,7 +1,7 @@
 format = 1
 domain = "language"
 locale = "en"
-next_id = 268
+next_id = 269
 
 [[message]]
 id = 1
@@ -2130,3 +2130,11 @@ text = "Method '{methodName}' return type '{declaredReturnType}' does not match 
 description = "Reported when a derived method has the same parameters as an inherited method but an incompatible return type."
 diagnostic_codes = ["BMX3219"]
 placeholders = [{ name = "methodName", type = "string" }, { name = "declaredReturnType", type = "string" }, { name = "inheritedReturnType", type = "string" }]
+
+[[message]]
+id = 268
+name = "snapshot.import_after_source"
+text = "Import and Framework directives must appear before declarations or executable statements."
+description = "Reported when textual Include expansion places an Import or Framework directive after ordinary source has begun."
+diagnostic_codes = ["BMX4015"]
+placeholders = []
