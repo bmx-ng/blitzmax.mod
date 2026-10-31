@@ -8658,8 +8658,6 @@ Type TCompilerGenericCUnitEmitter
 			If objectElement And StringTemplateType(targetNode.semanticType) Then
 				result :+ indent + "        if (!bbObjectIsString((BBOBJECT)" + elementName + ")) continue;~n"
 				convertedElement = "((BBSTRING)bbObjectStringcast((BBOBJECT)" + elementName + "))"
-			Else If objectElement And ScalarNumericType(targetNode.semanticType) Then
-				convertedElement = "(*((" + targetType + "*)bbObjectToFieldOffset((BBOBJECT)" + elementName + ")))"
 			Else If objectElement And targetNode.semanticType.kind = TEMPLATE_TYPE_ARRAY Then
 				Local targetEncoding:String = ArrayElementEncoding(targetNode.semanticType, ir)
 				convertedElement = "bbArrayCastFromObject((BBOBJECT)" + elementName + ", ~q" + targetEncoding + "~q)"
@@ -8933,11 +8931,6 @@ Type TCompilerGenericCUnitEmitter
 						diagnostics :+ ["BMXC3058 generic ObjectEnumerator String adaptation requires a String loop target"]
 						Return ""
 					End If
-				Case "object-numeric"
-					If Not ScalarNumericType(targetNode.semanticType) Then
-						diagnostics :+ ["BMXC3058 generic ObjectEnumerator numeric adaptation requires a scalar numeric loop target"]
-						Return ""
-					End If
 				Case "object-checked-cast"
 					targetClass = TypeSpecialization(adaptationNode.semanticType, ir)
 					targetInterface = InterfaceSpecialization(adaptationNode.semanticType, ir)
@@ -9035,9 +9028,6 @@ Type TCompilerGenericCUnitEmitter
 			If adaptationNode.valueText = "object-string" Then
 				result :+ loopIndent + "    if (!bbObjectIsString((BBOBJECT)" + elementName + "_object)) { continue; }~n"
 				convertedElement = "((BBSTRING)bbObjectStringcast((BBOBJECT)" + elementName + "_object))"
-				filterNull = False
-			Else If adaptationNode.valueText = "object-numeric" Then
-				convertedElement = "(*((" + targetType + "*)bbObjectToFieldOffset((BBOBJECT)" + elementName + "_object)))"
 				filterNull = False
 			Else If targetClass Then
 				convertedElement = "((struct " + targetClass.readableAbiName + "_obj *)bbObjectDowncast((BBOBJECT)" + elementName + "_object, (BBClass *)&" + targetClass.readableAbiName + "))"
@@ -12290,7 +12280,6 @@ Type TCompilerGenericTemplateBuilder
 						adaptation.source = result.source
 						If target And target.semanticType And target.semanticType.kind = TEMPLATE_TYPE_BUILTIN And target.semanticType.symbolName.ToLower() = "object" Then adaptation.valueText = "object-direct"
 						If target And target.semanticType And target.semanticType.kind = TEMPLATE_TYPE_BUILTIN And target.semanticType.symbolName.ToLower() = "string" Then adaptation.valueText = "object-string"
-						If target And TCompilerGenericSpecializationLowerer.ScalarNumericTemplateType(target.semanticType) Then adaptation.valueText = "object-numeric"
 						If target And collection And iteratorType And factory And advance And current And adaptation And body Then result.children = [target, collection, iteratorType, factory, advance, current, adaptation, body]
 						Return result
 					End If
