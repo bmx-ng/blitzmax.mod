@@ -39,6 +39,8 @@ Type TTypeResolver
 		resolver.InitializeSymbolTypes(model.globalScope)
 		resolver.LinkCoreRuntimeTypes()
 		resolver.BindScope(model.globalScope)
+		resolver.ValidateDuplicateRoutineSignatures(model.globalScope)
+		resolver.ValidateDuplicateSourceImportRoutineSignatures()
 		model.diagnostics = MergeDiagnostics(model.diagnostics, DiagnosticsToArray(resolver.diagnostics))
 		Return model
 	End Function
@@ -107,6 +109,133 @@ Type TTypeResolver
 			BindScope(child)
 		Next
 	End Method
+
+	Method ValidateDuplicateRoutineSignatures(scope:TScope)
+		If Not scope Then Return
+		For Local index:Int = 0 Until scope.declaredSymbols.length
+			Local symbol:TSymbol = scope.declaredSymbols[index]
+			If Not symbol Or symbol.kind <> SYMBOL_ROUTINE Or symbol.isImported Then Continue
+			For Local earlierIndex:Int = 0 Until index
+				Local earlier:TSymbol = scope.declaredSymbols[earlierIndex]
+				If Not earlier Or earlier.kind <> SYMBOL_ROUTINE Or earlier.isImported Or earlier.normalizedName <> symbol.normalizedName Then Continue
+				' Production bcc treats differently-cased Extern spellings as ABI
+				' redeclarations and retains the first declaration. Exact spellings
+				' remain ordinary duplicate signatures.
+				If earlier.isExternal And symbol.isExternal And earlier.name <> symbol.name Then Continue
+				If Not SameRoutineSignature(earlier, symbol) Then Continue
+				Local declarationKind:String = "function"
+				Local declaration:TRoutineDeclarationSyntax = TRoutineDeclarationSyntax(symbol.declaration)
+				If declaration And declaration.isMethod Then declarationKind = "method"
+				diagnostics.AddLast(TDiagnostic.Create("BMX3000", TLanguageMessages.DeclarationDuplicate(declarationKind, symbol.name), DIAGNOSTIC_ERROR, symbol.nameToken.span, symbol.originPath))
+				Exit
+			Next
+		Next
+		For Local child:TScope = EachIn scope.children
+			ValidateDuplicateRoutineSignatures(child)
+		Next
+	End Method
+
+	Method ValidateDuplicateSourceImportRoutineSignatures()
+		If Not model Or Not model.globalScope Then Return
+		Local routines:TSymbol[]
+		For Local scope:TScope = EachIn model.directImportedScopes
+			If Not scope Then Continue
+			For Local symbol:TSymbol = EachIn scope.declaredSymbols
+				If Not symbol Or symbol.kind <> SYMBOL_ROUTINE Or Not symbol.isImported Then Continue
+				Local originModule:String = symbol.originModule.ToLower()
+				If originModule.EndsWith(".bmx") Or (model.moduleName.length And originModule = model.moduleName.ToLower()) Then routines :+ [symbol]
+			Next
+		Next
+		For Local index:Int = 0 Until routines.length
+			Local symbol:TSymbol = routines[index]
+			For Local earlierIndex:Int = 0 Until index
+				Local earlier:TSymbol = routines[earlierIndex]
+				If earlier.containingScope = symbol.containingScope Or earlier.normalizedName <> symbol.normalizedName Then Continue
+				If earlier.isExternal And symbol.isExternal And earlier.name <> symbol.name Then Continue
+				If Not SameRoutineSignature(earlier, symbol) Then Continue
+				Local span:TSourceSpan
+				If symbol.nameToken Then span = symbol.nameToken.span
+				diagnostics.AddLast(TDiagnostic.Create("BMX3000", TLanguageMessages.DeclarationDuplicate("function", symbol.name), DIAGNOSTIC_ERROR, span, symbol.originPath))
+				Exit
+			Next
+		Next
+	End Method
+
+	Function SameRoutineSignature:Int(first:TSymbol, second:TSymbol)
+		If Not first Or Not second Or first.genericArity <> second.genericArity Or first.parameterTypes.length <> second.parameterTypes.length Then Return False
+		For Local index:Int = 0 Until first.parameterTypes.length
+			If RoutineParameterMode(first, index) <> RoutineParameterMode(second, index) Then Return False
+			If Not SameRoutineSignatureType(first.parameterTypes[index], second.parameterTypes[index], first, second) Then Return False
+		Next
+		Return True
+	End Function
+
+	Function RoutineParameterMode:Int(routine:TSymbol, index:Int)
+		If routine And index >= 0 And index < routine.parameters.length And routine.parameters[index] Then Return routine.parameters[index].passingMode
+		Return PARAMETER_PASS_VALUE
+	End Function
+
+	Function SameRoutineSignatureType:Int(first:TSemanticType, second:TSemanticType, firstRoutine:TSymbol, secondRoutine:TSymbol)
+		If first = second Then Return True
+		If Not first Or Not second Or first.kind <> second.kind Then Return False
+		Local firstBuiltin:TBuiltinSemanticType = TBuiltinSemanticType(first)
+		If firstBuiltin Then Return firstBuiltin.name.ToLower() = TBuiltinSemanticType(second).name.ToLower()
+		Local firstParameter:TTypeParameterSemanticType = TTypeParameterSemanticType(first)
+		If firstParameter Then
+			Local secondParameter:TTypeParameterSemanticType = TTypeParameterSemanticType(second)
+			Local firstOrdinal:Int = RoutineTypeParameterOrdinal(firstParameter.symbol, firstRoutine)
+			Local secondOrdinal:Int = RoutineTypeParameterOrdinal(secondParameter.symbol, secondRoutine)
+			If firstOrdinal >= 0 Or secondOrdinal >= 0 Then Return firstOrdinal >= 0 And firstOrdinal = secondOrdinal
+			Return firstParameter.symbol = secondParameter.symbol
+		End If
+		Local firstNamed:TNamedSemanticType = TNamedSemanticType(first)
+		If firstNamed Then
+			Local secondNamed:TNamedSemanticType = TNamedSemanticType(second)
+			If Not secondNamed Or firstNamed.symbol <> secondNamed.symbol Or firstNamed.typeArguments.length <> secondNamed.typeArguments.length Then Return False
+			For Local index:Int = 0 Until firstNamed.typeArguments.length
+				If Not SameRoutineSignatureType(firstNamed.typeArguments[index], secondNamed.typeArguments[index], firstRoutine, secondRoutine) Then Return False
+			Next
+			Return True
+		End If
+		Local firstPointer:TPointerSemanticType = TPointerSemanticType(first)
+		If firstPointer Then Return SameRoutineSignatureType(firstPointer.elementType, TPointerSemanticType(second).elementType, firstRoutine, secondRoutine)
+		Local firstArray:TArraySemanticType = TArraySemanticType(first)
+		If firstArray Then Return firstArray.rank = TArraySemanticType(second).rank And SameRoutineSignatureType(firstArray.elementType, TArraySemanticType(second).elementType, firstRoutine, secondRoutine)
+		Local firstStatic:TStaticArraySemanticType = TStaticArraySemanticType(first)
+		If firstStatic Then Return firstStatic.length = TStaticArraySemanticType(second).length And SameRoutineSignatureType(firstStatic.elementType, TStaticArraySemanticType(second).elementType, firstRoutine, secondRoutine)
+		Local firstCallable:TCallableSemanticType = TCallableSemanticType(first)
+		If firstCallable Then
+			Local secondCallable:TCallableSemanticType = TCallableSemanticType(second)
+			If Not secondCallable Or firstCallable.callingConvention <> secondCallable.callingConvention Or firstCallable.parameterTypes.length <> secondCallable.parameterTypes.length Then Return False
+			If Not SameRoutineSignatureType(firstCallable.returnType, secondCallable.returnType, firstRoutine, secondRoutine) Then Return False
+			For Local index:Int = 0 Until firstCallable.parameterTypes.length
+				If CallableParameterMode(firstCallable, index) <> CallableParameterMode(secondCallable, index) Then Return False
+				If Not SameRoutineSignatureType(firstCallable.parameterTypes[index], secondCallable.parameterTypes[index], firstRoutine, secondRoutine) Then Return False
+			Next
+			Return True
+		End If
+		Local firstClosure:TClosureSemanticType = TClosureSemanticType(first)
+		If firstClosure Then Return SameRoutineSignatureType(firstClosure.signature, TClosureSemanticType(second).signature, firstRoutine, secondRoutine)
+		Local firstError:TErrorSemanticType = TErrorSemanticType(first)
+		If firstError Then Return firstError.writtenName.ToLower() = TErrorSemanticType(second).writtenName.ToLower()
+		Return False
+	End Function
+
+	Function CallableParameterMode:Int(callable:TCallableSemanticType, index:Int)
+		If callable And index >= 0 And index < callable.parameterModes.length Then Return callable.parameterModes[index]
+		Return PARAMETER_PASS_VALUE
+	End Function
+
+	Function RoutineTypeParameterOrdinal:Int(parameter:TSymbol, routine:TSymbol)
+		If Not parameter Or Not routine Or Not routine.memberScope Or parameter.containingScope <> routine.memberScope Then Return -1
+		Local ordinal:Int
+		For Local symbol:TSymbol = EachIn routine.memberScope.declaredSymbols
+			If symbol.kind <> SYMBOL_TYPE_PARAMETER Then Continue
+			If symbol = parameter Then Return ordinal
+			ordinal :+ 1
+		Next
+		Return -1
+	End Function
 
 	Method BindSymbol(symbol:TSymbol)
 		Local previousPath:String = currentPath
