@@ -166,20 +166,26 @@ Type TExpressionBinder
 			bound.value = model.BoundExpression(assignment.right)
 			bound.operatorText = assignment.operatorToken.text
 			bound.resolvedCall = model.ResolvedCall(assignment)
-			bound.indexAccess = model.ResolvedIndex(assignment)
-			If Not bound.indexAccess Then bound.indexAccess = model.ResolvedIndex(assignment.left)
-			If bound.indexAccess And bound.indexAccess.accessKind = INDEX_ACCESS_OPERATOR Then
+			bound.indexAccess = model.ResolvedIndex(assignment.left)
+			bound.indexSetterAccess = model.ResolvedIndex(assignment)
+			' Preserve the established bound-model contract for ordinary indexed
+			' assignment: generic template serialization consumes indexAccess as the
+			' selected setter. Compound assignment needs both records separately.
+			If assignment.operatorToken.text = "=" And bound.indexSetterAccess Then bound.indexAccess = bound.indexSetterAccess
+			Local targetIndexAccess:TResolvedIndexAccess = bound.indexAccess
+			If Not targetIndexAccess Then targetIndexAccess = bound.indexSetterAccess
+			If targetIndexAccess And targetIndexAccess.accessKind = INDEX_ACCESS_OPERATOR Then
 				Local indexedTargetSyntax:TIndexExpressionSyntax = TIndexExpressionSyntax(assignment.left)
 				If indexedTargetSyntax Then
 					Local indexedTarget:TBoundIndexExpression = TBoundIndexExpression(bound.target)
 					If Not indexedTarget Then
 						indexedTarget = New TBoundIndexExpression
-						InitializeBound(indexedTarget, BOUND_EXPRESSION_INDEX, indexedTargetSyntax, bound.indexAccess.resultType)
+						InitializeBound(indexedTarget, BOUND_EXPRESSION_INDEX, indexedTargetSyntax, targetIndexAccess.resultType)
 						indexedTarget.receiver = model.BoundExpression(indexedTargetSyntax.expression)
 						indexedTarget.indexes = BoundExpressions(indexedTargetSyntax.indexes)
 						bound.target = indexedTarget
 					End If
-					indexedTarget.access = bound.indexAccess
+					indexedTarget.access = targetIndexAccess
 				End If
 			End If
 			Local required:TSemanticType
@@ -921,8 +927,25 @@ Type TExpressionBinder
 			End If
 			If assignment.operatorToken.text = "=" Then ValidateSelfAssignment(assignment, assignedSymbol, scope)
 			If assignment.operatorToken.text = "=" Then CheckAssignmentConversion(rightType, leftType, assignment.right.span, "assignment", assignment.right)
+			Local resolvedCompound:TResolvedCall
 			If assignment.operatorToken.text <> "=" And TNamedSemanticType(leftType) Then
-				ResolveOperator(assignment, assignment.left, assignment.operatorToken.text, leftType, [assignment.right], [rightType], scope)
+				resolvedCompound = ResolveOperator(assignment, assignment.left, assignment.operatorToken.text, leftType, [assignment.right], [rightType], scope)
+			End If
+			If indexedTarget And assignment.operatorToken.text <> "=" Then
+				Local receiverType:TSemanticType = BindExpression(indexedTarget.expression, scope)
+				Local indexTypes:TSemanticType[] = BindExpressions(indexedTarget.indexes, scope)
+				If TNamedSemanticType(receiverType) Then
+					Local setterValueType:TSemanticType = leftType
+					If resolvedCompound And resolvedCompound.returnType Then setterValueType = resolvedCompound.returnType
+					Local setterArguments:TExpressionSyntax[] = AppendExpression(indexedTarget.indexes, assignment.left)
+					Local setterTypes:TSemanticType[] = AppendType(indexTypes, setterValueType)
+					Local resolvedSetter:TResolvedCall = ResolveOperator(assignment, indexedTarget, "[]=", receiverType, setterArguments, setterTypes, scope)
+					If resolvedSetter Then RecordIndex(assignment, INDEX_ACCESS_OPERATOR, receiverType, resolvedSetter.returnType, resolvedSetter)
+					' The synthetic setter lookup uses the assignment node as its temporary
+					' call key. Restore the compound operator selected for the value itself;
+					' native scalar compounds intentionally have no resolved call.
+					If resolvedCompound Then model.resolvedCallMap.Insert(assignment, resolvedCompound) Else model.resolvedCallMap.Remove(assignment)
+				End If
 			End If
 			Return
 		End If

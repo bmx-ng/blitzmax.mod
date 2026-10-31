@@ -180,6 +180,7 @@ Type TCompilerIrLowerer
 	Field currentStruct:TCompilerIrStruct
 	Field currentLoop:TCompilerLoopLoweringContext
 	Field preserveStructLValue:Int
+	Field expressionOverrides:TMap = New TMap
 	Field activeTryBodyDepth:Int
 	Field activeYieldExceptionFrameDepth:Int
 	Field activeTryFinallyBlocks:TCompilerIrBlock[] = New TCompilerIrBlock[0]
@@ -4701,13 +4702,13 @@ Type TCompilerIrLowerer
 			Local ascribedTarget:TBoundConversionExpression = TBoundConversionExpression(assignmentTarget)
 			If ascribedTarget And ascribedTarget.conversionKind = CONVERSION_IDENTITY Then assignmentTarget = ascribedTarget.operand
 			Local arrayTarget:TBoundIndexExpression = TBoundIndexExpression(assignmentTarget)
-			If assignment.operatorText = "=" And assignment.indexAccess And assignment.indexAccess.accessKind = INDEX_ACCESS_OPERATOR And assignment.indexAccess.resolvedCall And arrayTarget Then
+			If assignment.operatorText = "=" And assignment.indexSetterAccess And assignment.indexSetterAccess.accessKind = INDEX_ACCESS_OPERATOR And assignment.indexSetterAccess.resolvedCall And arrayTarget Then
 				Local setterCall:TBoundCallExpression = New TBoundCallExpression
 				setterCall.boundKind = BOUND_EXPRESSION_CALL
 				setterCall.syntax = arrayTarget.syntax
-				setterCall.semanticType = assignment.indexAccess.resultType
+				setterCall.semanticType = assignment.indexSetterAccess.resultType
 				setterCall.isSynthetic = True
-				setterCall.resolvedCall = assignment.indexAccess.resolvedCall
+				setterCall.resolvedCall = assignment.indexSetterAccess.resolvedCall
 				setterCall.receiver = arrayTarget.receiver
 				setterCall.arguments = arrayTarget.indexes + [assignment.value]
 				Local setterStatement:TCompilerIrExpressionStatement = New TCompilerIrExpressionStatement
@@ -4715,6 +4716,9 @@ Type TCompilerIrLowerer
 				setterStatement.source = SourceOf(bound.syntax)
 				setterStatement.expression = LowerExpression(setterCall)
 				Return setterStatement
+			End If
+			If assignment.operatorText <> "=" And assignment.indexAccess And assignment.indexAccess.accessKind = INDEX_ACCESS_OPERATOR And assignment.indexAccess.resolvedCall And assignment.indexSetterAccess And assignment.indexSetterAccess.accessKind = INDEX_ACCESS_OPERATOR And assignment.indexSetterAccess.resolvedCall And arrayTarget Then
+				Return LowerCompoundIndexAssignment(assignment, arrayTarget, bound)
 			End If
 			If assignment.resolvedCall And assignment.resolvedCall.routine Then
 				Local operatorStatement:TCompilerIrExpressionStatement = New TCompilerIrExpressionStatement
@@ -6481,8 +6485,89 @@ Type TCompilerIrLowerer
 		Return call
 	End Function
 
+	Method LowerCompoundIndexAssignment:TCompilerIrStatement(assignment:TBoundAssignmentStatement, indexed:TBoundIndexExpression, bound:TBoundStatement)
+		If Not assignment Or Not indexed Or Not assignment.indexAccess Or Not assignment.indexSetterAccess Then Return Null
+		Local materializations:TCompilerIrMaterialize[] = New TCompilerIrMaterialize[1 + indexed.indexes.length]
+		Local loweredReceiver:TCompilerIrExpression = LowerExpression(indexed.receiver)
+		If Not loweredReceiver Then Return Null
+		materializations[0] = BeginMaterialization(loweredReceiver, indexed.receiver.syntax)
+		expressionOverrides.Insert(indexed.receiver, TemporaryReference(materializations[0], indexed.receiver, indexed.receiver.syntax, "index_receiver"))
+		For Local index:Int = 0 Until indexed.indexes.length
+			Local loweredIndex:TCompilerIrExpression = LowerExpression(indexed.indexes[index])
+			If Not loweredIndex Then
+				ClearCompoundIndexOverrides(indexed)
+				Return Null
+			End If
+			materializations[index + 1] = BeginMaterialization(loweredIndex, indexed.indexes[index].syntax)
+			expressionOverrides.Insert(indexed.indexes[index], TemporaryReference(materializations[index + 1], indexed.indexes[index], indexed.indexes[index].syntax, "index_argument"))
+		Next
+
+		Local updatedValue:TCompilerIrExpression
+		If assignment.resolvedCall And assignment.resolvedCall.routine Then
+			updatedValue = LowerResolvedOperatorCall(assignment.resolvedCall, indexed, [assignment.value], indexed)
+		Else
+			Local operation:TBoundBinaryExpression = New TBoundBinaryExpression
+			operation.boundKind = BOUND_EXPRESSION_BINARY
+			operation.syntax = indexed.syntax
+			operation.semanticType = indexed.semanticType
+			operation.operatorText = assignment.operatorText[1..]
+			operation.left = indexed
+			operation.right = assignment.value
+			updatedValue = LowerExpression(operation)
+		End If
+		If Not updatedValue Then
+			ClearCompoundIndexOverrides(indexed)
+			Return Null
+		End If
+
+		' Feed the computed value into the selected []= overload without rebuilding
+		' its source expression. The override retains the already-lowered compound
+		' operation while the ordinary call path applies the setter's ABI and casts.
+		Local valuePlaceholder:TBoundLiteralExpression = New TBoundLiteralExpression
+		valuePlaceholder.boundKind = BOUND_EXPRESSION_LITERAL
+		valuePlaceholder.syntax = assignment.value.syntax
+		valuePlaceholder.semanticType = indexed.semanticType
+		expressionOverrides.Insert(valuePlaceholder, updatedValue)
+		Local setterCall:TBoundCallExpression = New TBoundCallExpression
+		setterCall.boundKind = BOUND_EXPRESSION_CALL
+		setterCall.syntax = indexed.syntax
+		setterCall.semanticType = assignment.indexSetterAccess.resultType
+		setterCall.isSynthetic = True
+		setterCall.resolvedCall = assignment.indexSetterAccess.resolvedCall
+		setterCall.receiver = indexed.receiver
+		setterCall.arguments = indexed.indexes + [valuePlaceholder]
+		Local setterExpression:TCompilerIrExpression = LowerExpression(setterCall)
+		expressionOverrides.Remove(valuePlaceholder)
+		ClearCompoundIndexOverrides(indexed)
+		If Not setterExpression Then Return Null
+
+		' Nest materializations in reverse so execution remains receiver, indexes,
+		' getter/operation, setter, with every receiver and index evaluated once.
+		Local sequenced:TCompilerIrExpression = setterExpression
+		For Local index:Int = materializations.length - 1 To 0 Step -1
+			materializations[index].expression = sequenced
+			materializations[index].semanticType = setterExpression.semanticType
+			sequenced = materializations[index]
+		Next
+		Local statement:TCompilerIrExpressionStatement = New TCompilerIrExpressionStatement
+		statement.kind = IR_STATEMENT_EXPRESSION
+		statement.source = SourceOf(bound.syntax)
+		statement.expression = sequenced
+		Return statement
+	End Method
+
+	Method ClearCompoundIndexOverrides(indexed:TBoundIndexExpression)
+		If Not indexed Then Return
+		expressionOverrides.Remove(indexed.receiver)
+		For Local argument:TBoundExpression = EachIn indexed.indexes
+			expressionOverrides.Remove(argument)
+		Next
+	End Method
+
 	Method LowerExpression:TCompilerIrExpression(bound:TBoundExpression)
 		If Not bound Then Return Null
+		Local expressionOverride:TCompilerIrExpression = TCompilerIrExpression(expressionOverrides.ValueForKey(bound))
+		If expressionOverride Then Return expressionOverride
 		Local supportedStaticStorage:Int = StaticArrayTypeOf(bound) And (TBoundSymbolExpression(bound) Or TBoundMemberExpression(bound))
 		Local routineReference:TBoundRoutineReferenceExpression = TBoundRoutineReferenceExpression(bound)
 		Local functionLiteral:TBoundFunctionLiteralExpression = TBoundFunctionLiteralExpression(bound)
