@@ -5143,7 +5143,7 @@ Type TCompilerIrLowerer
 					Local objectVariableType:TSemanticType
 					If forStatement.loopVariable Then objectVariableType = forStatement.loopVariable.declaredType Else If forStatement.target Then objectVariableType = forStatement.target.semanticType
 					Local legacyObjectElements:Int = forStatement.iteration.protocolKind = EACH_IN_PROTOCOL_OBJECT_ENUMERATOR And IsBuiltinObjectType(forStatement.iteration.elementType)
-					If Not IsSupportedValueType(forStatement.iteration.elementType) Or Not objectVariableType Or (legacyObjectElements And Not IsObjectReferenceType(objectVariableType) And Not IsStringType(objectVariableType) And Not IsNumericType(objectVariableType)) Or (Not legacyObjectElements And TypeName(objectVariableType).ToLower() <> TypeName(forStatement.iteration.elementType).ToLower()) Then
+					If Not IsSupportedValueType(forStatement.iteration.elementType) Or Not objectVariableType Or (legacyObjectElements And Not IsObjectReferenceType(objectVariableType) And Not IsStringType(objectVariableType)) Or (Not legacyObjectElements And TypeName(objectVariableType).ToLower() <> TypeName(forStatement.iteration.elementType).ToLower()) Then
 						AddUnsupported("BMXC1020", TBccMessages.IrLoweringObjectIteratorEachInLoopVariableUnsupported(), bound.syntax)
 						Return Null
 					End If
@@ -5205,25 +5205,10 @@ Type TCompilerIrLowerer
 							stringCast.semanticType = resultObjectEach.variableType
 							stringCast.operand = elementReference
 							resultObjectEach.elementValue = stringCast
-						Else If Not IsNumericType(objectVariableType) Then
+						Else
 							resultObjectEach.filtersNullObjects = True
 						End If
-						If IsNumericType(objectVariableType) Then
-							Local objectStorage:TCompilerIrConversion = New TCompilerIrConversion
-							objectStorage.kind = IR_EXPRESSION_CONVERSION
-							objectStorage.source = SourceOf(bound.syntax)
-							objectStorage.semanticType = "Byte Ptr"
-							objectStorage.conversionKind = CONVERSION_OBJECT_TO_BYTE_POINTER
-							objectStorage.operand = elementReference
-							Local numericElement:TCompilerIrPointerElement = New TCompilerIrPointerElement
-							numericElement.kind = IR_EXPRESSION_POINTER_ELEMENT
-							numericElement.source = SourceOf(bound.syntax)
-							numericElement.semanticType = resultObjectEach.variableType
-							numericElement.elementType = resultObjectEach.variableType
-							numericElement.receiver = objectStorage
-							numericElement.index = ScalarDefault("Int", SourceOf(bound.syntax))
-							resultObjectEach.elementValue = numericElement
-						Else If Not IsBuiltinObjectType(objectVariableType) And Not IsStringType(objectVariableType) Then
+						If Not IsBuiltinObjectType(objectVariableType) And Not IsStringType(objectVariableType) Then
 							Local targetInterface:TCompilerIrInterface = InterfaceForType(objectVariableType)
 							If targetInterface Then
 								Local interfaceCast:TCompilerIrInterfaceCast = New TCompilerIrInterfaceCast
@@ -5378,8 +5363,7 @@ Type TCompilerIrLowerer
 				Local variableType:TSemanticType
 				If forStatement.loopVariable Then variableType = forStatement.loopVariable.declaredType Else If forStatement.target Then variableType = forStatement.target.semanticType
 				Local objectElements:Int = IsObjectReferenceType(collectionType.elementType)
-				Local legacyObjectAdaptation:Int = objectElements And (IsStringType(variableType) Or IsNumericType(variableType))
-				If objectElements And variableType And IsBuiltinObjectType(collectionType.elementType) And IsObjectReferenceType(variableType) Then legacyObjectAdaptation = True
+				Local legacyObjectAdaptation:Int = objectElements And variableType And IsBuiltinObjectType(collectionType.elementType) And (IsStringType(variableType) Or IsObjectReferenceType(variableType))
 				If objectElements And variableType And Not legacyObjectAdaptation Then
 					Local objectConversion:TConversion = TConversionClassifier.Create(analysis.model).ClassifyExplicit(collectionType.elementType, variableType)
 					legacyObjectAdaptation = objectConversion And objectConversion.Exists()
@@ -5427,7 +5411,7 @@ Type TCompilerIrLowerer
 				elementReference.name = "element"
 				resultEach.elementValue = elementReference
 				If objectElements Then
-					resultEach.filtersNullObjects = Not IsNumericType(variableType) And Not IsStringType(variableType)
+					resultEach.filtersNullObjects = Not IsStringType(variableType)
 					If IsStringType(variableType) Then
 						resultEach.filtersStringObjects = True
 						Local stringCast:TCompilerIrObjectStringCast = New TCompilerIrObjectStringCast
@@ -5436,21 +5420,6 @@ Type TCompilerIrLowerer
 						stringCast.semanticType = resultEach.variableType
 						stringCast.operand = elementReference
 						resultEach.elementValue = stringCast
-					Else If IsNumericType(variableType) Then
-						Local objectStorage:TCompilerIrConversion = New TCompilerIrConversion
-						objectStorage.kind = IR_EXPRESSION_CONVERSION
-						objectStorage.source = SourceOf(bound.syntax)
-						objectStorage.semanticType = "Byte Ptr"
-						objectStorage.conversionKind = CONVERSION_OBJECT_TO_BYTE_POINTER
-						objectStorage.operand = elementReference
-						Local numericElement:TCompilerIrPointerElement = New TCompilerIrPointerElement
-						numericElement.kind = IR_EXPRESSION_POINTER_ELEMENT
-						numericElement.source = SourceOf(bound.syntax)
-						numericElement.semanticType = resultEach.variableType
-						numericElement.elementType = resultEach.variableType
-						numericElement.receiver = objectStorage
-						numericElement.index = ScalarDefault("Int", SourceOf(bound.syntax))
-						resultEach.elementValue = numericElement
 					Else If IsBuiltinObjectType(variableType) And Not TGenericRoutineInference.SameType(collectionType.elementType, variableType) Then
 						' A typed managed array retains concrete pointer storage in C. Iterating
 						' it through Object is a semantic reference conversion, not a C pointer

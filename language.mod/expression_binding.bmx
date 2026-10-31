@@ -558,20 +558,14 @@ Type TExpressionBinder
 	End Method
 
 	Function IsLegacyEachInObjectConversion:Int(actual:TSemanticType, required:TSemanticType)
-		Local actualObject:Int
 		Local builtin:TBuiltinSemanticType = TBuiltinSemanticType(actual)
-		If builtin And builtin.name.ToLower() = "object" Then actualObject = True
-		Local named:TNamedSemanticType = TNamedSemanticType(actual)
-		If named And named.symbol And (named.symbol.kind = SYMBOL_TYPE Or named.symbol.kind = SYMBOL_INTERFACE) Then actualObject = True
-		If Not actualObject Then Return False
-		If TConversionClassifier.IsString(required) Or TConversionClassifier.NumericRankOf(required) >= 0 Then Return True
+		If Not builtin Or builtin.name.ToLower() <> "object" Then Return False
+		If TConversionClassifier.IsString(required) Then Return True
 		' A legacy Object result is dynamically filtered to any managed Type or
-		' Interface target. More-specific source Types still require a real
-		' upcast/downcast/interface relationship above.
-		If builtin Then
-			Local requiredNamed:TNamedSemanticType = TNamedSemanticType(required)
-			If requiredNamed And requiredNamed.symbol Then Return requiredNamed.symbol.kind = SYMBOL_TYPE Or requiredNamed.symbol.kind = SYMBOL_INTERFACE
-		End If
+		' Interface target. More-specific source Types require a real
+		' upcast, downcast or Interface relationship above.
+		Local requiredNamed:TNamedSemanticType = TNamedSemanticType(required)
+		If requiredNamed And requiredNamed.symbol Then Return requiredNamed.symbol.kind = SYMBOL_TYPE Or requiredNamed.symbol.kind = SYMBOL_INTERFACE
 		Return False
 	End Function
 
