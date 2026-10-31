@@ -1299,6 +1299,7 @@ End Type
 
 Type TCompilerIrDependency
 	Field logicalName:String
+	Field sourceUnitPath:String
 	Field interfacePath:String
 	Field headerPath:String
 	Field registerFunctionName:String

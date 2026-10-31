@@ -132,7 +132,13 @@ Type TCompilerInterfaceEmitter
 		For Local dependency:TCompilerIrDependency = EachIn irModule.initializationPlan.dependencies
 			If Not dependency.logicalName.length Then Continue
 			If dependency.logicalName.ToLower().EndsWith(".bmx") Then
-				imports.Append("import ").Append(Quoted(dependency.logicalName)).Append("~n")
+				Local sourceImport:String = dependency.logicalName
+				' A primary module interface lives at the module root, whereas an
+				' Import inside an included document is written relative to that
+				' document. Publish its canonical module-root source-unit path so
+				' downstream consumers resolve the same interface.
+				If IsPrimaryModuleSource() And dependency.sourceUnitPath.length Then sourceImport = dependency.sourceUnitPath
+				imports.Append("import ").Append(Quoted(sourceImport)).Append("~n")
 			Else
 				imports.Append("import ").Append(dependency.logicalName).Append("~n")
 			End If

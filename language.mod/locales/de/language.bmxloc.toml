@@ -1871,3 +1871,10 @@ name = "inheritance.override_return_type_mismatch"
 translated = false
 text = "Method '{methodName}' return type '{declaredReturnType}' does not match inherited return type '{inheritedReturnType}'."
 placeholders = [{ name = "methodName", type = "string" }, { name = "declaredReturnType", type = "string" }, { name = "inheritedReturnType", type = "string" }]
+
+[[message]]
+id = 268
+name = "snapshot.import_after_source"
+translated = false
+text = "Import and Framework directives must appear before declarations or executable statements."
+placeholders = []

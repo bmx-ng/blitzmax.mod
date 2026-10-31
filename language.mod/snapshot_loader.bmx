@@ -23,6 +23,7 @@ Type TCompilationSnapshotBuilder
 	Field documentsByPath:TMap = New TMap
 	Field documentStates:TMap = New TMap
 	Field interfacesByPath:TMap = New TMap
+	Field directiveSectionOpen:Int = True
 
 	Rem
 	bbdoc: Builds a parsed dependency snapshot for a BlitzMax compilation unit.
@@ -182,6 +183,10 @@ Type TCompilationSnapshotBuilder
 			End If
 			Local importSyntax:TImportDirectiveSyntax = TImportDirectiveSyntax(node)
 			If importSyntax Then
+				If Not directiveSectionOpen Then
+					AddDiagnostic("BMX4015", TLanguageMessages.SnapshotImportAfterSource(), document.path, importSyntax.span)
+					Continue
+				End If
 				LoadSourceImport(document, importSyntax)
 				Continue
 			End If
@@ -193,9 +198,26 @@ Type TCompilationSnapshotBuilder
 				Next
 				Continue
 			End If
+			If DirectivePreambleNode(node) Then Continue
+			directiveSectionOpen = False
 			Local block:TBlockSyntax = TBlockSyntax(node)
 			If block Then VisitNodes(document, block.statements)
 		Next
+	End Method
+
+	Method DirectivePreambleNode:Int(node:TSyntaxNode)
+		If TSourceModeSyntax(node) Then Return True
+		Local callStatement:TCallStatementSyntax = TCallStatementSyntax(node)
+		If callStatement And callStatement.calleeTokens.length Then
+			Local name:String = callStatement.calleeTokens[0].text.ToLower()
+			Return name = "module" Or name = "moduleinfo" Or name = "nodebug"
+		End If
+		Local rawStatement:TRawStatementSyntax = TRawStatementSyntax(node)
+		If rawStatement And rawStatement.tokens.length Then
+			Local name:String = rawStatement.tokens[0].text.ToLower()
+			Return name = "module" Or name = "moduleinfo" Or name = "nodebug"
+		End If
+		Return False
 	End Method
 
 	Method LoadInclude(document:TSourceDocumentModel, syntax:TIncludeDirectiveSyntax)
@@ -205,10 +227,54 @@ Type TCompilationSnapshotBuilder
 			AddDiagnostic("BMX4002", TLanguageMessages.SnapshotIncludedSourceNotFound(syntax.pathText), document.path, syntax.span)
 			Return
 		End If
+		Local alreadyLoaded:Int = String(documentStates.ValueForKey(PathKey(resolved.path))) = "loaded"
 		Local edge:TIncludeEdge = New TIncludeEdge
 		edge.syntax = syntax
 		edge.target = LoadDocument(resolved, False, document, syntax)
 		document.AddInclude(edge)
+		' A cached document is still textually expanded at every Include site.
+		' Its imports were resolved on the first load, but placement must be
+		' replayed against the directive state at this occurrence.
+		If alreadyLoaded And edge.target Then ReplayDirectiveNodes(edge.target, edge.target.tree.root.members)
+	End Method
+
+	Method ReplayDirectiveNodes(document:TSourceDocumentModel, nodes:TSyntaxNode[], stack:TMap = Null, enteringDocument:Int = True)
+		If Not stack Then stack = New TMap
+		Local key:String = PathKey(document.path)
+		If enteringDocument Then
+			If stack.Contains(key) Then Return
+			stack.Insert(key, key)
+		End If
+		For Local node:TSyntaxNode = EachIn nodes
+			Local includeSyntax:TIncludeDirectiveSyntax = TIncludeDirectiveSyntax(node)
+			If includeSyntax Then
+				For Local edge:TIncludeEdge = EachIn document.includes
+					If edge.syntax = includeSyntax And edge.target Then
+						ReplayDirectiveNodes(edge.target, edge.target.tree.root.members, stack)
+						Exit
+					End If
+				Next
+				Continue
+			End If
+			Local importSyntax:TImportDirectiveSyntax = TImportDirectiveSyntax(node)
+			If importSyntax Then
+				If Not directiveSectionOpen Then AddDiagnostic("BMX4015", TLanguageMessages.SnapshotImportAfterSource(), document.path, importSyntax.span)
+				Continue
+			End If
+			Local conditional:TConditionalRegionSyntax = TConditionalRegionSyntax(node)
+			If conditional Then
+				Local indexes:Int[] = TConditionalEvaluator.ActiveBranchIndexes(conditional, options.conditionalSymbols)
+				For Local index:Int = EachIn indexes
+					ReplayDirectiveNodes(document, conditional.branches[index].body.statements, stack, False)
+				Next
+				Continue
+			End If
+			If DirectivePreambleNode(node) Then Continue
+			directiveSectionOpen = False
+			Local block:TBlockSyntax = TBlockSyntax(node)
+			If block Then ReplayDirectiveNodes(document, block.statements, stack, False)
+		Next
+		If enteringDocument Then stack.Remove(key)
 	End Method
 
 	Method LoadSourceImport(document:TSourceDocumentModel, syntax:TImportDirectiveSyntax)
