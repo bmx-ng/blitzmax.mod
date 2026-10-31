@@ -816,6 +816,10 @@ Type TExpressionBinder
 		If routine Then
 			Local routineScope:TScope = model.ScopeFor(routine)
 			Local routineSymbol:TSymbol = model.DeclaredSymbol(routine)
+			' Declaration collection deliberately omits routines whose malformed
+			' signatures do not declare a symbol.  Do not bind their recovered body
+			' with a Null or enclosing scope; the parser diagnostic is sufficient.
+			If Not routineScope Or Not routineSymbol Then Return
 			If routineSymbol And routineSymbol.isIteratorRoutine Then
 				Local iteratorType:TNamedSemanticType = FindProtocolInterface(routineSymbol.declaredType, "iiterator")
 				If iteratorType And iteratorType.typeArguments.length = 1 Then
