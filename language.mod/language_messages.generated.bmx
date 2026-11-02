@@ -273,6 +273,8 @@ Const LANGUAGE_MSG_BINDING_ARGUMENT_NUMERIC_NARROWING:Int = 265
 Const LANGUAGE_MSG_BINDING_CONSTANT_ASSIGNMENT_NOT_ALLOWED:Int = 266
 Const LANGUAGE_MSG_INHERITANCE_OVERRIDE_RETURN_TYPE_MISMATCH:Int = 267
 Const LANGUAGE_MSG_SNAPSHOT_IMPORT_AFTER_SOURCE:Int = 268
+Const LANGUAGE_MSG_BINDING_CANNOT_INSTANTIATE_MISSING_MEMBER:Int = 269
+Const LANGUAGE_MSG_BINDING_CANNOT_INSTANTIATE_MISSING_MEMBERS:Int = 270
 
 Type TLanguageMessages
 	Function ParserExpressionNestingTooDeep:TLocalisedMessage()
@@ -1078,5 +1080,11 @@ Type TLanguageMessages
 	End Function
 	Function SnapshotImportAfterSource:TLocalisedMessage()
 		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_SNAPSHOT_IMPORT_AFTER_SOURCE, "Import and Framework directives must appear before declarations or executable statements.")
+	End Function
+	Function BindingCannotInstantiateMissingMember:TLocalisedMessage(typeName:String, member:String)
+		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_CANNOT_INSTANTIATE_MISSING_MEMBER, "Cannot create an instance of '{typeName}' because required member '{member}' is not implemented.", [TMessageArg.Create("typeName", typeName), TMessageArg.Create("member", member)])
+	End Function
+	Function BindingCannotInstantiateMissingMembers:TLocalisedMessage(typeName:String, missingCount:Long, member:String)
+		Return TLocalisedMessage.Create("language", LANGUAGE_MSG_BINDING_CANNOT_INSTANTIATE_MISSING_MEMBERS, "Cannot create an instance of '{typeName}' because {missingCount} required members are not implemented, including '{member}'.", [TMessageArg.Create("typeName", typeName), TMessageArg.CreateInt("missingCount", missingCount), TMessageArg.Create("member", member)])
 	End Function
 End Type

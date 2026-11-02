@@ -1313,7 +1313,14 @@ Type TExpressionBinder
 								If creation.dimensionRanks.length = 0 Then
 									Local createdNamed:TNamedSemanticType = TNamedSemanticType(result)
 									If createdNamed And createdNamed.symbol And model.IsAbstractType(createdNamed.symbol) Then
-										AddDiagnostic("BMX3316", TLanguageMessages.BindingCannotInstantiateAbstractType(createdNamed.DisplayName()), creation.createdType.span)
+										Local obligations:TAbstractRoutineObligation[] = model.AbstractObligations(createdNamed.symbol)
+										If obligations.length = 1 Then
+											AddDiagnostic("BMX3316", TLanguageMessages.BindingCannotInstantiateMissingMember(createdNamed.DisplayName(), AbstractObligationDisplayName(obligations[0])), creation.createdType.span)
+										Else If obligations.length > 1 Then
+											AddDiagnostic("BMX3316", TLanguageMessages.BindingCannotInstantiateMissingMembers(createdNamed.DisplayName(), obligations.length, AbstractObligationDisplayName(obligations[0])), creation.createdType.span)
+										Else
+											AddDiagnostic("BMX3316", TLanguageMessages.BindingCannotInstantiateAbstractType(createdNamed.DisplayName()), creation.createdType.span)
+										End If
 									End If
 									If createdNamed And createdNamed.symbol Then ResolveConstructor(creation, createdNamed, constructorArgumentTypes, scope)
 								End If
@@ -2983,6 +2990,20 @@ Type TExpressionBinder
 		AddDiagnostic("BMX3319", TLanguageMessages.BindingCannotCallAbstractFunction(signature), span)
 		Return True
 	End Method
+
+	Function AbstractObligationDisplayName:String(obligation:TAbstractRoutineObligation)
+		If Not obligation Or Not obligation.routine Then Return "<unknown member>"
+		Local routine:TSymbol = obligation.routine
+		Local result:String
+		If obligation.ownerType Then result = obligation.ownerType.DisplayName() + "."
+		result :+ routine.name + "("
+		For Local index:Int = 0 Until obligation.parameterTypes.length
+			If index Then result :+ ", "
+			If obligation.parameterTypes[index] Then result :+ obligation.parameterTypes[index].DisplayName() Else result :+ "<unresolved>"
+			If index < routine.parameters.length And routine.parameters[index] And routine.parameters[index].passingMode = PARAMETER_PASS_VAR Then result :+ " Var"
+		Next
+		Return result + ")"
+	End Function
 
 	Method ReportUncalledRoutineArguments:Int(arguments:TExpressionSyntax[], argumentTypes:TSemanticType[], candidates:TSymbol[], containingSubstitutions:TMap, receiverType:TSemanticType)
 		If candidates.length = 0 Then Return False
