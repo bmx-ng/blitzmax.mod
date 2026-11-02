@@ -928,8 +928,18 @@ Type TExpressionBinder
 			If assignment.operatorToken.text = "=" Then ValidateSelfAssignment(assignment, assignedSymbol, scope)
 			If assignment.operatorToken.text = "=" Then CheckAssignmentConversion(rightType, leftType, assignment.right.span, "assignment", assignment.right)
 			Local resolvedCompound:TResolvedCall
+			Local compoundOperatorCandidates:TSymbol[]
 			If assignment.operatorToken.text <> "=" And TNamedSemanticType(leftType) Then
+				compoundOperatorCandidates = AccessibleSymbols(RoutineMemberSymbols(leftType, assignment.operatorToken.text), scope)
 				resolvedCompound = ResolveOperator(assignment, assignment.left, assignment.operatorToken.text, leftType, [assignment.right], [rightType], scope)
+			End If
+			If assignment.operatorToken.text <> "=" And Not resolvedCompound And compoundOperatorCandidates.length = 0 Then
+				Local compoundResult:TSemanticType = BuiltinCompoundResultType(assignment.operatorToken.text, leftType, rightType)
+				If compoundResult Then
+					CheckAssignmentConversion(compoundResult, leftType, assignment.right.span, "compound assignment '" + assignment.operatorToken.text + "'")
+				Else If leftType And rightType And Not TErrorSemanticType(leftType) And Not TErrorSemanticType(rightType) Then
+					AddDiagnostic("BMX3305", TLanguageMessages.BindingBinaryOperatorNotDefined(assignment.operatorToken.text, leftType.DisplayName(), rightType.DisplayName()), assignment.span)
+				End If
 			End If
 			If indexedTarget And assignment.operatorToken.text <> "=" Then
 				Local receiverType:TSemanticType = BindExpression(indexedTarget.expression, scope)
@@ -3784,6 +3794,47 @@ Type TExpressionBinder
 		End If
 		If TPointerSemanticType(left) And TPointerSemanticType(right) Then Return True
 		Return ComparisonConversionExists(left, right)
+	End Method
+
+	Method BuiltinCompoundResultType:TSemanticType(operatorText:String, left:TSemanticType, right:TSemanticType)
+		If Not left Or Not right Then Return Null
+		If TErrorSemanticType(left) Or TErrorSemanticType(right) Then Return left
+		' Open generic operations are validated after specialization, when their
+		' concrete operand types and any source-defined operators are available.
+		If TTypeParameterSemanticType(left) Or TTypeParameterSemanticType(right) Then Return left
+		Local operation:String = operatorText.ToLower()
+		If operation.StartsWith(":") Then operation = operation[1..]
+
+		Local leftArray:TArraySemanticType = TArraySemanticType(left)
+		If leftArray Then
+			If operation <> "+" Or Not TArraySemanticType(right) Then Return Null
+			If TGenericRoutineInference.SameType(left, right) Or conversions.Classify(right, left).Exists() Then Return left
+			Return Null
+		End If
+
+		Local leftPointer:TPointerSemanticType = TPointerSemanticType(left)
+		If leftPointer Then
+			If (operation = "+" Or operation = "-") And TConversionClassifier.IsIntegral(right) Then Return left
+			Return Null
+		End If
+
+		If operation = "+" And (TConversionClassifier.IsString(left) Or TConversionClassifier.IsString(right)) Then Return model.BuiltinType("String")
+
+		If TConversionClassifier.IsEnum(left) Then
+			If Not TConversionClassifier.IsIntegral(right) And Not (TConversionClassifier.IsEnum(right) And TGenericRoutineInference.SameType(left, right)) Then Return Null
+			Select operation
+				Case "+", "-", "*", "/", "mod", "&", "|", "~~", "shl", "shr", "sar" Return left
+			End Select
+			Return Null
+		End If
+
+		If TConversionClassifier.NumericRankOf(left) < 0 Or TConversionClassifier.NumericRankOf(right) < 0 Then Return Null
+		Select operation
+			Case "+", "-", "*", "/", "mod" Return WiderNumericType(left, right)
+			Case "&", "|", "~~", "shl", "shr", "sar"
+				If TConversionClassifier.IsIntegral(left) And TConversionClassifier.IsIntegral(right) Then Return WiderNumericType(left, right)
+		End Select
+		Return Null
 	End Method
 
 	Method ComparisonConversionExists:Int(left:TSemanticType, right:TSemanticType)
