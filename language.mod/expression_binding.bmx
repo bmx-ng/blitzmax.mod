@@ -971,7 +971,7 @@ Type TExpressionBinder
 					BindExpression(callStatement.expression, scope)
 					Return
 				End If
-				Local argumentTypes:TSemanticType[] = BindCallArgumentTypes(callStatement.expression, callStatement.argumentExpressions, scope)
+				Local argumentTypes:TSemanticType[] = BindCallArgumentTypes(callStatement.expression, callStatement.argumentExpressions, New TTypeReferenceSyntax[0], scope)
 				Local resolvedCommand:TResolvedCall = ResolveCall(callStatement, callStatement.expression, callStatement.argumentExpressions, argumentTypes, New TTypeReferenceSyntax[0], scope)
 				ValidateImplicitRoutineCapture(callStatement.expression, resolvedCommand)
 			End If
@@ -1272,7 +1272,7 @@ Type TExpressionBinder
 			Else
 				Local call:TCallExpressionSyntax = TCallExpressionSyntax(expression)
 				If call Then
-					Local argumentTypes:TSemanticType[] = BindCallArgumentTypes(call.callee, call.arguments, scope)
+					Local argumentTypes:TSemanticType[] = BindCallArgumentTypes(call.callee, call.arguments, call.typeArguments, scope)
 					Local namedCastTarget:TSemanticType = ResolveNamedCastTarget(call, scope)
 					If namedCastTarget Then
 						model.namedCastTargetMap.Insert(call, namedCastTarget)
@@ -1687,17 +1687,97 @@ Type TExpressionBinder
 		Return literalType
 	End Method
 
-	Method BindCallArgumentTypes:TSemanticType[](callee:TExpressionSyntax, arguments:TExpressionSyntax[], scope:TScope)
+	Method BindCallArgumentTypes:TSemanticType[](callee:TExpressionSyntax, arguments:TExpressionSyntax[], explicitSyntax:TTypeReferenceSyntax[], scope:TScope)
 		Local result:TSemanticType[] = New TSemanticType[arguments.length]
 		Local targets:TSemanticType[]
 		Local candidates:TSymbol[] = RoutineCandidates(callee, scope)
+		Local explicitTypes:TSemanticType[]
+		If explicitSyntax.length Then
+			explicitTypes = New TSemanticType[explicitSyntax.length]
+			For Local index:Int = 0 Until explicitSyntax.length
+				explicitTypes[index] = ResolveType(explicitSyntax[index], scope)
+			Next
+		End If
 		If candidates.length = 1 And candidates[0].genericArity = 0 And candidates[0].parameterTypes.length = arguments.length Then targets = candidates[0].parameterTypes
+		' Bind ordinary arguments first so they can narrow the overload set used to
+		' contextually type any Function literal arguments. A Function literal has
+		' no standalone type, but a unique callable parameter among several overloads
+		' is just as explicit a target as the parameter of a single routine.
 		For Local index:Int = 0 Until arguments.length
+			If TFunctionLiteralExpressionSyntax(arguments[index]) Then Continue
 			Local target:TSemanticType
 			If targets And index < targets.length Then target = targets[index]
 			result[index] = BindContextualExpression(arguments[index], scope, target)
 		Next
+		For Local index:Int = 0 Until arguments.length
+			Local literal:TFunctionLiteralExpressionSyntax = TFunctionLiteralExpressionSyntax(arguments[index])
+			If Not literal Then Continue
+			Local target:TSemanticType
+			If targets And index < targets.length Then target = targets[index]
+			If Not target Then target = OverloadFunctionLiteralTarget(callee, candidates, arguments, result, explicitTypes, index, literal, scope)
+			result[index] = BindContextualExpression(literal, scope, target)
+		Next
 		Return result
+	End Method
+
+	Method OverloadFunctionLiteralTarget:TSemanticType(callee:TExpressionSyntax, candidates:TSymbol[], arguments:TExpressionSyntax[], argumentTypes:TSemanticType[], explicitTypes:TSemanticType[], literalIndex:Int, literal:TFunctionLiteralExpressionSyntax, scope:TScope)
+		Local target:TSemanticType
+		Local receiverType:TSemanticType = ReceiverType(callee, scope)
+		Local containingSubstitutions:TMap = ReceiverSubstitutions(callee, scope)
+		For Local routine:TSymbol = EachIn candidates
+			If Not ArgumentSlotsSatisfied(routine, arguments) Then Continue
+			Local substitutions:TMap = containingSubstitutions
+			Local declaringReceiver:TSemanticType = MemberDeclaringType(receiverType, routine)
+			If declaringReceiver Then substitutions = TypeSubstitutions(declaringReceiver)
+			Local parameters:TSemanticType[] = SubstituteTypes(routine.parameterTypes, substitutions)
+			If routine.genericArity Then
+				Local inferenceOmitted:Int[] = OmittedArgumentFlags(arguments)
+				For Local index:Int = 0 Until arguments.length
+					If TFunctionLiteralExpressionSyntax(arguments[index]) Then inferenceOmitted[index] = True
+				Next
+				Local returnType:TSemanticType = TGenericRoutineInference.Substitute(routine.declaredType, substitutions)
+				Local binding:TGenericRoutineBinding = TGenericRoutineInference.Infer(routine, argumentTypes, explicitTypes, parameters, returnType, inferenceOmitted)
+				If Not binding.success Or Not ConstraintsSatisfied(binding, substitutions) Then Continue
+				parameters = binding.parameterTypes
+			Else If explicitTypes.length Then
+				Continue
+			End If
+			If literalIndex >= parameters.length Or Not FunctionLiteralMatchesTarget(literal, parameters[literalIndex], scope) Then Continue
+
+			Local compatible:Int = True
+			For Local index:Int = 0 Until argumentTypes.length
+				If index = literalIndex Or Not argumentTypes[index] Or TOmittedArgumentExpressionSyntax(arguments[index]) Then Continue
+				If index >= parameters.length Or Not conversions.ClassifyArgumentExpression(arguments[index], argumentTypes[index], parameters[index]).Exists() Then compatible = False; Exit
+			Next
+			If Not compatible Then Continue
+			If target And Not TGenericRoutineInference.SameType(target, parameters[literalIndex]) Then Return Null
+			target = parameters[literalIndex]
+		Next
+		Return target
+	End Method
+
+	Method FunctionLiteralMatchesTarget:Int(literal:TFunctionLiteralExpressionSyntax, target:TSemanticType, scope:TScope)
+		Local callable:TCallableSemanticType = TCallableSemanticType(target)
+		Local closure:TClosureSemanticType = TClosureSemanticType(target)
+		If closure Then callable = closure.signature
+		If Not callable Or literal.parameters.length <> callable.parameterTypes.length Then Return False
+		If literal.returnType Then
+			Local writtenReturn:TSemanticType = ResolveType(literal.returnType, scope)
+			If Not TGenericRoutineInference.SameType(writtenReturn, callable.returnType) Then Return False
+		End If
+		For Local index:Int = 0 Until literal.parameters.length
+			Local parameter:TParameterSyntax = literal.parameters[index]
+			Local writtenType:TSemanticType
+			If parameter.callableType Then
+				typeResolver.currentPath = CurrentSourcePath()
+				writtenType = typeResolver.ResolveCallable(parameter.callableType, scope)
+			Else If parameter.declaredType Then
+				writtenType = ResolveType(parameter.declaredType, scope)
+			End If
+			If writtenType And Not TGenericRoutineInference.SameType(writtenType, callable.parameterTypes[index]) Then Return False
+			If parameter.varToken And (index >= callable.parameterModes.length Or callable.parameterModes[index] <> PARAMETER_PASS_VAR) Then Return False
+		Next
+		Return True
 	End Method
 
 	Method ValidateActiveCapture(expression:TExpressionSyntax)
