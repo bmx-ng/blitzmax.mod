@@ -1878,3 +1878,17 @@ name = "snapshot.import_after_source"
 translated = false
 text = "Import and Framework directives must appear before declarations or executable statements."
 placeholders = []
+
+[[message]]
+id = 269
+name = "binding.cannot_instantiate_missing_member"
+translated = false
+text = "Cannot create an instance of '{typeName}' because required member '{member}' is not implemented."
+placeholders = [{ name = "typeName", type = "string" }, { name = "member", type = "string" }]
+
+[[message]]
+id = 270
+name = "binding.cannot_instantiate_missing_members"
+translated = false
+text = "Cannot create an instance of '{typeName}' because {missingCount} required members are not implemented, including '{member}'."
+placeholders = [{ name = "typeName", type = "string" }, { name = "missingCount", type = "integer" }, { name = "member", type = "string" }]

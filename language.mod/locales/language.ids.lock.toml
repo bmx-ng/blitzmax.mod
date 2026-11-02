@@ -1,6 +1,6 @@
 format = 1
 domain = "language"
-next_id = 269
+next_id = 271
 
 [ids]
 "1" = "parser.expression_nesting_too_deep"
@@ -271,3 +271,5 @@ next_id = 269
 "266" = "binding.constant_assignment_not_allowed"
 "267" = "inheritance.override_return_type_mismatch"
 "268" = "snapshot.import_after_source"
+"269" = "binding.cannot_instantiate_missing_member"
+"270" = "binding.cannot_instantiate_missing_members"

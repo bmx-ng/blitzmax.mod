@@ -1,7 +1,7 @@
 format = 1
 domain = "language"
 locale = "en"
-next_id = 269
+next_id = 271
 
 [[message]]
 id = 1
@@ -2138,3 +2138,19 @@ text = "Import and Framework directives must appear before declarations or execu
 description = "Reported when textual Include expansion places an Import or Framework directive after ordinary source has begun."
 diagnostic_codes = ["BMX4015"]
 placeholders = []
+
+[[message]]
+id = 269
+name = "binding.cannot_instantiate_missing_member"
+text = "Cannot create an instance of '{typeName}' because required member '{member}' is not implemented."
+description = "Reported when New targets a type with one unimplemented abstract member."
+diagnostic_codes = ["BMX3316"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "member", type = "string" }]
+
+[[message]]
+id = 270
+name = "binding.cannot_instantiate_missing_members"
+text = "Cannot create an instance of '{typeName}' because {missingCount} required members are not implemented, including '{member}'."
+description = "Reported when New targets a type with multiple unimplemented abstract members."
+diagnostic_codes = ["BMX3316"]
+placeholders = [{ name = "typeName", type = "string" }, { name = "missingCount", type = "integer" }, { name = "member", type = "string" }]
