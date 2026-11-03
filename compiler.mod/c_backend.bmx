@@ -102,6 +102,7 @@ Type TCompilerCBackend
 	Field picoRootLocalOrder:TCompilerIrVariableDeclaration[] = New TCompilerIrVariableDeclaration[0]
 	Field gdbLocalNameCounts:TMap = New TMap
 	Field currentEmbeddedRootFrame:Int
+	Field stableStaticArraySymbols:TMap = New TMap
 	' Some EachIn elements and iterators remain C locals outside root slots.
 	' Nested loops must not park while one of those values is live.
 	Field embeddedUnrootedScopeDepth:Int
@@ -626,7 +627,7 @@ Type TCompilerCBackend
 	Method RegisterEmbeddedRootLocal:Int(variable:TCompilerIrVariableDeclaration)
 		If Not currentEmbeddedRootFrame Or Not variable Or variable.storage <> "local" Or variable.callableReturnType.length Then Return False
 		If variable.isStaticArray Then
-			If Not EmbeddedManagedStructType(variable.staticArrayElementType) Then Return False
+			If Not EmbeddedGcRootStorageType(variable.staticArrayElementType) Then Return False
 		Else If Not EmbeddedGcRootStorageType(variable.semanticType) Then
 			Return False
 		End If
@@ -674,6 +675,12 @@ Type TCompilerCBackend
 		Return RegisterEmbeddedRootLocal(variable)
 	End Method
 
+	Method EmbeddedStableStaticArrayStorage:Int(expression:TCompilerIrExpression)
+		Local reference:TCompilerIrSymbolReference = TCompilerIrSymbolReference(expression)
+		If Not reference Then Return False
+		Return stableStaticArraySymbols.Contains(reference.symbolId)
+	End Method
+
 	Method ExceptionLeaveStatement:String(indent:String)
 		If EmbeddedObjectTypes() Then Return indent + "bmx_embedded_exception_leave();~n"
 		Return indent + "bbExLeave();~n"
@@ -693,7 +700,7 @@ Type TCompilerCBackend
 	End Method
 
 	Method AppendEmbeddedStaticArrayRootSlots(variable:TCompilerIrVariableDeclaration, name:String, slots:String[] Var)
-		If Not variable Or Not variable.isStaticArray Or Not EmbeddedManagedStructType(variable.staticArrayElementType) Then Return
+		If Not variable Or Not variable.isStaticArray Or Not EmbeddedGcRootStorageType(variable.staticArrayElementType) Then Return
 		For Local index:Int = 0 Until variable.staticArrayLength
 			slots :+ [EmbeddedRootSlotExpression(variable.staticArrayElementType, "&" + name + "[" + index + "]")]
 		Next
@@ -4368,6 +4375,10 @@ Type TCompilerCBackend
 		ResetTemporaries()
 		picoRootLocals = New TMap
 		picoRootLocalOrder = New TCompilerIrVariableDeclaration[0]
+		stableStaticArraySymbols = New TMap
+		For Local variable:TCompilerIrVariableDeclaration = EachIn allVariables
+			If variable And variable.storage = "global" And variable.isStaticArray Then stableStaticArraySymbols.Insert(variable.symbolId, variable)
+		Next
 		embeddedUnrootedScopeDepth = 0
 		currentEmbeddedRootFrame = EmbeddedObjectTypes() And ((currentModule And currentModule.embeddedMulticore) Or routine.debugInstrumentation Or (currentModule And currentModule.gdbDebug) Or routine.isIteratorFactory Or routine.isIteratorMoveNext Or routine.isIteratorCurrent Or routine.isIteratorClose Or EmbeddedBlockMaySafepoint(routine.body))
 		currentIsMain = routine.isGlobalEntry
@@ -5469,6 +5480,7 @@ Type TCompilerCBackend
 		Local result:TStringBuilder = AcquireStatementOutput()
 		Local variable:TCompilerIrVariableDeclaration = TCompilerIrVariableDeclaration(statement)
 		If variable Then
+			If variable.storage = "local" And variable.isStaticArray Then stableStaticArraySymbols.Insert(variable.symbolId, variable)
 			If variable.storage = "constant" And currentIsMain Then Return CompleteStatementOutput(result, "")
 			If variable.storage = "global" And currentIsMain Then
 				If variable.isStaticArray Then Return CompleteStatementOutput(result, EmitStaticArrayInitialization(variable, SymbolName(variable.symbolId, variable.name), indent))
@@ -6006,6 +6018,7 @@ Type TCompilerCBackend
 			Local elementName:String = TemporaryName(staticEachStatement.elementTemporaryId)
 			Local elementCType:String = CType(staticEachStatement.elementType, staticEachStatement.source)
 			Local persistentEach:Int = currentRoutine And currentRoutine.isIteratorMoveNext And localNames.Contains(staticEachStatement.collectionTemporaryId)
+			Local safeStaticPoll:Int = Not persistentEach And EmbeddedStableStaticArrayStorage(staticEachStatement.collection) And Not EmbeddedGcRootStorageType(staticEachStatement.elementType) And Not EmbeddedGcRootStorageType(staticEachStatement.variableType)
 			If persistentEach Then
 				collectionName = String(localNames.ValueForKey(staticEachStatement.collectionTemporaryId))
 				indexName = String(localNames.ValueForKey(staticEachStatement.indexTemporaryId))
@@ -6024,6 +6037,7 @@ Type TCompilerCBackend
 				result.Append(indent + "    " + StaticArrayIndexCType() + " " + indexName + " = 0;~n")
 			End If
 			result.Append(indent + "    for (; " + indexName + " < (" + StaticArrayIndexCType() + ")" + staticEachStatement.length + "; " + indexName + " = " + indexName + " + 1) {~n")
+			If safeStaticPoll Then result.Append(EmitEmbeddedGCPoll(indent + "        "))
 			If persistentEach Then result.Append(indent + "        " + elementName + " = " + collectionName + "[" + indexName + "];~n") Else result.Append(indent + "        " + elementCType + " " + elementName + " = " + collectionName + "[" + indexName + "];~n")
 			Local convertedElement:String = elementName
 			If Not staticEachStatement.elementStructId.length And Not staticEachStatement.elementImportedStructId.length Then convertedElement = "((" + CType(staticEachStatement.variableType, staticEachStatement.source) + ")(" + elementName + "))"
@@ -6035,9 +6049,9 @@ Type TCompilerCBackend
 			Else
 				result.Append(indent + "        " + EmitExpression(staticEachStatement.target) + " = " + convertedElement + ";~n")
 			End If
-			embeddedUnrootedScopeDepth :+ 1
+			If Not safeStaticPoll Then embeddedUnrootedScopeDepth :+ 1
 			result.Append(EmitBlockContents(staticEachStatement.body, indent + "        "))
-			embeddedUnrootedScopeDepth :- 1
+			If Not safeStaticPoll Then embeddedUnrootedScopeDepth :- 1
 			If staticEachStatement.hasContinue Then result.Append(indent + "        " + LoopContinueLabel(staticEachStatement.loopId) + ": ;~n")
 			result.Append(indent + "    }~n")
 			If staticEachStatement.hasExit Then result.Append(indent + "    " + LoopExitLabel(staticEachStatement.loopId) + ": ;~n")
