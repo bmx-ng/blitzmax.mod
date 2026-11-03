@@ -220,6 +220,7 @@ Type TCompilerIrLowerer
 			lowerer.result.targetArchitecture = options.targetArchitecture
 			lowerer.result.buildMode = options.buildMode
 			lowerer.result.gdbDebug = options.gdbDebug
+			lowerer.result.embeddedMulticore = options.embeddedMulticore
 		End If
 		lowerer.compilationNoDebug = lowerer.CompilationHasNoDebug()
 		lowerer.CollectNativeHeaders()

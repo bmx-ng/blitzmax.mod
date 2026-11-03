@@ -35,6 +35,9 @@ Type TCompilerOptions
 	Field applicationType:String
 	Field frameworkModule:String
 	Field threaded:Int = True
+	' Internal embedded two-context collector experiment. Ordinary target
+	' builds keep safepoint-driven frames and emit no cooperative polls.
+	Field embeddedMulticore:Int
 	Field verbose:Int
 	Field gdbDebug:Int
 	Field musl:Int

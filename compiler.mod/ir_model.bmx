@@ -1354,6 +1354,7 @@ Type TCompilerIrModule
 	Field targetArchitecture:String
 	Field buildMode:String
 	Field gdbDebug:Int
+	Field embeddedMulticore:Int
 	' Native headers imported by this compilation unit. The generated public
 	' header republishes these includes so bang-marked native declarations keep
 	' their typedef-rich C authority without reconstructed prototypes.
