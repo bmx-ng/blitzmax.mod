@@ -102,7 +102,7 @@ Type TCompilerCBackend
 	Field picoRootLocalOrder:TCompilerIrVariableDeclaration[] = New TCompilerIrVariableDeclaration[0]
 	Field gdbLocalNameCounts:TMap = New TMap
 	Field currentEmbeddedRootFrame:Int
-	' EachIn collections and Select selectors are C locals outside root slots.
+	' Some EachIn elements and iterators remain C locals outside root slots.
 	' Nested loops must not park while one of those values is live.
 	Field embeddedUnrootedScopeDepth:Int
 	Field statementOutputBuilders:TStringBuilder[] = New TStringBuilder[0]
@@ -648,6 +648,18 @@ Type TCompilerCBackend
 		localNames.Insert(symbolId, localName)
 		RegisterEmbeddedRootLocal(variable)
 		Return localName
+	End Method
+
+	Method RegisterEmbeddedScopeTemporary:String(temporaryId:String, semanticType:String, source:TCompilerSourceLocation)
+		If Not EmbeddedObjectTypes() Or Not currentModule Or Not currentModule.embeddedMulticore Or Not EmbeddedGcRootStorageType(semanticType) Then Return ""
+		Local variable:TCompilerIrVariableDeclaration = New TCompilerIrVariableDeclaration
+		variable.symbolId = "pico.scope." + temporaryId
+		variable.name = "value"
+		variable.semanticType = semanticType
+		variable.storage = "local"
+		variable.source = source
+		If Not RegisterEmbeddedRootLocal(variable) Then Return ""
+		Return LocalName(variable.symbolId, variable.name)
 	End Method
 
 	Method ExceptionLeaveStatement:String(indent:String)
@@ -5624,11 +5636,13 @@ Type TCompilerCBackend
 		Local selected:TCompilerIrSelect = TCompilerIrSelect(statement)
 		If selected Then
 			Local selectorName:String = TemporaryName(selected.selectorTemporaryId)
+			Local rootedSelector:String = RegisterEmbeddedScopeTemporary(selected.selectorTemporaryId, selected.selectorType, selected.source)
+			If rootedSelector.length Then selectorName = rootedSelector
 			localNames.Insert(selected.selectorTemporaryId, selectorName)
 			result.Append(indent + "{~n")
 			Local capturedSelector:TCompilerCCapturedExpression = CaptureExpression(selected.selector)
 			result.Append(EmitNativeStringPrelude(capturedSelector.nativeStrings, indent + "    "))
-			result.Append(indent + "    " + CType(selected.selectorType, selected.source) + " " + selectorName + " = " + capturedSelector.expression + ";~n")
+			If rootedSelector.length Then result.Append(indent + "    " + selectorName + " = " + capturedSelector.expression + ";~n") Else result.Append(indent + "    " + CType(selected.selectorType, selected.source) + " " + selectorName + " = " + capturedSelector.expression + ";~n")
 			result.Append(EmitNativeStringCleanup(capturedSelector.nativeStrings, indent + "    "))
 			For Local caseIndex:Int = 0 Until selected.cases.length
 				Local selectedCase:TCompilerIrSelectCase = selected.cases[caseIndex]
@@ -5650,19 +5664,16 @@ Type TCompilerCBackend
 				Next
 				If Not selectedCase.values.length Then result.Append("0")
 				result.Append(") {~n")
-				embeddedUnrootedScopeDepth :+ 1
 				result.Append(EmitBlockContents(selectedCase.body, indent + "        "))
-				embeddedUnrootedScopeDepth :- 1
 				result.Append(indent + "    }")
 			Next
 			If selected.defaultBody Then
 				If selected.cases.length Then result.Append(" else {~n") Else result.Append(indent + "    {~n")
-				embeddedUnrootedScopeDepth :+ 1
 				result.Append(EmitBlockContents(selected.defaultBody, indent + "        "))
-				embeddedUnrootedScopeDepth :- 1
 				result.Append(indent + "    }")
 			End If
 			If selected.cases.length Or selected.defaultBody Then result.Append("~n")
+			If rootedSelector.length Then result.Append(indent + "    " + selectorName + " = " + CDefaultValue(selected.selectorType) + ";~n")
 			Return CompleteStatementOutput(result, indent + "}~n")
 		End If
 		Local guarded:TCompilerIrTry = TCompilerIrTry(statement)
@@ -5835,6 +5846,10 @@ Type TCompilerCBackend
 			Local indexName:String = TemporaryName(eachStatement.indexTemporaryId)
 			Local elementName:String = TemporaryName(eachStatement.elementTemporaryId)
 			Local persistentEach:Int = currentRoutine And currentRoutine.isIteratorMoveNext And localNames.Contains(eachStatement.collectionTemporaryId)
+			Local rootedCollection:String
+			If Not persistentEach Then rootedCollection = RegisterEmbeddedScopeTemporary(eachStatement.collectionTemporaryId, eachStatement.collection.semanticType, eachStatement.source)
+			If rootedCollection.length Then collectionName = rootedCollection
+			Local safeArrayPoll:Int = rootedCollection.length And Not EmbeddedGcRootStorageType(eachStatement.elementType) And Not EmbeddedGcRootStorageType(eachStatement.variableType)
 			If persistentEach Then
 				collectionName = String(localNames.ValueForKey(eachStatement.collectionTemporaryId))
 				indexName = String(localNames.ValueForKey(eachStatement.indexTemporaryId))
@@ -5866,7 +5881,7 @@ Type TCompilerCBackend
 					collectionType = "BMXEmbeddedArray *"
 					indexType = "uint32_t"
 				End If
-				result.Append(indent + "    " + collectionType + " " + collectionName + " = " + DebugManagedValue(EmitExpression(eachStatement.collection), IR_MANAGED_REFERENCE_ARRAY, eachStatement.collection.semanticType, eachStatement.source) + ";~n")
+				If rootedCollection.length Then result.Append(indent + "    " + collectionName + " = " + DebugManagedValue(EmitExpression(eachStatement.collection), IR_MANAGED_REFERENCE_ARRAY, eachStatement.collection.semanticType, eachStatement.source) + ";~n") Else result.Append(indent + "    " + collectionType + " " + collectionName + " = " + DebugManagedValue(EmitExpression(eachStatement.collection), IR_MANAGED_REFERENCE_ARRAY, eachStatement.collection.semanticType, eachStatement.source) + ";~n")
 				result.Append(indent + "    " + indexType + " " + indexName + " = 0;~n")
 			End If
 			If EmbeddedArrayTypes() Then
@@ -5874,6 +5889,7 @@ Type TCompilerCBackend
 			Else
 				result.Append(indent + "    for (; " + indexName + " < (BBUINT)" + collectionName + "->scales[0]; " + indexName + " = " + indexName + " + 1) {~n")
 			End If
+			If safeArrayPoll Then result.Append(EmitEmbeddedGCPoll(indent + "        "))
 			If persistentEach Then result.Append(indent + "        " + elementName + " = " + element + ";~n") Else result.Append(indent + "        " + CType(eachStatement.elementType, eachStatement.source) + " " + elementName + " = " + element + ";~n")
 			If eachStatement.filtersStringObjects
 				If EmbeddedObjectTypes()
@@ -5900,12 +5916,13 @@ Type TCompilerCBackend
 					result.Append(indent + "        if ((BBOBJECT)" + target + " == (BBOBJECT)&bbNullObject) { continue; }~n")
 				End If
 			End If
-			embeddedUnrootedScopeDepth :+ 1
+			If Not safeArrayPoll Then embeddedUnrootedScopeDepth :+ 1
 			result.Append(EmitBlockContents(eachStatement.body, indent + "        "))
-			embeddedUnrootedScopeDepth :- 1
+			If Not safeArrayPoll Then embeddedUnrootedScopeDepth :- 1
 			If eachStatement.hasContinue Then result.Append(indent + "        " + LoopContinueLabel(eachStatement.loopId) + ": ;~n")
 			result.Append(indent + "    }~n")
 			If eachStatement.hasExit Then result.Append(indent + "    " + LoopExitLabel(eachStatement.loopId) + ": ;~n")
+			If rootedCollection.length Then result.Append(indent + "    " + collectionName + " = " + CDefaultValue(eachStatement.collection.semanticType) + ";~n")
 			Return CompleteStatementOutput(result, indent + "}~n")
 		End If
 		Local stringEachStatement:TCompilerIrForEachString = TCompilerIrForEachString(statement)
@@ -5915,6 +5932,10 @@ Type TCompilerCBackend
 			Local indexName:String = TemporaryName(stringEachStatement.indexTemporaryId)
 			Local elementName:String = TemporaryName(stringEachStatement.elementTemporaryId)
 			Local persistentEach:Int = currentRoutine And currentRoutine.isIteratorMoveNext And localNames.Contains(stringEachStatement.collectionTemporaryId)
+			Local rootedCollection:String
+			If Not persistentEach Then rootedCollection = RegisterEmbeddedScopeTemporary(stringEachStatement.collectionTemporaryId, "String", stringEachStatement.source)
+			If rootedCollection.length Then collectionName = rootedCollection
+			Local safeStringPoll:Int = rootedCollection.length And Not EmbeddedGcRootStorageType(stringEachStatement.variableType)
 			Local collectionType:String = CType("String", stringEachStatement.source)
 			Local indexType:String = CType("UInt", stringEachStatement.source)
 			Local elementType:String = CType("Int", stringEachStatement.source)
@@ -5932,10 +5953,11 @@ Type TCompilerCBackend
 				result.Append(indent + "    " + collectionName + " = " + DebugManagedValue(EmitExpression(stringEachStatement.collection), IR_MANAGED_REFERENCE_STRING, stringEachStatement.collection.semanticType, stringEachStatement.source) + ";~n")
 				result.Append(indent + "    " + indexName + " = 0;~n")
 			Else
-				result.Append(indent + "    " + collectionType + " " + collectionName + " = " + DebugManagedValue(EmitExpression(stringEachStatement.collection), IR_MANAGED_REFERENCE_STRING, stringEachStatement.collection.semanticType, stringEachStatement.source) + ";~n")
+				If rootedCollection.length Then result.Append(indent + "    " + collectionName + " = " + DebugManagedValue(EmitExpression(stringEachStatement.collection), IR_MANAGED_REFERENCE_STRING, stringEachStatement.collection.semanticType, stringEachStatement.source) + ";~n") Else result.Append(indent + "    " + collectionType + " " + collectionName + " = " + DebugManagedValue(EmitExpression(stringEachStatement.collection), IR_MANAGED_REFERENCE_STRING, stringEachStatement.collection.semanticType, stringEachStatement.source) + ";~n")
 				result.Append(indent + "    " + indexType + " " + indexName + " = 0;~n")
 			End If
 			result.Append(indent + "    for (; " + indexName + " < (" + indexType + ")" + collectionName + "->length; " + indexName + " = " + indexName + " + 1) {~n")
+			If safeStringPoll Then result.Append(EmitEmbeddedGCPoll(indent + "        "))
 			If persistentEach Then result.Append(indent + "        " + elementName + " = (" + elementType + ")" + collectionName + "->buf[" + indexName + "];~n") Else result.Append(indent + "        " + elementType + " " + elementName + " = (" + elementType + ")" + collectionName + "->buf[" + indexName + "];~n")
 			Local convertedElement:String = "((" + CType(stringEachStatement.variableType, stringEachStatement.source) + ")(" + elementName + "))"
 			If stringEachStatement.declaresVariable Then
@@ -5946,12 +5968,13 @@ Type TCompilerCBackend
 			Else
 				result.Append(indent + "        " + EmitExpression(stringEachStatement.target) + " = " + convertedElement + ";~n")
 			End If
-			embeddedUnrootedScopeDepth :+ 1
+			If Not safeStringPoll Then embeddedUnrootedScopeDepth :+ 1
 			result.Append(EmitBlockContents(stringEachStatement.body, indent + "        "))
-			embeddedUnrootedScopeDepth :- 1
+			If Not safeStringPoll Then embeddedUnrootedScopeDepth :- 1
 			If stringEachStatement.hasContinue Then result.Append(indent + "        " + LoopContinueLabel(stringEachStatement.loopId) + ": ;~n")
 			result.Append(indent + "    }~n")
 			If stringEachStatement.hasExit Then result.Append(indent + "    " + LoopExitLabel(stringEachStatement.loopId) + ": ;~n")
+			If rootedCollection.length Then result.Append(indent + "    " + collectionName + " = " + CDefaultValue("String") + ";~n")
 			Return CompleteStatementOutput(result, indent + "}~n")
 		End If
 		Local staticEachStatement:TCompilerIrForEachStaticArray = TCompilerIrForEachStaticArray(statement)
