@@ -2754,6 +2754,7 @@ Type TCompilerIrLowerer
 		resource.variable.source = SourceOf(syntax)
 		resource.variable.symbolId = NewTemporaryId()
 		resource.variable.name = "closeableIterator"
+		resource.variable.storage = "local"
 		resource.variable.semanticType = closeInterface.semanticType
 		resource.variable.initializer = ManagedDefault(closeInterface.semanticType, IR_MANAGED_REFERENCE_OBJECT, resource.variable.source)
 		resource.variable.isVolatile = True
