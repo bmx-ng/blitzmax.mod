@@ -270,7 +270,7 @@ Type TBlitzMaxLexer
 
 			Local selector:Int = source.text[index]
 			Select selector
-				Case 48, 84, 116, 82, 114, 78, 110, 81, 113, 126
+				Case 48, 84, 116, 82, 114, 78, 110, 81, 113, 83, 115, 126
 					index :+ 1
 				Case 36
 					index :+ 1
