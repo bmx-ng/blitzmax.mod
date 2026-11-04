@@ -6485,6 +6485,7 @@ Type TCompilerCBackend
 		result :+ indent + "    bmx_embedded_exception_enter(&" + frameName + ");~n"
 		result :+ indent + "    switch (setjmp(" + frameName + ".buffer)) {~n"
 		result :+ indent + "    case 0: {~n"
+		Local firstBodyTemporary:Int = temporaryOrder.length
 		For Local resource:TCompilerIrUsingResource = EachIn usingStatement.resources
 			Local resourceName:String = LocalName(resource.variable.symbolId, resource.variable.name)
 			result :+ indent + "        " + resourceName + " = " + EmitExpression(resource.initializer) + ";~n"
@@ -6494,6 +6495,7 @@ Type TCompilerCBackend
 		result :+ indent + "    } break;~n"
 		result :+ indent + "    case 1: {~n"
 		result :+ indent + "        " + exceptionName + " = bmx_embedded_exception_catch();~n"
+		result :+ EmitEmbeddedManagedTemporaryCleanup(firstBodyTemporary, indent + "        ")
 		result :+ indent + "        " + failedName + " = 1;~n"
 		result :+ indent + "    } break;~n"
 		result :+ indent + "    }~n"
@@ -6638,6 +6640,7 @@ Type TCompilerCBackend
 		result :+ indent + "    bmx_embedded_exception_enter(&" + frameName + ");~n"
 		result :+ indent + "    switch (setjmp(" + frameName + ".buffer)) {~n"
 		result :+ indent + "    case 0: {~n"
+		Local firstBodyTemporary:Int = temporaryOrder.length
 		If guarded.catches.length Then
 			Local catchOnly:TCompilerIrTry = New TCompilerIrTry
 			catchOnly.body = guarded.body
@@ -6654,6 +6657,7 @@ Type TCompilerCBackend
 		result :+ indent + "        " + failedName + " = 1;~n"
 		result :+ indent + "    } break;~n"
 		result :+ indent + "    }~n"
+		result :+ EmitEmbeddedManagedTemporaryCleanup(firstBodyTemporary, indent + "    ")
 		result :+ EmitBlockContents(guarded.finallyBody, indent + "    ")
 		result :+ indent + "    if (" + failedName + ") bmx_embedded_exception_throw(" + exceptionName + ");~n"
 		Return result + indent + "}~n"
@@ -6669,11 +6673,13 @@ Type TCompilerCBackend
 		result :+ indent + "    bmx_embedded_exception_enter(&" + frameName + ");~n"
 		result :+ indent + "    switch (setjmp(" + frameName + ".buffer)) {~n"
 		result :+ indent + "    case 0: {~n"
+		Local firstBodyTemporary:Int = temporaryOrder.length
 		result :+ EmitBlockContents(guarded.body, indent + "        ")
 		result :+ indent + "        bmx_embedded_exception_leave();~n"
 		result :+ indent + "    } break;~n"
 		result :+ indent + "    case 1: {~n"
 		result :+ indent + "        " + exceptionName + " = bmx_embedded_exception_catch();~n"
+		result :+ EmitEmbeddedManagedTemporaryCleanup(firstBodyTemporary, indent + "        ")
 		For Local catchIndex:Int = 0 Until guarded.catches.length
 			Local guardedCatch:TCompilerIrCatch = guarded.catches[catchIndex]
 			If catchIndex Then result :+ " else " Else result :+ indent + "        "
