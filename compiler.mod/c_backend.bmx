@@ -675,10 +675,25 @@ Type TCompilerCBackend
 		Return RegisterEmbeddedRootLocal(variable)
 	End Method
 
-	Method EmbeddedRootedExistingTarget:Int(expression:TCompilerIrExpression)
+	Method EmbeddedRootedSymbolStorage:Int(expression:TCompilerIrExpression)
 		Local reference:TCompilerIrSymbolReference = TCompilerIrSymbolReference(expression)
 		If Not reference Or reference.isByReference Then Return False
-		Return picoRootLocals.Contains(reference.symbolId)
+		If picoRootLocals.Contains(reference.symbolId) Then Return True
+		If Not currentEmbeddedRootFrame Or Not currentRoutine Then Return False
+		If currentRoutine.receiver And reference.symbolId = currentRoutine.receiver.symbolId Then Return EmbeddedGcRootStorageType(currentRoutine.receiver.semanticType)
+		For Local parameter:TCompilerIrParameter = EachIn currentRoutine.parameters
+			If reference.symbolId = parameter.symbolId Then Return parameter.passingMode <> PARAMETER_PASS_VAR And Not parameter.isStaticArray And EmbeddedGcRootStorageType(parameter.semanticType)
+		Next
+		Return False
+	End Method
+
+	Method EmbeddedRootedExistingTarget:Int(expression:TCompilerIrExpression)
+		If EmbeddedRootedSymbolStorage(expression) Then Return True
+		Local fieldAccess:TCompilerIrFieldAccess = TCompilerIrFieldAccess(expression)
+		If Not fieldAccess Or fieldAccess.receiverIsPointer Or fieldAccess.structId.length Or fieldAccess.importedStructId.length Then Return False
+		If Not EmbeddedObjectStorageType(fieldAccess.receiver.semanticType) Then Return False
+		' The field owner must itself remain in a published root slot across polls.
+		Return EmbeddedRootedSymbolStorage(fieldAccess.receiver)
 	End Method
 
 	Method EmbeddedStableStaticArrayStorage:Int(expression:TCompilerIrExpression)
@@ -5449,15 +5464,17 @@ Type TCompilerCBackend
 		Local lineDirective:String = EmitGdbLineDirective(statement.source, indent)
 		Local debugStatement:String = EmitDebugStatement(statement.source, indent)
 		Local coverageStatement:String = EmitCoveragePoint(statement, indent)
+		Local firstTemporary:Int = temporaryOrder.length
 		If TCompilerIrVariableDeclaration(statement) Or TCompilerIrAssignment(statement) Or TCompilerIrExpressionStatement(statement) Then
 			Local previousScope:TCompilerCNativeStringScope = nativeStringScope
 			nativeStringScope = New TCompilerCNativeStringScope
 			Local body:String = EmitStatementBody(statement, indent)
 			Local statementScope:TCompilerCNativeStringScope = nativeStringScope
 			nativeStringScope = previousScope
-			Return lineDirective + debugStatement + coverageStatement + EmitNativeStringPrelude(statementScope, indent) + body + EmitNativeStringCleanup(statementScope, indent)
+			Return lineDirective + debugStatement + coverageStatement + EmitNativeStringPrelude(statementScope, indent) + body + EmitNativeStringCleanup(statementScope, indent) + EmitEmbeddedManagedTemporaryCleanup(firstTemporary, indent)
 		End If
-		Return lineDirective + debugStatement + coverageStatement + EmitStatementBody(statement, indent)
+		Local body:String = EmitStatementBody(statement, indent)
+		Return lineDirective + debugStatement + coverageStatement + body + EmitEmbeddedManagedTemporaryCleanup(firstTemporary, indent)
 	End Method
 
 	Method EmitGdbLineDirective:String(source:TCompilerSourceLocation, indent:String)
@@ -7991,6 +8008,19 @@ Type TCompilerCBackend
 		If materialization.temporaryNativeCallableAbiName.length Then temporaryNativeCallableAbiNames.Insert(materialization.temporaryId, materialization.temporaryNativeCallableAbiName)
 		localNames.Insert(materialization.temporaryId, TemporaryName(materialization.temporaryId))
 		temporaryOrder :+ [materialization.temporaryId]
+	End Method
+
+	Method EmitEmbeddedManagedTemporaryCleanup:String(firstTemporary:Int, indent:String)
+		If Not currentEmbeddedRootFrame Or Not currentModule Or Not currentModule.embeddedMulticore Then Return ""
+		' Function-wide temporary slots otherwise retain field-read results after use.
+		Local result:String
+		For Local index:Int = firstTemporary Until temporaryOrder.length
+			Local temporaryId:String = temporaryOrder[index]
+			Local semanticType:String = String(temporaryTypes.ValueForKey(temporaryId))
+			If temporaryAddressValues.Contains(temporaryId) Or String(temporaryCallableReturns.ValueForKey(temporaryId)).length Or Not EmbeddedGcRootStorageType(semanticType) Then Continue
+			result :+ indent + TemporaryName(temporaryId) + " = " + CDefaultValue(semanticType) + ";~n"
+		Next
+		Return result
 	End Method
 
 	Method EmitTemporaryDeclarations:String(indent:String)
