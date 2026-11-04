@@ -5488,7 +5488,7 @@ Type TCompilerCBackend
 			Return lineDirective + debugStatement + coverageStatement + EmitNativeStringPrelude(statementScope, indent) + body + EmitNativeStringCleanup(statementScope, indent) + EmitEmbeddedManagedTemporaryCleanup(firstTemporary, indent)
 		End If
 		Local body:String = EmitStatementBody(statement, indent)
-		If TCompilerIrIf(statement) Or TCompilerIrWhile(statement) Or TCompilerIrRepeat(statement) Then Return lineDirective + debugStatement + coverageStatement + body
+		If TCompilerIrIf(statement) Or TCompilerIrWhile(statement) Or TCompilerIrRepeat(statement) Or TCompilerIrSelect(statement) Then Return lineDirective + debugStatement + coverageStatement + body
 		Return lineDirective + debugStatement + coverageStatement + body + EmitEmbeddedManagedTemporaryCleanup(firstTemporary, indent)
 	End Method
 
@@ -5707,39 +5707,49 @@ Type TCompilerCBackend
 			If rootedSelector.length Then selectorName = rootedSelector
 			localNames.Insert(selected.selectorTemporaryId, selectorName)
 			result.Append(indent + "{~n")
+			Local firstSelectorTemporary:Int = temporaryOrder.length
 			Local capturedSelector:TCompilerCCapturedExpression = CaptureExpression(selected.selector)
 			result.Append(EmitNativeStringPrelude(capturedSelector.nativeStrings, indent + "    "))
 			If rootedSelector.length Then result.Append(indent + "    " + selectorName + " = " + capturedSelector.expression + ";~n") Else result.Append(indent + "    " + CType(selected.selectorType, selected.source) + " " + selectorName + " = " + capturedSelector.expression + ";~n")
 			result.Append(EmitNativeStringCleanup(capturedSelector.nativeStrings, indent + "    "))
-			For Local caseIndex:Int = 0 Until selected.cases.length
-				Local selectedCase:TCompilerIrSelectCase = selected.cases[caseIndex]
-				If caseIndex Then result.Append(" else ") Else result.Append(indent + "    ")
-				result.Append("if (")
-				For Local valueIndex:Int = 0 Until selectedCase.values.length
-					If valueIndex Then result.Append(" || ")
-					If selected.stringComparison Then
-						If EmbeddedStringTypes() Then
-							result.Append("bmx_embedded_string_equals(" + selectorName + ", " + EmitExpression(selectedCase.values[valueIndex]) + ") != 0")
+			result.Append(EmitEmbeddedManagedTemporaryCleanup(firstSelectorTemporary, indent + "    "))
+			If EmbeddedObjectTypes() And currentModule And currentModule.embeddedMulticore Then
+				result.Append(EmitEmbeddedSelectCases(selected, selectorName, 0, indent + "    "))
+			Else
+				For Local caseIndex:Int = 0 Until selected.cases.length
+					Local selectedCase:TCompilerIrSelectCase = selected.cases[caseIndex]
+					If caseIndex Then result.Append(" else ") Else result.Append(indent + "    ")
+					result.Append("if (")
+					For Local valueIndex:Int = 0 Until selectedCase.values.length
+						If valueIndex Then result.Append(" || ")
+						If selected.stringComparison Then
+							If EmbeddedStringTypes() Then
+								result.Append("bmx_embedded_string_equals(" + selectorName + ", " + EmitExpression(selectedCase.values[valueIndex]) + ") != 0")
+							Else
+								result.Append("bbStringEquals(" + selectorName + ", " + EmitExpression(selectedCase.values[valueIndex]) + ") == 1")
+							End If
+						Else If selected.managedIdentityComparison Then
+							If EmbeddedObjectTypes() Then
+								result.Append("(void *)" + selectorName + " == (void *)" + EmitExpression(selectedCase.values[valueIndex]))
+							Else
+								result.Append("(BBOBJECT)" + selectorName + " == (BBOBJECT)" + EmitExpression(selectedCase.values[valueIndex]))
+							End If
 						Else
-							result.Append("bbStringEquals(" + selectorName + ", " + EmitExpression(selectedCase.values[valueIndex]) + ") == 1")
+							result.Append(selectorName + " == " + EmitExpression(selectedCase.values[valueIndex]))
 						End If
-					Else If selected.managedIdentityComparison Then
-						result.Append("(BBOBJECT)" + selectorName + " == (BBOBJECT)" + EmitExpression(selectedCase.values[valueIndex]))
-					Else
-						result.Append(selectorName + " == " + EmitExpression(selectedCase.values[valueIndex]))
-					End If
+					Next
+					If Not selectedCase.values.length Then result.Append("0")
+					result.Append(") {~n")
+					result.Append(EmitBlockContents(selectedCase.body, indent + "        "))
+					result.Append(indent + "    }")
 				Next
-				If Not selectedCase.values.length Then result.Append("0")
-				result.Append(") {~n")
-				result.Append(EmitBlockContents(selectedCase.body, indent + "        "))
-				result.Append(indent + "    }")
-			Next
-			If selected.defaultBody Then
-				If selected.cases.length Then result.Append(" else {~n") Else result.Append(indent + "    {~n")
-				result.Append(EmitBlockContents(selected.defaultBody, indent + "        "))
-				result.Append(indent + "    }")
+				If selected.defaultBody Then
+					If selected.cases.length Then result.Append(" else {~n") Else result.Append(indent + "    {~n")
+					result.Append(EmitBlockContents(selected.defaultBody, indent + "        "))
+					result.Append(indent + "    }")
+				End If
+				If selected.cases.length Or selected.defaultBody Then result.Append("~n")
 			End If
-			If selected.cases.length Or selected.defaultBody Then result.Append("~n")
 			If rootedSelector.length Then result.Append(indent + "    " + selectorName + " = " + CDefaultValue(selected.selectorType) + ";~n")
 			Return CompleteStatementOutput(result, indent + "}~n")
 		End If
@@ -6391,6 +6401,46 @@ Type TCompilerCBackend
 			result :+ indent + "}~n"
 		End If
 		Return result
+	End Method
+
+	Method EmitEmbeddedSelectCases:String(selected:TCompilerIrSelect, selectorName:String, caseIndex:Int, indent:String)
+		If caseIndex >= selected.cases.length Then
+			If selected.defaultBody Then Return EmitBlockContents(selected.defaultBody, indent)
+			Return ""
+		End If
+		Local selectedCase:TCompilerIrSelectCase = selected.cases[caseIndex]
+		Local matchName:String = "bmx_embedded_select_match_" + nextNativeStringId
+		nextNativeStringId :+ 1
+		Local result:String = indent + "{~n"
+		result :+ indent + "    int32_t " + matchName + " = 0;~n"
+		For Local valueIndex:Int = 0 Until selectedCase.values.length
+			Local firstValueTemporary:Int = temporaryOrder.length
+			Local capturedValue:TCompilerCCapturedExpression = CaptureExpression(selectedCase.values[valueIndex])
+			Local comparison:String
+			If selected.stringComparison Then
+				comparison = "bmx_embedded_string_equals(" + selectorName + ", " + capturedValue.expression + ") != 0"
+			Else If selected.managedIdentityComparison Then
+				comparison = "(void *)" + selectorName + " == (void *)" + capturedValue.expression
+			Else
+				comparison = selectorName + " == " + capturedValue.expression
+			End If
+			result :+ indent + "    if (!" + matchName + ") {~n"
+			result :+ EmitNativeStringPrelude(capturedValue.nativeStrings, indent + "        ")
+			result :+ indent + "        " + matchName + " = (int32_t)(" + comparison + ");~n"
+			result :+ EmitNativeStringCleanup(capturedValue.nativeStrings, indent + "        ")
+			result :+ EmitEmbeddedManagedTemporaryCleanup(firstValueTemporary, indent + "        ")
+			result :+ indent + "    }~n"
+		Next
+		result :+ indent + "    if (" + matchName + ") {~n"
+		result :+ EmitBlockContents(selectedCase.body, indent + "        ")
+		If caseIndex + 1 < selected.cases.length Or selected.defaultBody Then
+			result :+ indent + "    } else {~n"
+			result :+ EmitEmbeddedSelectCases(selected, selectorName, caseIndex + 1, indent + "        ")
+			result :+ indent + "    }~n"
+		Else
+			result :+ indent + "    }~n"
+		End If
+		Return result + indent + "}~n"
 	End Method
 
 	Method EmitUsingCleanup:String(resources:TCompilerIrUsingResource[], indent:String, clearResources:Int = False)
