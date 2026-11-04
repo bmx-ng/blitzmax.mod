@@ -675,6 +675,12 @@ Type TCompilerCBackend
 		Return RegisterEmbeddedRootLocal(variable)
 	End Method
 
+	Method EmbeddedRootedExistingTarget:Int(expression:TCompilerIrExpression)
+		Local reference:TCompilerIrSymbolReference = TCompilerIrSymbolReference(expression)
+		If Not reference Or reference.isByReference Then Return False
+		Return picoRootLocals.Contains(reference.symbolId)
+	End Method
+
 	Method EmbeddedStableStaticArrayStorage:Int(expression:TCompilerIrExpression)
 		Local reference:TCompilerIrSymbolReference = TCompilerIrSymbolReference(expression)
 		If Not reference Then Return False
@@ -5885,6 +5891,7 @@ Type TCompilerCBackend
 			If rootedCollection.length And eachStatement.declaresVariable And EmbeddedGcRootStorageType(eachStatement.variableType) Then
 				rootedVariable = RegisterEmbeddedLoopVariable(eachStatement.variableSymbolId, eachStatement.variableName, eachStatement.variableType, eachStatement.source)
 			End If
+			If rootedCollection.length And Not eachStatement.declaresVariable Then rootedVariable = EmbeddedRootedExistingTarget(eachStatement.target)
 			Local safeArrayPoll:Int = rootedCollection.length And (Not EmbeddedGcRootStorageType(eachStatement.elementType) Or rootedElement.length) And (Not EmbeddedGcRootStorageType(eachStatement.variableType) Or rootedVariable)
 			If persistentEach Then
 				collectionName = String(localNames.ValueForKey(eachStatement.collectionTemporaryId))
@@ -5959,7 +5966,7 @@ Type TCompilerCBackend
 			result.Append(indent + "    }~n")
 			If eachStatement.hasExit Then result.Append(indent + "    " + LoopExitLabel(eachStatement.loopId) + ": ;~n")
 			If rootedElement.length Then result.Append(indent + "    " + elementName + " = " + CDefaultValue(eachStatement.elementType) + ";~n")
-			If rootedVariable Then result.Append(indent + "    " + LocalName(eachStatement.variableSymbolId, eachStatement.variableName) + " = " + CDefaultValue(eachStatement.variableType) + ";~n")
+			If rootedVariable And eachStatement.declaresVariable Then result.Append(indent + "    " + LocalName(eachStatement.variableSymbolId, eachStatement.variableName) + " = " + CDefaultValue(eachStatement.variableType) + ";~n")
 			If rootedCollection.length Then result.Append(indent + "    " + collectionName + " = " + CDefaultValue(eachStatement.collection.semanticType) + ";~n")
 			Return CompleteStatementOutput(result, indent + "}~n")
 		End If
@@ -6043,6 +6050,7 @@ Type TCompilerCBackend
 			If stableStorage And staticEachStatement.declaresVariable And EmbeddedGcRootStorageType(staticEachStatement.variableType) Then
 				rootedVariable = RegisterEmbeddedLoopVariable(staticEachStatement.variableSymbolId, staticEachStatement.variableName, staticEachStatement.variableType, staticEachStatement.source)
 			End If
+			If stableStorage And Not staticEachStatement.declaresVariable Then rootedVariable = EmbeddedRootedExistingTarget(staticEachStatement.target)
 			Local safeStaticPoll:Int = stableStorage And (Not EmbeddedGcRootStorageType(staticEachStatement.elementType) Or rootedElement.length) And (Not EmbeddedGcRootStorageType(staticEachStatement.variableType) Or rootedVariable)
 			If persistentEach Then
 				collectionName = String(localNames.ValueForKey(staticEachStatement.collectionTemporaryId))
@@ -6086,7 +6094,7 @@ Type TCompilerCBackend
 			result.Append(indent + "    }~n")
 			If staticEachStatement.hasExit Then result.Append(indent + "    " + LoopExitLabel(staticEachStatement.loopId) + ": ;~n")
 			If rootedElement.length Then result.Append(indent + "    " + elementName + " = " + CDefaultValue(staticEachStatement.elementType) + ";~n")
-			If rootedVariable Then result.Append(indent + "    " + LocalName(staticEachStatement.variableSymbolId, staticEachStatement.variableName) + " = " + CDefaultValue(staticEachStatement.variableType) + ";~n")
+			If rootedVariable And staticEachStatement.declaresVariable Then result.Append(indent + "    " + LocalName(staticEachStatement.variableSymbolId, staticEachStatement.variableName) + " = " + CDefaultValue(staticEachStatement.variableType) + ";~n")
 			If fieldOwner.length Then result.Append(indent + "    " + fieldOwner + " = " + CDefaultValue(fieldAccess.receiver.semanticType) + ";~n")
 			Return CompleteStatementOutput(result, indent + "}~n")
 		End If
