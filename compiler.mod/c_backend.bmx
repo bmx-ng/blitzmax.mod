@@ -689,6 +689,20 @@ Type TCompilerCBackend
 
 	Method EmbeddedRootedExistingTarget:Int(expression:TCompilerIrExpression)
 		If EmbeddedRootedSymbolStorage(expression) Then Return True
+		Local indexed:TCompilerIrArrayElement = TCompilerIrArrayElement(expression)
+		If indexed Then
+			If indexed.rank <> 1 Or indexed.indexes.length <> 1 Or indexed.structId.length Or indexed.importedStructId.length Then Return False
+			' A literal or scalar symbol has no hidden managed receiver to keep live.
+			If Not TCompilerIrLiteral(indexed.indexes[0]) And Not TCompilerIrSymbolReference(indexed.indexes[0]) Then Return False
+			If EmbeddedExpressionMaySafepoint(indexed.indexes[0]) Then Return False
+			If indexed.isStaticArray Then
+				If EmbeddedStableStaticArrayStorage(indexed.receiver) Then Return True
+				If TCompilerIrFieldAccess(indexed.receiver) Then Return EmbeddedRootedExistingTarget(indexed.receiver)
+				Return False
+			End If
+			If Not EmbeddedArrayStorageType(indexed.receiver.semanticType) Then Return False
+			Return EmbeddedRootedSymbolStorage(indexed.receiver)
+		End If
 		Local fieldAccess:TCompilerIrFieldAccess = TCompilerIrFieldAccess(expression)
 		If Not fieldAccess Or fieldAccess.receiverIsPointer Or fieldAccess.structId.length Or fieldAccess.importedStructId.length Then Return False
 		If Not EmbeddedObjectStorageType(fieldAccess.receiver.semanticType) Then Return False
