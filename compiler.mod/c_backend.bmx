@@ -1409,15 +1409,20 @@ Type TCompilerCBackend
 					fieldStruct = TCompilerIrStruct(structTypes.ValueForKey(irField.semanticType.Trim().ToLower()))
 					importedFieldStruct = TCompilerIrImportedStruct(importedStructTypes.ValueForKey(irField.semanticType.Trim().ToLower()))
 				End If
-				Local fieldDescriptor:String
+				Local fieldDescriptor:String = "0"
+				Local fieldKind:String
 				If fieldStruct And fieldStruct.containsManagedReferences And EmbeddedPlainStructSupported(fieldStruct) Then
-					fieldDescriptor = EmbeddedStructDescriptorName(fieldStruct)
+					fieldDescriptor = "&" + EmbeddedStructDescriptorName(fieldStruct)
+					fieldKind = "BMX_EMBEDDED_VALUE_STRUCT"
 				Else If importedFieldStruct And importedFieldStruct.containsManagedReferences And EmbeddedPlainImportedStructSupported(importedFieldStruct) Then
-					fieldDescriptor = EmbeddedImportedStructDescriptorName(importedFieldStruct)
+					fieldDescriptor = "&" + EmbeddedImportedStructDescriptorName(importedFieldStruct)
+					fieldKind = "BMX_EMBEDDED_VALUE_STRUCT"
+				Else If irField.isStaticArray And IsManagedCReferenceType(irField.staticArrayElementType) Then
+					fieldKind = EmbeddedValueKind(irField.staticArrayElementType)
 				Else
 					Continue
 				End If
-				valueFields :+ "    { (uint32_t)offsetof(struct " + ObjectName(irClass.classId) + ", " + FieldName(irField.declaringClassId, irField.fieldId) + "), " + stride + ", " + count + ", BMX_EMBEDDED_VALUE_STRUCT, &" + fieldDescriptor + " },~n"
+				valueFields :+ "    { (uint32_t)offsetof(struct " + ObjectName(irClass.classId) + ", " + FieldName(irField.declaringClassId, irField.fieldId) + "), " + stride + ", " + count + ", " + fieldKind + ", " + fieldDescriptor + " },~n"
 				valueFieldCount :+ 1
 			Next
 			Local valueFieldName:String = "0"
@@ -6018,7 +6023,27 @@ Type TCompilerCBackend
 			Local elementName:String = TemporaryName(staticEachStatement.elementTemporaryId)
 			Local elementCType:String = CType(staticEachStatement.elementType, staticEachStatement.source)
 			Local persistentEach:Int = currentRoutine And currentRoutine.isIteratorMoveNext And localNames.Contains(staticEachStatement.collectionTemporaryId)
-			Local safeStaticPoll:Int = Not persistentEach And EmbeddedStableStaticArrayStorage(staticEachStatement.collection) And Not EmbeddedGcRootStorageType(staticEachStatement.elementType) And Not EmbeddedGcRootStorageType(staticEachStatement.variableType)
+			Local fieldAccess:TCompilerIrFieldAccess = TCompilerIrFieldAccess(staticEachStatement.collection)
+			Local fieldOwner:String
+			Local fieldMember:String
+			If Not persistentEach And fieldAccess And Not fieldAccess.structId.length And Not fieldAccess.importedStructId.length And EmbeddedObjectStorageType(fieldAccess.receiver.semanticType) Then
+				If fieldAccess.importedFieldId.length Then
+					Local importedField:TCompilerIrImportedField = TCompilerIrImportedField(importedFieldsById.ValueForKey(fieldAccess.importedFieldId))
+					If importedField Then fieldMember = importedField.abiName
+				Else If fieldAccess.fieldId.length Then
+					fieldMember = FieldName(fieldAccess.classId, fieldAccess.fieldId)
+				End If
+				If fieldMember.length Then fieldOwner = RegisterEmbeddedScopeTemporary(staticEachStatement.collectionTemporaryId + ".owner", fieldAccess.receiver.semanticType, staticEachStatement.source)
+			End If
+			Local stableStorage:Int = Not persistentEach And (EmbeddedStableStaticArrayStorage(staticEachStatement.collection) Or fieldOwner.length)
+			Local rootedElement:String
+			If stableStorage Then rootedElement = RegisterEmbeddedScopeTemporary(staticEachStatement.elementTemporaryId, staticEachStatement.elementType, staticEachStatement.source)
+			If rootedElement.length Then elementName = rootedElement
+			Local rootedVariable:Int
+			If stableStorage And staticEachStatement.declaresVariable And EmbeddedGcRootStorageType(staticEachStatement.variableType) Then
+				rootedVariable = RegisterEmbeddedLoopVariable(staticEachStatement.variableSymbolId, staticEachStatement.variableName, staticEachStatement.variableType, staticEachStatement.source)
+			End If
+			Local safeStaticPoll:Int = stableStorage And (Not EmbeddedGcRootStorageType(staticEachStatement.elementType) Or rootedElement.length) And (Not EmbeddedGcRootStorageType(staticEachStatement.variableType) Or rootedVariable)
 			If persistentEach Then
 				collectionName = String(localNames.ValueForKey(staticEachStatement.collectionTemporaryId))
 				indexName = String(localNames.ValueForKey(staticEachStatement.indexTemporaryId))
@@ -6033,19 +6058,24 @@ Type TCompilerCBackend
 				result.Append(indent + "    " + collectionName + " = " + EmitExpression(staticEachStatement.collection) + ";~n")
 				result.Append(indent + "    " + indexName + " = 0;~n")
 			Else
-				result.Append(indent + "    " + elementCType + " *" + collectionName + " = " + EmitExpression(staticEachStatement.collection) + ";~n")
+				If fieldOwner.length Then
+					result.Append(indent + "    " + fieldOwner + " = " + EmitExpression(fieldAccess.receiver) + ";~n")
+					result.Append(indent + "    " + elementCType + " *" + collectionName + " = (" + DebugObjectReceiver(fieldOwner, fieldAccess.receiver.semanticType, fieldAccess.source) + "->" + fieldMember + ");~n")
+				Else
+					result.Append(indent + "    " + elementCType + " *" + collectionName + " = " + EmitExpression(staticEachStatement.collection) + ";~n")
+				End If
 				result.Append(indent + "    " + StaticArrayIndexCType() + " " + indexName + " = 0;~n")
 			End If
 			result.Append(indent + "    for (; " + indexName + " < (" + StaticArrayIndexCType() + ")" + staticEachStatement.length + "; " + indexName + " = " + indexName + " + 1) {~n")
 			If safeStaticPoll Then result.Append(EmitEmbeddedGCPoll(indent + "        "))
-			If persistentEach Then result.Append(indent + "        " + elementName + " = " + collectionName + "[" + indexName + "];~n") Else result.Append(indent + "        " + elementCType + " " + elementName + " = " + collectionName + "[" + indexName + "];~n")
+			If persistentEach Or rootedElement.length Then result.Append(indent + "        " + elementName + " = " + collectionName + "[" + indexName + "];~n") Else result.Append(indent + "        " + elementCType + " " + elementName + " = " + collectionName + "[" + indexName + "];~n")
 			Local convertedElement:String = elementName
 			If Not staticEachStatement.elementStructId.length And Not staticEachStatement.elementImportedStructId.length Then convertedElement = "((" + CType(staticEachStatement.variableType, staticEachStatement.source) + ")(" + elementName + "))"
 			If staticEachStatement.declaresVariable Then
 				Local name:String = LocalName(staticEachStatement.variableSymbolId, staticEachStatement.variableName)
 				If persistentEach Then name = String(localNames.ValueForKey(staticEachStatement.variableSymbolId))
 				localNames.Insert(staticEachStatement.variableSymbolId, name)
-				If persistentEach Then result.Append(indent + "        " + name + " = " + convertedElement + ";~n") Else result.Append(indent + "        " + CType(staticEachStatement.variableType, staticEachStatement.source) + " " + name + " = " + convertedElement + ";~n")
+				If persistentEach Or rootedVariable Then result.Append(indent + "        " + name + " = " + convertedElement + ";~n") Else result.Append(indent + "        " + CType(staticEachStatement.variableType, staticEachStatement.source) + " " + name + " = " + convertedElement + ";~n")
 			Else
 				result.Append(indent + "        " + EmitExpression(staticEachStatement.target) + " = " + convertedElement + ";~n")
 			End If
@@ -6055,6 +6085,9 @@ Type TCompilerCBackend
 			If staticEachStatement.hasContinue Then result.Append(indent + "        " + LoopContinueLabel(staticEachStatement.loopId) + ": ;~n")
 			result.Append(indent + "    }~n")
 			If staticEachStatement.hasExit Then result.Append(indent + "    " + LoopExitLabel(staticEachStatement.loopId) + ": ;~n")
+			If rootedElement.length Then result.Append(indent + "    " + elementName + " = " + CDefaultValue(staticEachStatement.elementType) + ";~n")
+			If rootedVariable Then result.Append(indent + "    " + LocalName(staticEachStatement.variableSymbolId, staticEachStatement.variableName) + " = " + CDefaultValue(staticEachStatement.variableType) + ";~n")
+			If fieldOwner.length Then result.Append(indent + "    " + fieldOwner + " = " + CDefaultValue(fieldAccess.receiver.semanticType) + ";~n")
 			Return CompleteStatementOutput(result, indent + "}~n")
 		End If
 		Local objectEachStatement:TCompilerIrForEachObject = TCompilerIrForEachObject(statement)
