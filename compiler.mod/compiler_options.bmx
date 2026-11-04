@@ -73,7 +73,9 @@ Type TCompilerOptions
 	bbdoc: Returns the build-mode, platform, and architecture suffix used by module interfaces.
 	End Rem
 	Method InterfaceMung:String()
-		Return buildMode.ToLower() + "." + targetPlatform.ToLower() + "." + targetArchitecture.ToLower()
+		Local mode:String = buildMode.ToLower()
+		If embeddedMulticore Then mode :+ ".gcmc"
+		Return mode + "." + targetPlatform.ToLower() + "." + targetArchitecture.ToLower()
 	End Method
 
 	Rem
