@@ -603,6 +603,7 @@ Type TConstantEvaluator
 					Case 114, 82 result :+ "~r"
 					Case 116, 84 result :+ "~t"
 					Case 113, 81 result :+ "~q"
+					Case 115, 83 result :+ " "
 					Case 126 result :+ "~~"
 					Case 36
 						Local value:Int
