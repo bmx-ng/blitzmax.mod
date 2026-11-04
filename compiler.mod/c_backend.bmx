@@ -6073,7 +6073,9 @@ Type TCompilerCBackend
 				End If
 				If fieldMember.length Then fieldOwner = RegisterEmbeddedScopeTemporary(staticEachStatement.collectionTemporaryId + ".owner", fieldAccess.receiver.semanticType, staticEachStatement.source)
 			End If
-			Local stableStorage:Int = Not persistentEach And (EmbeddedStableStaticArrayStorage(staticEachStatement.collection) Or fieldOwner.length)
+			' A rooted value Struct keeps its field address stable and traces its elements.
+			Local rootedStructField:Int = fieldAccess And (fieldAccess.structId.length Or fieldAccess.importedStructId.length) And Not fieldAccess.receiverIsPointer And EmbeddedManagedStructType(fieldAccess.receiver.semanticType) And EmbeddedRootedSymbolStorage(fieldAccess.receiver)
+			Local stableStorage:Int = Not persistentEach And (EmbeddedStableStaticArrayStorage(staticEachStatement.collection) Or fieldOwner.length Or rootedStructField)
 			Local rootedElement:String
 			If stableStorage Then rootedElement = RegisterEmbeddedScopeTemporary(staticEachStatement.elementTemporaryId, staticEachStatement.elementType, staticEachStatement.source)
 			If rootedElement.length Then elementName = rootedElement
