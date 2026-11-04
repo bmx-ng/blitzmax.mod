@@ -5488,6 +5488,7 @@ Type TCompilerCBackend
 			Return lineDirective + debugStatement + coverageStatement + EmitNativeStringPrelude(statementScope, indent) + body + EmitNativeStringCleanup(statementScope, indent) + EmitEmbeddedManagedTemporaryCleanup(firstTemporary, indent)
 		End If
 		Local body:String = EmitStatementBody(statement, indent)
+		If TCompilerIrIf(statement) Or TCompilerIrWhile(statement) Or TCompilerIrRepeat(statement) Then Return lineDirective + debugStatement + coverageStatement + body
 		Return lineDirective + debugStatement + coverageStatement + body + EmitEmbeddedManagedTemporaryCleanup(firstTemporary, indent)
 	End Method
 
@@ -5825,14 +5826,19 @@ Type TCompilerCBackend
 		Local whileStatement:TCompilerIrWhile = TCompilerIrWhile(statement)
 		If whileStatement Then
 			RegisterLoopDebugDepth(whileStatement.loopId)
+			Local firstConditionTemporary:Int = temporaryOrder.length
 			Local capturedWhile:TCompilerCCapturedExpression = CaptureExpression(whileStatement.condition, True)
-			If capturedWhile.nativeStrings.names.length Then
+			Local conditionCleanup:String = EmitEmbeddedManagedTemporaryCleanup(firstConditionTemporary, indent + "    ")
+			If capturedWhile.nativeStrings.names.length Or conditionCleanup.length Then
 				Local conditionName:String = "bmx_native_condition_" + nextNativeStringId
 				nextNativeStringId :+ 1
 				result.Append(indent + "for (;;) {~n")
 				result.Append(EmitNativeStringPrelude(capturedWhile.nativeStrings, indent + "    "))
-				result.Append(indent + "    BBINT " + conditionName + " = (BBINT)(" + capturedWhile.expression + ");~n")
+				Local conditionType:String = "BBINT"
+				If EmbeddedObjectTypes() Then conditionType = "int32_t"
+				result.Append(indent + "    " + conditionType + " " + conditionName + " = (" + conditionType + ")(" + capturedWhile.expression + ");~n")
 				result.Append(EmitNativeStringCleanup(capturedWhile.nativeStrings, indent + "    "))
+				result.Append(conditionCleanup)
 				result.Append(indent + "    if (!(" + conditionName + ")) break;~n")
 			Else
 				result.Append(indent + "while (" + capturedWhile.expression + ") {~n")
@@ -5848,19 +5854,24 @@ Type TCompilerCBackend
 		If repeatStatement Then
 			RegisterLoopDebugDepth(repeatStatement.loopId)
 			Local capturedRepeat:TCompilerCCapturedExpression
+			Local firstConditionTemporary:Int = temporaryOrder.length
 			If Not repeatStatement.isForever Then capturedRepeat = CaptureExpression(repeatStatement.condition, True)
-			If repeatStatement.isForever Or (capturedRepeat And capturedRepeat.nativeStrings.names.length) Then result.Append(indent + "for (;;) {~n") Else result.Append(indent + "do {~n")
+			Local conditionCleanup:String = EmitEmbeddedManagedTemporaryCleanup(firstConditionTemporary, indent + "    ")
+			If repeatStatement.isForever Or (capturedRepeat And capturedRepeat.nativeStrings.names.length) Or conditionCleanup.length Then result.Append(indent + "for (;;) {~n") Else result.Append(indent + "do {~n")
 			result.Append(EmitEmbeddedGCPoll(indent + "    "))
 			result.Append(EmitBlockContents(repeatStatement.body, indent + "    "))
 			If repeatStatement.hasContinue Then result.Append(indent + "    " + LoopContinueLabel(repeatStatement.loopId) + ": ;~n")
 			If repeatStatement.isForever Then
 				result.Append(indent + "}~n")
-			Else If capturedRepeat.nativeStrings.names.length Then
+			Else If capturedRepeat.nativeStrings.names.length Or conditionCleanup.length Then
 				Local conditionName:String = "bmx_native_condition_" + nextNativeStringId
 				nextNativeStringId :+ 1
 				result.Append(EmitNativeStringPrelude(capturedRepeat.nativeStrings, indent + "    "))
-				result.Append(indent + "    BBINT " + conditionName + " = (BBINT)(" + capturedRepeat.expression + ");~n")
+				Local conditionType:String = "BBINT"
+				If EmbeddedObjectTypes() Then conditionType = "int32_t"
+				result.Append(indent + "    " + conditionType + " " + conditionName + " = (" + conditionType + ")(" + capturedRepeat.expression + ");~n")
 				result.Append(EmitNativeStringCleanup(capturedRepeat.nativeStrings, indent + "    "))
+				result.Append(conditionCleanup)
 				result.Append(indent + "    if (" + conditionName + ") break;~n")
 				result.Append(indent + "}~n")
 			Else
@@ -6341,17 +6352,22 @@ Type TCompilerCBackend
 			body = conditional.elseIfClauses[clauseIndex].body
 		End If
 
+		Local firstConditionTemporary:Int = temporaryOrder.length
 		Local captured:TCompilerCCapturedExpression = CaptureExpression(condition, True)
 		Local result:String
 		Local conditionText:String = captured.expression
-		Local wrapped:Int = captured.nativeStrings.names.length > 0
+		Local conditionCleanup:String = EmitEmbeddedManagedTemporaryCleanup(firstConditionTemporary, indent + "    ")
+		Local wrapped:Int = captured.nativeStrings.names.length > 0 Or conditionCleanup.length > 0
 		If wrapped Then
 			Local conditionName:String = "bmx_native_condition_" + nextNativeStringId
 			nextNativeStringId :+ 1
 			result :+ indent + "{~n"
 			result :+ EmitNativeStringPrelude(captured.nativeStrings, indent + "    ")
-			result :+ indent + "    BBINT " + conditionName + " = (BBINT)(" + conditionText + ");~n"
+			Local conditionType:String = "BBINT"
+			If EmbeddedObjectTypes() Then conditionType = "int32_t"
+			result :+ indent + "    " + conditionType + " " + conditionName + " = (" + conditionType + ")(" + conditionText + ");~n"
 			result :+ EmitNativeStringCleanup(captured.nativeStrings, indent + "    ")
+			result :+ conditionCleanup
 			conditionText = conditionName
 			indent :+ "    "
 		End If
