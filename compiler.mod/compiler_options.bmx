@@ -35,6 +35,9 @@ Type TCompilerOptions
 	Field applicationType:String
 	Field frameworkModule:String
 	Field threaded:Int = True
+	' Internal embedded two-context collector experiment. Ordinary target
+	' builds keep safepoint-driven frames and emit no cooperative polls.
+	Field embeddedMulticore:Int
 	Field verbose:Int
 	Field gdbDebug:Int
 	Field musl:Int
@@ -70,7 +73,9 @@ Type TCompilerOptions
 	bbdoc: Returns the build-mode, platform, and architecture suffix used by module interfaces.
 	End Rem
 	Method InterfaceMung:String()
-		Return buildMode.ToLower() + "." + targetPlatform.ToLower() + "." + targetArchitecture.ToLower()
+		Local mode:String = buildMode.ToLower()
+		If embeddedMulticore Then mode :+ ".gcmc"
+		Return mode + "." + targetPlatform.ToLower() + "." + targetArchitecture.ToLower()
 	End Method
 
 	Rem

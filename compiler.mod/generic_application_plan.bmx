@@ -1499,6 +1499,7 @@ Type TCompilerGenericApplicationPlanner
 		If result.targetArchitecture = "x64" Or result.targetArchitecture = "arm64" Or result.targetArchitecture = "ppc64" Then result.pointerWidth = 64 Else result.pointerWidth = 32
 		result.exceptionMode = "default"
 		result.garbageCollectorMode = "default"
+		If options And options.embeddedMulticore Then result.garbageCollectorMode = "embedded-cooperative-stw"
 		result.cpuMode = "generic"
 		result.fpuMode = "default"
 		result.simdMode = "default"
