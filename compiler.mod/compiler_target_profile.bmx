@@ -10,5 +10,5 @@ profile rather than every target which might happen to run on embedded hardware.
 End Rem
 Function CompilerEmbeddedTarget:Int(platform:String)
 	Local normalized:String = platform.ToLower()
-	Return normalized = "pico" Or normalized = "esp32" Or normalized = "nrf52"
+	Return normalized = "pico" Or normalized = "esp32" Or normalized = "esp8266" Or normalized = "nrf52"
 End Function
