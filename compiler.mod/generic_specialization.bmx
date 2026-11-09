@@ -9402,6 +9402,44 @@ Type TCompilerGenericCUnitEmitter
 		Return WrapStabilizedCall(result + ")", receiverPrefix)
 	End Function
 
+	Function EmitOrdinaryObjectSlotOperation:String(operation:TGenericTemplateNode, receiver:String, ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, ownerMethod:TCompilerGenericMethodIr = Null, locals:TMap = Null)
+		If Not operation Or Not operation.identity.StartsWith("ordinary-object-slot") Or Not operation.children.length Then
+			diagnostics :+ ["BMXC3059 ordinary Object operation has no stable runtime slot identity"]
+			Return ""
+		End If
+		Local receiverPrefix:String
+		receiver = StabilizeCallReceiver(operation, receiver, receiverPrefix)
+		Local result:String
+		If EmbeddedTarget(ir) Then
+			Select operation.valueText.ToLower()
+				Case "tostring"; result = "bmx_embedded_object_to_string((void *)" + receiver
+				Case "compare"; result = "bmx_embedded_object_compare((void *)" + receiver
+				Case "sendmessage"; result = "bmx_embedded_object_send_message((void *)" + receiver
+				Case "hashcode"; result = "bmx_embedded_object_hash_code((void *)" + receiver
+				Case "equals"; result = "bmx_embedded_object_equals((void *)" + receiver
+			End Select
+		Else
+			Local slotName:String
+			Select operation.valueText.ToLower()
+				Case "tostring"; slotName = "ToString"
+				Case "compare"; slotName = "Compare"
+				Case "sendmessage"; slotName = "SendMessage"
+				Case "hashcode"; slotName = "HashCode"
+				Case "equals"; slotName = "Equals"
+			End Select
+			If slotName.length Then result = "((BBObject *)" + receiver + ")->clas->" + slotName + "((BBOBJECT)" + receiver
+		End If
+		If Not result.length Then
+			diagnostics :+ ["BMXC3059 ordinary Object operation '" + operation.valueText + "' has no supported runtime slot"]
+			Return ""
+		End If
+		For Local index:Int = 1 Until operation.children.length
+			Local argument:String = EmitExpression(operation.children[index], ir, ownerMethod, diagnostics, locals)
+			If EmbeddedTarget(ir) Then result :+ ", (void *)" + argument Else result :+ ", (BBOBJECT)" + argument
+		Next
+		Return WrapStabilizedCall(result + ")", receiverPrefix)
+	End Function
+
 	Function EmitOrdinaryInterfaceOperation:String(operation:TGenericTemplateNode, receiver:String, ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, ownerMethod:TCompilerGenericMethodIr = Null, locals:TMap = Null)
 		If Not operation Or operation.runtimeDispatchKind <> TEMPLATE_DISPATCH_ORDINARY_CLASS Or operation.runtimeDispatchIndex < 0 Or Not operation.children.length Or Not operation.referencedSymbol Or Not operation.referencedSymbol.overloadKey.length Then
 			diagnostics :+ ["BMXC3057 ordinary Interface operation has no stable descriptor and slot identity"]
@@ -10224,6 +10262,7 @@ Type TCompilerGenericCUnitEmitter
 						Return DefaultValue(node.semanticType, ir)
 					End If
 					Local receiverNode:TGenericTemplateNode = node.children[0]
+					If node.identity.StartsWith("ordinary-object-slot") Then Return EmitOrdinaryObjectSlotOperation(node, EmitExpression(receiverNode, ir, ownerMethod, diagnostics, locals), ir, diagnostics, ownerMethod, locals)
 					If receiverNode.kind = TEMPLATE_NODE_SELF And receiverNode.valueText = "self" Then
 						Local selfExpression:String = ClosureSelfExpression(ownerMethod)
 						If ir.isInterface Then
@@ -13273,6 +13312,8 @@ Type TCompilerGenericTemplateBuilder
 				Next
 				If Not ordinaryValueAbi Then
 					diagnostics :+ ["BMXC3059 ordinary Type operation '" + result.valueText + "' called from a generic template has an unsupported parameter mode"]
+				Else If OrdinaryObjectSlotKind(call.resolvedCall.routine) Then
+					result.identity = "ordinary-object-slot"
 				Else
 					result.runtimeDispatchIndex = OrdinaryClassDispatchIndex(call.resolvedCall.routine, call.receiver.semanticType, model, diagnostics)
 					If result.runtimeDispatchIndex >= 0 Then result.runtimeDispatchKind = TEMPLATE_DISPATCH_ORDINARY_CLASS
