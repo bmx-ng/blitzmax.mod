@@ -1000,16 +1000,20 @@ Type TInheritanceValidator
 		If parameterType Then
 			Local owner:TSymbol
 			If parameterType.symbol.containingScope Then owner = parameterType.symbol.containingScope.owner
-			Local ownerInfo:TTypeInheritanceInfo = model.InheritanceInfo(owner)
-			If ownerInfo Then
-				For Local constraint:TGenericConstraintInfo = EachIn ownerInfo.constraints
-					If constraint.parameterSymbol = parameterType.symbol Then
-						For Local bound:TSemanticType = EachIn constraint.bounds
-							If IsSubtype(bound, required, depth + 1) Then Return True
-						Next
-					End If
-				Next
+			Local constraints:TGenericConstraintInfo[]
+			If owner And owner.kind = SYMBOL_ROUTINE Then
+				constraints = owner.genericConstraints
+			Else
+				Local ownerInfo:TTypeInheritanceInfo = model.InheritanceInfo(owner)
+				If ownerInfo Then constraints = ownerInfo.constraints
 			End If
+			For Local constraint:TGenericConstraintInfo = EachIn constraints
+				If constraint.parameterSymbol = parameterType.symbol Then
+					For Local bound:TSemanticType = EachIn constraint.bounds
+						If IsSubtype(bound, required, depth + 1) Then Return True
+					Next
+				End If
+			Next
 			Return False
 		End If
 		Local namedActual:TNamedSemanticType = TNamedSemanticType(actual)
