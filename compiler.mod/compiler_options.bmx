@@ -142,6 +142,8 @@ Function CompilerTargetSupported:Int(platform:String, architecture:String)
 			Return architectureName = "arm"
 		Case "esp32"
 			Return architectureName = "xtensa" Or architectureName = "riscv32"
+		Case "esp8266"
+			Return architectureName = "xtensa"
 		Case "emscripten"
 			Return architectureName = "js"
 		Case "nx"
@@ -222,6 +224,7 @@ Function CompilerDefaultConditionalSymbols:String[](platform:String, architectur
 		AddCompilerConditional(result, "nrf52840")
 	End If
 	If platformName = "esp32" And (architectureName = "xtensa" Or architectureName = "riscv32") Then AddCompilerConditional(result, "esp32" + architectureName)
+	If platformName = "esp8266" And architectureName = "xtensa" Then AddCompilerConditional(result, "esp8266xtensa")
 	If platformName = "haiku" And (architectureName = "x86" Or architectureName = "x64" Or architectureName = "arm64") Then AddCompilerConditional(result, "haiku" + architectureName)
 	If platformName = "emscripten" And architectureName = "js" Then AddCompilerConditional(result, "emscriptenjs")
 	If platformName = "nx" And architectureName = "arm64" Then AddCompilerConditional(result, "nxarm64")
