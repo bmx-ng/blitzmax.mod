@@ -27,7 +27,12 @@ Type TSemanticDumper
 					result :+ indent + "  Implements " + edge.semanticType.DisplayName() + "~n"
 				Next
 				For Local constraint:TGenericConstraintInfo = EachIn inheritance.constraints
-					result :+ indent + "  Where " + constraint.parameterSymbol.name + " Extends "
+					result :+ indent + "  Where " + constraint.parameterSymbol.name
+					If constraint.capability Then
+						If constraint.capability = GENERIC_CAPABILITY_INTEGRAL Then result :+ " Is Integral~n" Else result :+ " Is Numeric~n"
+						Continue
+					End If
+					result :+ " Extends "
 					For Local index:Int = 0 Until constraint.bounds.length
 						If index Then result :+ " And "
 						result :+ constraint.bounds[index].DisplayName()

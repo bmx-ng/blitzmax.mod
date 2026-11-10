@@ -405,6 +405,8 @@ Type TGenericSpecializationRegistry
 				Return Null
 			End If
 		Next
+		If Not CapabilitiesSatisfied(artifact.parameters, typeArguments, artifact.identity.StableName()) Then Return Null
+		If Not CapabilitiesSatisfied(artifact.containingParameters, containingTypeArguments, artifact.identity.StableName()) Then Return Null
 		Local key:TCanonicalSpecializationKey = New TCanonicalSpecializationKey
 		key.templateIdentity = artifact.identity
 		key.containingTypeArguments = containingTypeArguments
@@ -434,6 +436,26 @@ Type TGenericSpecializationRegistry
 		nodesByKey.Insert(canonicalName, result)
 		InsertNode(result, canonicalName)
 		Return result
+	End Method
+
+	Method CapabilitiesSatisfied:Int(parameters:TGenericTemplateParameter[], arguments:TTemplateTypeReference[], templateName:String)
+		For Local index:Int = 0 Until Min(parameters.length, arguments.length)
+			Local required:Int = parameters[index].capability
+			If Not required Then Continue
+			Local argument:TTemplateTypeReference = arguments[index]
+			If argument And argument.kind = TEMPLATE_TYPE_PARAMETER Then Continue
+			Local actual:Int
+			If argument And argument.kind = TEMPLATE_TYPE_BUILTIN Then actual = TGenericCapabilityRules.KindForName(argument.symbolName)
+			If actual < required Then
+				Local capabilityName:String = "Numeric"
+				If required = GENERIC_CAPABILITY_INTEGRAL Then capabilityName = "Integral"
+				Local argumentName:String = "<missing>"
+				If argument Then argumentName = argument.CanonicalName()
+				AddDiagnostic("BMXC3093 template '" + templateName + "' type argument '" + argumentName + "' does not satisfy " + capabilityName + " for '" + parameters[index].name + "'")
+				Return False
+			End If
+		Next
+		Return True
 	End Method
 
 	Method AddEdge:TGenericSpecializationEdge(source:TGenericSpecializationNode, target:TGenericSpecializationNode, request:TGenericSpecializationRequestSite)
@@ -10491,26 +10513,17 @@ Type TCompilerGenericCUnitEmitter
 
 	Function ScalarNumericType:Int(value:TTemplateTypeReference)
 		If Not value Or value.kind <> TEMPLATE_TYPE_BUILTIN Then Return False
-		Select value.symbolName.ToLower()
-			Case "byte", "short", "int", "uint", "long", "ulong", "longint", "ulongint", "size_t", "float", "double"
-				Return True
-		End Select
-		Return False
+		Return TGenericCapabilityRules.KindForName(value.symbolName) >= GENERIC_CAPABILITY_NUMERIC
 	End Function
 
 	Function ScalarIntegralType:Int(value:TTemplateTypeReference)
 		If Not value Or value.kind <> TEMPLATE_TYPE_BUILTIN Then Return False
-		Select value.symbolName.ToLower()
-			Case "byte", "short", "int", "uint", "long", "ulong", "longint", "ulongint", "size_t"
-				Return True
-		End Select
-		Return False
+		Return TGenericCapabilityRules.KindForName(value.symbolName) >= GENERIC_CAPABILITY_INTEGRAL
 	End Function
 
 	Function UnaryOperandsSupported:Int(operatorText:String, operand:TTemplateTypeReference)
 		If Not ScalarNumericType(operand) Then Return False
-		If operatorText = "~~" Then Return ScalarIntegralType(operand)
-		Return operatorText = "+" Or operatorText = "-" Or operatorText.ToLower() = "not"
+		Return TGenericCapabilityRules.UnarySupported(operatorText, TGenericCapabilityRules.KindForName(operand.symbolName))
 	End Function
 
 	Function BinaryOperandsSupported:Int(operatorText:String, left:TTemplateTypeReference, right:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr)
@@ -10534,13 +10547,8 @@ Type TCompilerGenericCUnitEmitter
 			If IsNullType(right) And left And left.kind = TEMPLATE_TYPE_POINTER Then Return True
 		End If
 		If Not ScalarNumericType(left) Or Not ScalarNumericType(right) Then Return False
-		Select operatorText.ToLower()
-			Case "mod", "shl", "shr", "sar", "|", "&", "~~", "^", "and", "or", "xor"
-				Return ScalarIntegralType(left) And ScalarIntegralType(right)
-			Case "+", "-", "*", "/", "<", "<=", ">", ">=", "=", "<>"
-				Return True
-		End Select
-		Return False
+		Local sharedCapability:Int = Min(TGenericCapabilityRules.KindForName(left.symbolName), TGenericCapabilityRules.KindForName(right.symbolName))
+		Return TGenericCapabilityRules.BinarySupported(operatorText, sharedCapability)
 	End Function
 
 	Function CUnaryOperator:String(operatorText:String)
@@ -11118,6 +11126,7 @@ Type TCompilerGenericTemplateBuilder
 			For Local constraint:TGenericConstraintInfo = EachIn inheritanceInfo.constraints
 				For Local parameterIndex:Int = 0 Until parameterSymbols.length
 					If parameterSymbols[parameterIndex] <> constraint.parameterSymbol Then Continue
+					artifact.parameters[parameterIndex].capability = constraint.capability
 					artifact.parameters[parameterIndex].constraints = New TTemplateTypeReference[constraint.bounds.length]
 					For Local boundIndex:Int = 0 Until constraint.bounds.length
 						artifact.parameters[parameterIndex].constraints[boundIndex] = TemplateType(constraint.bounds[boundIndex], model, parameterSymbols, diagnostics)
@@ -11389,6 +11398,7 @@ Type TCompilerGenericTemplateBuilder
 				For Local constraint:TGenericConstraintInfo = EachIn ownerInheritance.constraints
 					For Local ownerIndex:Int = 0 Until containingParameterSymbols.length
 						If containingParameterSymbols[ownerIndex] <> constraint.parameterSymbol Then Continue
+						artifact.containingParameters[ownerIndex].capability = constraint.capability
 						artifact.containingParameters[ownerIndex].constraints = New TTemplateTypeReference[constraint.bounds.length]
 						For Local boundIndex:Int = 0 Until constraint.bounds.length
 							artifact.containingParameters[ownerIndex].constraints[boundIndex] = TemplateType(constraint.bounds[boundIndex], model, parameterSymbols, diagnostics, templateParameterOwner)
@@ -11452,6 +11462,7 @@ Type TCompilerGenericTemplateBuilder
 		For Local constraint:TGenericConstraintInfo = EachIn symbol.genericConstraints
 			For Local parameterIndex:Int = 0 Until routineParameterSymbols.length
 				If routineParameterSymbols[parameterIndex] <> constraint.parameterSymbol Then Continue
+				artifact.parameters[parameterIndex].capability = constraint.capability
 				artifact.parameters[parameterIndex].constraints = New TTemplateTypeReference[constraint.bounds.length]
 				For Local boundIndex:Int = 0 Until constraint.bounds.length
 					artifact.parameters[parameterIndex].constraints[boundIndex] = TemplateType(constraint.bounds[boundIndex], model, parameterSymbols, diagnostics, templateParameterOwner)

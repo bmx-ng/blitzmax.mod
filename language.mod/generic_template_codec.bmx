@@ -369,6 +369,8 @@ Type TGenericTemplateRecordWriter
 	End Function
 
 	Method WriteParameter(parameter:TGenericTemplateParameter)
+		If parameter.capability < 0 Or parameter.capability > 2 Then diagnostics :+ ["BMXGT146 invalid generic capability"]
+		If documentVersion < 33 And parameter.capability Then diagnostics :+ ["BMXGT146 generic capabilities require artifact version 33"]
 		Line("parameter")
 		StringValue(parameter.name)
 		IntValue(parameter.ordinal)
@@ -376,6 +378,7 @@ Type TGenericTemplateRecordWriter
 		For Local constraint:TTemplateTypeReference = EachIn parameter.constraints
 			WriteType(constraint, 0)
 		Next
+		If documentVersion >= 33 Then IntValue(parameter.capability)
 	End Method
 
 	Method WriteOptionalInheritance(value:TGenericTemplateInheritanceReference, depth:Int)
@@ -991,6 +994,8 @@ Type TGenericTemplateRecordReader
 		For Local constraintIndex:Int = 0 Until constraintCount
 			parameter.constraints[constraintIndex] = ReadType(0)
 		Next
+		If documentVersion >= 33 Then parameter.capability = ReadInt()
+		If parameter.capability < 0 Or parameter.capability > 2 Then Fail("BMXGT146 invalid generic capability")
 		Return parameter
 	End Method
 

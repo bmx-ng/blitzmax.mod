@@ -242,7 +242,12 @@ Type TSyntaxDumper
 			result :+ " " + TGenericParameterSyntax(node).nameToken.text + "~n"
 		Else If TGenericConstraintSyntax(node) Then
 			Local constraint:TGenericConstraintSyntax = TGenericConstraintSyntax(node)
-			result :+ " " + constraint.parameterNameToken.text + "~n"
+			result :+ " " + constraint.parameterNameToken.text
+			If constraint.isToken Then
+				result :+ " Is"
+				If constraint.capabilityToken Then result :+ " " + constraint.capabilityToken.text
+			End If
+			result :+ "~n"
 			For Local constraintType:TTypeReferenceSyntax = EachIn constraint.constraintTypes
 				result :+ DumpNode(constraintType, indent + "  ")
 			Next

@@ -93,6 +93,28 @@ Type TTypeDeclarationHeaderParser
 			If cursor < tokens.length And tokens[cursor].text.ToLower() = "extends" Then
 				node.extendsToken = tokens[cursor]
 				cursor :+ 1
+			Else If cursor < tokens.length And tokens[cursor].text.ToLower() = "is" Then
+				node.isToken = tokens[cursor]
+				cursor :+ 1
+				If cursor < tokens.length Then
+					node.capabilityToken = tokens[cursor]
+					cursor :+ 1
+				End If
+				If cursor < tokens.length And tokens[cursor].text = "," Then
+					node.separatorToken = tokens[cursor]
+					cursor :+ 1
+				Else If cursor < tokens.length Then
+					allFinished = True
+				End If
+				Local endOffset:Int = node.isToken.span.EndOffset()
+				If node.capabilityToken Then endOffset = node.capabilityToken.span.EndOffset()
+				If node.separatorToken Then endOffset = node.separatorToken.span.EndOffset()
+				node.constraintTypes = New TTypeReferenceSyntax[0]
+				node.andTokens = New TSyntaxToken[0]
+				node.span = TSourceSpan.Create(start, endOffset - start)
+				result.AddLast(node)
+				If allFinished Then Exit
+				Continue
 			End If
 			Local types:TList = New TList
 			Local conjunctions:TList = New TList

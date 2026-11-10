@@ -254,8 +254,9 @@ Type TConversionClassifier
 	Function IsIntegral:Int(value:TSemanticType)
 		Local builtin:TBuiltinSemanticType = TBuiltinSemanticType(value)
 		If Not builtin Then Return False
+		If TGenericCapabilityRules.KindForName(builtin.name) >= GENERIC_CAPABILITY_INTEGRAL Then Return True
 		Select builtin.name.ToLower()
-			Case "byte", "short", "int", "uint", "long", "ulong", "longint", "ulongint", "size_t", "wparam", "lparam", "int128" Return True
+			Case "wparam", "lparam", "int128" Return True
 		End Select
 		Return False
 	End Function
