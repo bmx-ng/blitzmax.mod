@@ -13903,8 +13903,8 @@ Type TCompilerGenericTemplateBuilder
 			diagnostics :+ ["BMXC3075 bound Method reference requires a complete managed Closure signature"]
 			Return Null
 		End If
-		If reference.routine.genericArity Then
-			diagnostics :+ ["BMXC3075 explicitly specialized generic Method references are not yet supported"]
+		If reference.routine.genericArity And reference.typeArguments.length <> reference.routine.genericArity Then
+			diagnostics :+ ["BMXC3075 generic Method reference requires a complete explicit type-argument binding"]
 			Return Null
 		End If
 
@@ -13958,6 +13958,7 @@ Type TCompilerGenericTemplateBuilder
 		Local resolved:TResolvedCall = New TResolvedCall
 		resolved.routine = reference.routine
 		resolved.returnType = closureType.signature.returnType
+		resolved.typeArguments = reference.typeArguments
 		resolved.parameterTypes = closureType.signature.parameterTypes
 		resolved.argumentTypes = closureType.signature.parameterTypes
 		Local call:TBoundCallExpression = New TBoundCallExpression
