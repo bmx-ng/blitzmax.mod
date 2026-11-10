@@ -2449,7 +2449,40 @@ Type TCompilerGenericCUnitEmitter
 		End If
 		Local result:String
 		If includeStddef Then result :+ "#include <stddef.h>~n"
-		Return result + "#include <brl.mod/blitz.mod/blitz.h>~n#include <math.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
+		result :+ "#include <brl.mod/blitz.mod/blitz.h>~n#include <math.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
+		If ir And ir.specialization And ir.specialization.debugInstrumentation And UnitUsesRawPointerElement(ir) Then
+			result :+ "static inline void *bmx_generic_debug_pointer_element(void *data, ptrdiff_t index, size_t element_size) {~n"
+			result :+ "    if (!data) brl_blitz_RuntimeError(bbStringFromCString(~qAttempt to access null pointer~q));~n"
+			result :+ "    return (char *)data + index * (ptrdiff_t)element_size;~n}~n~n"
+		End If
+		Return result
+	End Function
+
+	Function UnitUsesRawPointerElement:Int(ir:TCompilerGenericSpecializationIr)
+		If Not ir Then Return False
+		If ir.routine And NodeUsesRawPointerElement(ir.routine.body) Then Return True
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If NodeUsesRawPointerElement(method.body) Then Return True
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			If NodeUsesRawPointerElement(constructor.body) Then Return True
+		Next
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If NodeUsesRawPointerElement(field.initializer) Then Return True
+		Next
+		For Local field:TCompilerGenericFieldIr = EachIn ir.staticFields
+			If NodeUsesRawPointerElement(field.initializer) Then Return True
+		Next
+		Return False
+	End Function
+
+	Function NodeUsesRawPointerElement:Int(node:TGenericTemplateNode)
+		If Not node Then Return False
+		If node.kind = TEMPLATE_NODE_ARRAY_ELEMENT And node.children.length And node.children[0].semanticType And node.children[0].semanticType.kind = TEMPLATE_TYPE_POINTER Then Return True
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If NodeUsesRawPointerElement(child) Then Return True
+		Next
+		Return False
 	End Function
 
 	Function IsRoutineSpecialization:Int(node:TGenericSpecializationNode)
@@ -9744,6 +9777,20 @@ Type TCompilerGenericCUnitEmitter
 					diagnostics :+ ["BMXC3063 generic Array element access requires a closed receiver and integral indexes"]
 					Return DefaultValue(node.semanticType, ir)
 				End If
+				If node.children[0].semanticType.kind = TEMPLATE_TYPE_POINTER Then
+					Local pointerType:TTemplateTypeReference = node.children[0].semanticType
+					If node.children.length <> 2 Or Not pointerType.elementType Or VoidType(pointerType.elementType) Or Not TCompilerGenericSpecializationLowerer.SupportedPointerType(pointerType) Or Not ScalarIntegralType(node.children[1].semanticType) Then
+						diagnostics :+ ["BMXC3063 generic raw pointer element access requires one integral index and a supported non-Void element type"]
+						Return DefaultValue(node.semanticType, ir)
+					End If
+					Local pointerReceiver:String = EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals)
+					Local pointerIndex:String = EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals)
+					Local pointerElementType:String = CType(pointerType.elementType, ir)
+					If ir.specialization.debugInstrumentation Then
+						Return "(*((" + pointerElementType + " *)bmx_generic_debug_pointer_element((void *)(" + pointerReceiver + "), (ptrdiff_t)(" + pointerIndex + "), sizeof(" + pointerElementType + "))))"
+					End If
+					Return "(((" + pointerElementType + " *)(" + pointerReceiver + "))[" + pointerIndex + "])"
+				End If
 				If StringTemplateType(node.children[0].semanticType) Then
 					If node.children.length <> 2 Or Not ScalarIntegralType(node.children[1].semanticType) Then
 						diagnostics :+ ["BMXC3063 generic String element access requires one integral index"]
@@ -13683,8 +13730,8 @@ Type TCompilerGenericTemplateBuilder
 				If receiver And lowerBound And upperBound Then result.children = [receiver, lowerBound, upperBound]
 				Return result
 			End If
-			If Not indexExpression.access Or (indexExpression.access.accessKind <> INDEX_ACCESS_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STATIC_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STRING) Then
-				diagnostics :+ ["BMXC3063 generic element access requires a bound String, managed Array, or StaticArray index"]
+			If Not indexExpression.access Or (indexExpression.access.accessKind <> INDEX_ACCESS_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STATIC_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STRING And indexExpression.access.accessKind <> INDEX_ACCESS_POINTER) Then
+				diagnostics :+ ["BMXC3063 generic element access requires a bound String, managed Array, StaticArray, or raw pointer index"]
 				Return Null
 			End If
 			Local indexedArray:TArraySemanticType = TArraySemanticType(indexExpression.receiver.semanticType)
@@ -13695,6 +13742,13 @@ Type TCompilerGenericTemplateBuilder
 			If indexExpression.access.accessKind = INDEX_ACCESS_STATIC_ARRAY And indexExpression.indexes.length <> 1 Then
 				diagnostics :+ ["BMXC3063 generic StaticArray element access requires one index"]
 				Return Null
+			End If
+			If indexExpression.access.accessKind = INDEX_ACCESS_POINTER Then
+				Local pointerType:TPointerSemanticType = TPointerSemanticType(indexExpression.receiver.semanticType)
+				If Not pointerType Or indexExpression.indexes.length <> 1 Or IsBuiltinSemanticType(pointerType.elementType, "void") Then
+					diagnostics :+ ["BMXC3063 generic raw pointer element access requires one index and a non-Void element type"]
+					Return Null
+				End If
 			End If
 			Local result:TGenericTemplateNode = New TGenericTemplateNode
 			result.kind = TEMPLATE_NODE_ARRAY_ELEMENT
