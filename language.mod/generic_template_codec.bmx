@@ -618,6 +618,10 @@ Type TGenericTemplateRecordWriter
 			diagnostics :+ ["BMXGT147 computed Method receiver capture requires a typed initializer in artifact format 35"]
 			Return
 		End If
+		If value.identity = "ordinary-field-getter" And (documentVersion < 35 Or value.kind <> TEMPLATE_NODE_MEMBER Or Not value.semanticType Or Not value.referencedSymbol Or Not value.referencedSymbol.overloadKey.length Or value.children.length <> 1) Then
+			diagnostics :+ ["BMXGT147 ordinary field accessor requires a typed member record in artifact format 35"]
+			Return
+		End If
 		If value.kind = TEMPLATE_NODE_RELEASE And documentVersion < 29 Then
 			diagnostics :+ ["BMXGT143 Release statements require generic template artifact format 29"]
 			Return
@@ -1202,6 +1206,7 @@ Type TGenericTemplateRecordReader
 			value.children[childIndex] = ReadNode(depth + 1)
 		Next
 		If value.identity = "closure-capture-bound-receiver" And (documentVersion < 35 Or value.kind <> TEMPLATE_NODE_DECLARATION Or Not value.semanticType Or Not value.valueText.length Or value.children.length <> 1) Then Fail("BMXGT147 computed Method receiver capture requires a typed initializer in artifact format 35")
+		If value.identity = "ordinary-field-getter" And (documentVersion < 35 Or value.kind <> TEMPLATE_NODE_MEMBER Or Not value.semanticType Or Not value.referencedSymbol Or Not value.referencedSymbol.overloadKey.length Or value.children.length <> 1) Then Fail("BMXGT147 ordinary field accessor requires a typed member record in artifact format 35")
 		If value.kind = TEMPLATE_NODE_ARRAY_LENGTH And value.children.length <> 1 Then Fail("BMXGT133 managed array length requires one receiver child")
 		If value.kind = TEMPLATE_NODE_ARRAY_ELEMENT Then
 			If documentVersion < 22 And value.children.length <> 2 Then Fail("BMXGT133 managed array element access requires receiver and index children")

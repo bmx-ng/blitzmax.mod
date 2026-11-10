@@ -122,6 +122,7 @@ Type TCompilerDirectMethodAbi
 		Local digest:String = TCompilerStableDigest.Sha256(semanticIdentity)
 		Return "bmx_direct_" + TCompilerAbiNamer.Sanitize(symbol.QualifiedName().ToLower()) + "_" + digest[..16]
 	End Function
+
 End Type
 
 Type TCompilerGenericInheritance
@@ -3257,6 +3258,14 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitReferencedCallDeclarations:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, emitted:TMap, diagnostics:String[] Var)
 		If Not node Then Return ""
 		Local result:String
+		If node.kind = TEMPLATE_NODE_MEMBER And node.identity = "ordinary-field-getter" Then
+			If Not node.referencedSymbol Or Not node.referencedSymbol.overloadKey.length Or Not node.semanticType Or node.children.length <> 1 Then
+				diagnostics :+ ["BMXC3075 ordinary field getter has no retained linkage or result type"]
+			Else If Not emitted.Contains(node.referencedSymbol.overloadKey) Then
+				result :+ "extern " + CFunctionDeclaration(node.semanticType, node.referencedSymbol.overloadKey, "BBOBJECT receiver", ir) + ";~n"
+				emitted.Insert(node.referencedSymbol.overloadKey, node)
+			End If
+		End If
 		If node.kind = TEMPLATE_NODE_NAME And node.identity = "ordinary-callable-reference" Then
 			If Not node.referencedSymbol Or Not node.referencedSymbol.overloadKey.length Or Not node.semanticType Or node.semanticType.kind <> TEMPLATE_TYPE_CALLABLE Then
 				diagnostics :+ ["BMXC3075 ordinary callable reference has no stable signature/linkage record"]
@@ -9877,6 +9886,10 @@ Type TCompilerGenericCUnitEmitter
 				If ownerMethod And ownerMethod.receiverIsStruct Then Return "(*((" + receiverType + " *)self))"
 				Return "((" + receiverType + ")self)"
 			Case TEMPLATE_NODE_MEMBER
+				If node.identity = "ordinary-field-getter" And node.children.length = 1 And node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
+					Local receiver:String = EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals)
+					Return node.referencedSymbol.overloadKey + "((BBOBJECT)" + DebugManagedValue(receiver, node.children[0].semanticType, ir) + ")"
+				End If
 				If node.children.length = 1 Then
 					Local memberReceiver:TGenericTemplateNode = node.children[0]
 					Local receiverExpression:String = EmitExpression(memberReceiver, ir, ownerMethod, diagnostics, locals)
@@ -14170,13 +14183,23 @@ Type TCompilerGenericTemplateBuilder
 		Local receiverSelf:TBoundSelfExpression = TBoundSelfExpression(reference.receiver)
 		If receiverSymbol And (Not receiverSymbol.symbol Or (receiverSymbol.symbol.kind <> SYMBOL_PARAMETER And receiverSymbol.symbol.kind <> SYMBOL_LOCAL And receiverSymbol.symbol.kind <> SYMBOL_CATCH_PARAMETER)) Then receiverSymbol = Null
 		Local computedReceiver:Int = Not receiverSymbol And Not receiverSelf
+		Local ordinaryFieldGetter:String
 		If computedReceiver Then
 			Local fieldReceiver:TBoundMemberExpression = TBoundMemberExpression(reference.receiver)
 			If fieldReceiver And fieldReceiver.access And fieldReceiver.access.member And fieldReceiver.access.member.kind = SYMBOL_FIELD Then
 				Local fieldOwner:TNamedSemanticType = TNamedSemanticType(fieldReceiver.receiver.semanticType)
 				If fieldOwner And fieldOwner.symbol And fieldOwner.symbol.genericArity = 0 And fieldOwner.symbol.kind = SYMBOL_TYPE Then
-					diagnostics :+ ["BMXC3075 computed Method receiver reads an ordinary Type field whose layout is unavailable to the generic C unit"]
-					Return Null
+					Local declaringOwner:TSymbol = fieldOwner.symbol
+					If fieldReceiver.access.member.containingScope And fieldReceiver.access.member.containingScope.owner Then declaringOwner = fieldReceiver.access.member.containingScope.owner
+					If declaringOwner.isImported Then
+						diagnostics :+ ["BMXC3075 computed Method receiver field requires a getter published by its defining source unit"]
+						Return Null
+					End If
+					ordinaryFieldGetter = TCompilerAbiNamer.FieldGetterAbiName(TCompilerDirectMethodAbi.OwnerAbiName(model, declaringOwner), fieldReceiver.access.member.name)
+					If Not ordinaryFieldGetter.length Then
+						diagnostics :+ ["BMXC3075 computed Method receiver field has no stable owner accessor ABI"]
+						Return Null
+					End If
 				End If
 			End If
 		End If
@@ -14216,6 +14239,14 @@ Type TCompilerGenericTemplateBuilder
 			capture.identity = "closure-capture-bound-receiver"
 			Local initializer:TGenericTemplateNode = TemplateExpression(reference.receiver, model, parameters, diagnostics, parameterOwner, localRoutineContext)
 			If Not initializer Then Return Null
+			If ordinaryFieldGetter.length Then
+				If initializer.kind <> TEMPLATE_NODE_MEMBER Or initializer.children.length <> 1 Or Not initializer.referencedSymbol Then
+					diagnostics :+ ["BMXC3075 computed Method receiver field has no canonical read accessor record"]
+					Return Null
+				End If
+				initializer.identity = "ordinary-field-getter"
+				initializer.referencedSymbol.overloadKey = ordinaryFieldGetter
+			End If
 			capture.children = [initializer]
 		Else If receiverSelf Then
 			capture.valueText = "Self"

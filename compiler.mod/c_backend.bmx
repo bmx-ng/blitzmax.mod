@@ -3279,6 +3279,13 @@ Type TCompilerCBackend
 			If headerOnly And irClass.isPublished And Not irClass.destructorFunctionId.length Then result.Append("void _" + irClass.abiName + "_Delete(struct " + objectName + " *o);~n")
 			If headerOnly Then result.Append(EmitLegacyClassSlotCompatibility(irClass))
 			If Not headerOnly Then
+				If irClass.hasStableLocalAbi Or irClass.isPublished Then
+					For Local irField:TCompilerIrClassField = EachIn irClass.fields
+						If irField.declaringClassId <> irClass.classId Or irField.isStaticArray Or irField.callableReturnType.length Or Not irField.semanticType.length Then Continue
+						Local getterName:String = TCompilerAbiNamer.FieldGetterAbiName(irClass.abiName, irField.name)
+						result.Append(CFunctionDeclaration(irField.semanticType, "", New TCompilerIrParameter[0], getterName, "BBOBJECT receiver", irField.source) + " { return ((struct " + objectName + " *)receiver)->" + FieldName(irField.declaringClassId, irField.fieldId) + "; }~n")
+					Next
+				End If
 				result.Append(EmitClassInterfaceTables(irClass))
 				If Not irClass.defaultConstructorFunctionId.length Then
 					localNames = New TMap
