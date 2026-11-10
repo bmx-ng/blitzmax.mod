@@ -7140,7 +7140,10 @@ Type TCompilerGenericCUnitEmitter
 					Case TEMPLATE_NODE_OPERATOR
 						If temporary.valueText = "+" And temporary.semanticType And temporary.semanticType.kind = TEMPLATE_TYPE_ARRAY Then slots :+ ["{ (void *)&" + ArrayConcatTemporaryName(temporary) + ", BMX_EMBEDDED_ROOT_ARRAY, 0 }"]
 					Case TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ARRAY_ELEMENT
-						If temporary.identity.StartsWith("materialized-receiver") Then slots :+ ["{ (void *)&" + ArrayReceiverTemporaryName(temporary) + ", BMX_EMBEDDED_ROOT_ARRAY, 0 }"]
+						If temporary.identity.StartsWith("materialized-receiver") And temporary.children.length Then
+							Local receiverSlot:String = EmbeddedGenericRootSlot(temporary.children[0].semanticType, "&" + ArrayReceiverTemporaryName(temporary), ir)
+							If receiverSlot.length Then slots :+ [receiverSlot]
+						End If
 					Case TEMPLATE_NODE_CALL
 						If temporary.identity.Contains("materialized-receiver:") And temporary.children.length Then
 							Local receiverSlot:String = EmbeddedGenericRootSlot(temporary.children[0].semanticType, "&" + CallReceiverTemporaryName(temporary), ir)
@@ -7246,7 +7249,13 @@ Type TCompilerGenericCUnitEmitter
 		If (node.kind = TEMPLATE_NODE_ARRAY_SLICE Or node.kind = TEMPLATE_NODE_ARRAY_ELEMENT) And node.identity.StartsWith("materialized-receiver") Then
 			Local receiverName:String = ArrayReceiverTemporaryName(node)
 			If Not emitted.Contains(receiverName) Then
-				If EmbeddedTarget(ir) Then result :+ indent + "BMXEmbeddedArray *" + receiverName + " = &bmx_embedded_empty_array;~n" Else result :+ indent + "BBARRAY " + receiverName + " = &bbEmptyArray;~n"
+				Local receiverType:TTemplateTypeReference
+				If node.children.length Then receiverType = node.children[0].semanticType
+				If StringTemplateType(receiverType) Then
+					If EmbeddedTarget(ir) Then result :+ indent + "BMXEmbeddedString *" + receiverName + " = &bmx_embedded_empty_string;~n" Else result :+ indent + "BBSTRING " + receiverName + " = &bbEmptyString;~n"
+				Else
+					If EmbeddedTarget(ir) Then result :+ indent + "BMXEmbeddedArray *" + receiverName + " = &bmx_embedded_empty_array;~n" Else result :+ indent + "BBARRAY " + receiverName + " = &bbEmptyArray;~n"
+				End If
 				emitted.Insert(receiverName, node)
 			End If
 		End If
@@ -7303,16 +7312,17 @@ Type TCompilerGenericCUnitEmitter
 		Return value And value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "void"
 	End Function
 
-	Function EmitSequentialBlock:String(body:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap, indent:String)
+	Function EmitSequentialBlock:String(body:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap, indent:String, debugPath:String = "root")
 		If Not body Or body.kind <> TEMPLATE_NODE_BLOCK Then
 			diagnostics :+ ["BMXC3050 generic branch body is not a bound template block"]
 			Return ""
 		End If
 		Local result:String
 		Local coverageMarked:Int
+		Local childIndex:Int
 		For Local child:TGenericTemplateNode = EachIn body.children
 			If child.kind <> TEMPLATE_NODE_BLOCK Then
-				result :+ EmitGenericGdbLineDirective(child.source, ir, indent) + EmitGenericDebugStatement(child, ir, indent)
+				result :+ EmitGenericGdbLineDirective(child.source, ir, indent) + EmitGenericDebugStatement(child, ir, indent, debugPath + ":" + childIndex)
 				If body.valueText <> "local-declarations" Or Not coverageMarked Then
 					Local coverageProbe:String = EmitGenericCoverageStatement(ir, child, indent)
 					result :+ coverageProbe
@@ -7328,7 +7338,7 @@ Type TCompilerGenericCUnitEmitter
 					' Multiple declarators share their surrounding lexical scope and
 					' are emitted in source order, so a later initializer can use an
 					' earlier declarator without introducing a synthetic C scope.
-					result :+ EmitSequentialBlock(child, ir, ownerMethod, diagnostics, locals, indent)
+					result :+ EmitSequentialBlock(child, ir, ownerMethod, diagnostics, locals, indent, debugPath + ":" + childIndex)
 				Case TEMPLATE_NODE_DECLARATION
 					Local localType:String = CType(child.semanticType, ir)
 					Local localKey:String = child.valueText.ToLower()
@@ -7607,6 +7617,7 @@ Type TCompilerGenericCUnitEmitter
 				Default
 					diagnostics :+ ["BMXC3024 specialization method contains unsupported bound node kind " + child.kind]
 			End Select
+			childIndex :+ 1
 		Next
 		Return result
 	End Function
@@ -7817,13 +7828,13 @@ Type TCompilerGenericCUnitEmitter
 		Return indent + "for (BBUINT " + indexName + " = 0; " + indexName + " < (BBUINT)" + value.staticArrayLength + "; ++" + indexName + ") " + target + "[" + indexName + "] = " + initializer + ";~n"
 	End Function
 
-	Function EmitGenericDebugStatement:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, indent:String)
+	Function EmitGenericDebugStatement:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, indent:String, statementIdentity:String = "")
 		If Not ir Or Not ir.specialization Or Not ir.specialization.debugInstrumentation Or Not node Or Not node.source Then Return ""
 		Local source:TTemplateSourceLocation = node.source
 		If Not source.path.length Or source.line <= 0 Then Return ""
 		Local normalizedPath:String = source.path.Replace("\", "/")
 		Local sourceId:ULong = GenericDebugSourceHash(normalizedPath)
-		Local identity:String = normalizedPath.ToLower() + ":" + source.start + ":" + source.length + ":" + source.line + ":" + source.column + ":" + node.kind + ":" + node.identity
+		Local identity:String = normalizedPath.ToLower() + ":" + source.start + ":" + source.length + ":" + source.line + ":" + source.column + ":" + node.kind + ":" + node.identity + ":" + statementIdentity
 		Local name:String = "bmx_generic_debug_stm_" + TCompilerStableDigest.Sha256(identity)[..16]
 		Return indent + "BBDebugStm " + name + " = { " + sourceId + "ULL, " + source.line + ", " + source.column + " };~n" + indent + "bbOnDebugEnterStm(&" + name + ");~n"
 	End Function
@@ -9733,6 +9744,22 @@ Type TCompilerGenericCUnitEmitter
 					diagnostics :+ ["BMXC3063 generic Array element access requires a closed receiver and integral indexes"]
 					Return DefaultValue(node.semanticType, ir)
 				End If
+				If StringTemplateType(node.children[0].semanticType) Then
+					If node.children.length <> 2 Or Not ScalarIntegralType(node.children[1].semanticType) Then
+						diagnostics :+ ["BMXC3063 generic String element access requires one integral index"]
+						Return DefaultValue(node.semanticType, ir)
+					End If
+					Local stringReceiver:String = DebugManagedValue(EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals), node.children[0].semanticType, ir)
+					Local stringIndex:String = EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals)
+					Local stringIndexType:String = "BBUINT"
+					If EmbeddedTarget(ir) Then stringIndexType = "uint32_t"
+					If ir.specialization.debugInstrumentation Then
+						Local stringType:String = CType(node.children[0].semanticType, ir)
+						Local integerType:String = CType(node.children[1].semanticType, ir)
+						Return "({ " + stringType + " bmx_string_value = " + stringReceiver + "; " + integerType + " bmx_string_index = " + stringIndex + "; if (bmx_string_index < 0 || bmx_string_index >= bmx_string_value->length) brl_blitz_ArrayBoundsError(); bmx_string_value->buf[(" + stringIndexType + ")bmx_string_index]; })"
+					End If
+					Return "(" + stringReceiver + "->buf[(" + stringIndexType + ")(" + stringIndex + ")])"
+				End If
 				If node.children[0].semanticType.kind = TEMPLATE_TYPE_STATIC_ARRAY Then
 					If node.children.length <> 2 Or Not TCompilerGenericSpecializationLowerer.SupportedStaticArrayType(node.children[0].semanticType, ir) Or Not ScalarIntegralType(node.children[1].semanticType) Then
 						diagnostics :+ ["BMXC3063 generic StaticArray element access requires one integral index"]
@@ -9778,6 +9805,32 @@ Type TCompilerGenericCUnitEmitter
 				Next
 				Return "(" + receiverPrefix + "((" + arrayElementType + "*)BBARRAYDATA(" + arrayReceiver + ", 1))[" + linearIndex + "])"
 			Case TEMPLATE_NODE_ARRAY_SLICE
+				If node.children.length = 3 And StringTemplateType(node.children[0].semanticType) Then
+					If Not ScalarIntegralType(node.children[1].semanticType) Or Not ScalarIntegralType(node.children[2].semanticType) Then
+						diagnostics :+ ["BMXC3064 generic String slice requires integral lower and upper bounds"]
+						Return DefaultValue(node.semanticType, ir)
+					End If
+					Local stringSliceReceiver:String = DebugManagedValue(EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals), node.children[0].semanticType, ir)
+					Local stringSlicePrefix:String
+					If node.identity.StartsWith("materialized-receiver") Then
+						Local stringSliceTemporary:String = ArrayReceiverTemporaryName(node)
+						stringSlicePrefix = stringSliceTemporary + " = " + stringSliceReceiver + ", "
+						stringSliceReceiver = stringSliceTemporary
+					End If
+					Local stringLower:String = EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals)
+					If node.valueText.Contains("lower-from-end") Then stringLower = "(" + stringSliceReceiver + "->length - (" + stringLower + "))"
+					Local stringUpper:String
+					If node.valueText.Contains("upper-omitted") Then
+						stringUpper = stringSliceReceiver + "->length"
+					Else
+						stringUpper = EmitExpression(node.children[2], ir, ownerMethod, diagnostics, locals)
+						If node.valueText.Contains("upper-from-end") Then stringUpper = "(" + stringSliceReceiver + "->length - (" + stringUpper + "))"
+					End If
+					Local stringSliceCall:String
+					If EmbeddedTarget(ir) Then stringSliceCall = "bmx_embedded_string_slice(" + stringSliceReceiver + ", " + stringLower + ", " + stringUpper + ")" Else stringSliceCall = "bbStringSlice(" + stringSliceReceiver + ", " + stringLower + ", " + stringUpper + ")"
+					If stringSlicePrefix.length Then Return "(" + stringSlicePrefix + stringSliceCall + ")"
+					Return stringSliceCall
+				End If
 				If node.children.length <> 3 Or Not TCompilerGenericSpecializationLowerer.SupportedManagedArrayType(node.children[0].semanticType, ir) Or Not ScalarIntegralType(node.children[1].semanticType) Or Not ScalarIntegralType(node.children[2].semanticType) Then
 					diagnostics :+ ["BMXC3064 generic managed Array slice requires one closed one-dimensional Array receiver and integral lower and upper bounds"]
 					Return DefaultValue(node.semanticType, ir)
@@ -10262,7 +10315,15 @@ Type TCompilerGenericCUnitEmitter
 					End If
 					If node.children[0].kind = TEMPLATE_NODE_BLOCK And node.children[0].valueText = "runtime-header-routine" Then
 						If node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
-							Local runtimeCall:String = node.referencedSymbol.overloadKey + "("
+							Local runtimeRoutineName:String = node.referencedSymbol.overloadKey
+							If EmbeddedTarget(ir) And node.children.length > 1 And StringTemplateType(node.children[1].semanticType) Then
+								runtimeRoutineName = EmbeddedStringRuntimeFunctionName(runtimeRoutineName)
+								If Not runtimeRoutineName.length Then
+									diagnostics :+ ["BMXC3048 builtin String operation '" + node.valueText + "' has no embedded runtime implementation"]
+									Return DefaultValue(node.semanticType, ir)
+								End If
+							End If
+							Local runtimeCall:String = runtimeRoutineName + "("
 							Local runtimeSignature:TGenericTemplateNode = node.children[0]
 							Local runtimeNativeParameterTypes:String[] = TCompilerNativeDeclaration.ParameterTypes(runtimeSignature.identity)
 							For Local index:Int = 1 Until node.children.length
@@ -10884,6 +10945,53 @@ Type TCompilerGenericCUnitEmitter
 
 	Function StringTemplateType:Int(value:TTemplateTypeReference)
 		Return value And value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "string"
+	End Function
+
+	Function EmbeddedStringRuntimeFunctionName:String(abiName:String)
+		Select abiName
+			Case "bbStringCompare"; Return "bmx_embedded_string_compare"
+			Case "bbStringEquals"; Return "bmx_embedded_string_equals"
+			Case "bbStringHash"; Return "bmx_embedded_string_hash"
+			Case "bbStringCompareCase"; Return "bmx_embedded_string_compare_case"
+			Case "bbStringEqualsCase"; Return "bmx_embedded_string_equals_case"
+			Case "bbStringHashCase"; Return "bmx_embedded_string_hash_case"
+			Case "bbStringToString"; Return "bmx_embedded_string_to_string"
+			Case "bbStringFind"; Return "bmx_embedded_string_find"
+			Case "bbStringFindLast"; Return "bmx_embedded_string_find_last"
+			Case "bbStringTrim"; Return "bmx_embedded_string_trim"
+			Case "bbStringReplace"; Return "bmx_embedded_string_replace"
+			Case "bbStringToLower"; Return "bmx_embedded_string_to_lower"
+			Case "bbStringToUpper"; Return "bmx_embedded_string_to_upper"
+			Case "bbStringStartsWith"; Return "bmx_embedded_string_starts_with"
+			Case "bbStringEndsWith"; Return "bmx_embedded_string_ends_with"
+			Case "bbStringContains"; Return "bmx_embedded_string_contains"
+			Case "bbStringReplicate"; Return "bmx_embedded_string_replicate"
+			Case "bbStringSplit"; Return "bmx_embedded_string_split"
+			Case "bbStringJoin"; Return "bmx_embedded_string_join"
+			Case "bbStringSplitInts"; Return "bmx_embedded_string_split_ints"
+			Case "bbStringSplitBytes"; Return "bmx_embedded_string_split_bytes"
+			Case "bbStringSplitShorts"; Return "bmx_embedded_string_split_shorts"
+			Case "bbStringSplitUInts"; Return "bmx_embedded_string_split_uints"
+			Case "bbStringSplitLongs"; Return "bmx_embedded_string_split_longs"
+			Case "bbStringSplitULongs"; Return "bmx_embedded_string_split_ulongs"
+			Case "bbStringSplitSizets"; Return "bmx_embedded_string_split_sizes"
+			Case "bbStringSplitLongInts"; Return "bmx_embedded_string_split_long_ints"
+			Case "bbStringSplitULongInts"; Return "bmx_embedded_string_split_ulong_ints"
+			Case "bbStringSplitFloats"; Return "bmx_embedded_string_split_floats"
+			Case "bbStringSplitDoubles"; Return "bmx_embedded_string_split_doubles"
+			Case "bbStringJoinInts"; Return "bmx_embedded_string_join_ints"
+			Case "bbStringJoinBytes"; Return "bmx_embedded_string_join_bytes"
+			Case "bbStringJoinShorts"; Return "bmx_embedded_string_join_shorts"
+			Case "bbStringJoinUInts"; Return "bmx_embedded_string_join_uints"
+			Case "bbStringJoinLongs"; Return "bmx_embedded_string_join_longs"
+			Case "bbStringJoinULongs"; Return "bmx_embedded_string_join_ulongs"
+			Case "bbStringJoinSizets"; Return "bmx_embedded_string_join_sizes"
+			Case "bbStringJoinLongInts"; Return "bmx_embedded_string_join_long_ints"
+			Case "bbStringJoinULongInts"; Return "bmx_embedded_string_join_ulong_ints"
+			Case "bbStringJoinFloats"; Return "bmx_embedded_string_join_floats"
+			Case "bbStringJoinDoubles"; Return "bmx_embedded_string_join_doubles"
+		End Select
+		Return ""
 	End Function
 
 	Function StringConcatOperandSupported:Int(value:TTemplateTypeReference)
@@ -13297,6 +13405,38 @@ Type TCompilerGenericTemplateBuilder
 				If index < call.arguments.length Then argument = call.arguments[index]
 				result.children[index + 1] = TemplateResolvedCallArgument(argument, index, call.resolvedCall, model, parameters, diagnostics, parameterOwner, localRoutineContext)
 			Next
+			If IsBuiltinSemanticType(call.receiver.semanticType, "string") Then
+				Local stringRoutineName:String = OrdinaryRoutineAbiName(call.resolvedCall.routine, model)
+				If Not stringRoutineName.length Then
+					diagnostics :+ ["BMXC3048 builtin String operation '" + result.valueText + "' has no stable runtime linkage identity"]
+					Return Null
+				End If
+				Local stringSignature:TGenericTemplateNode = New TGenericTemplateNode
+				stringSignature.kind = TEMPLATE_NODE_BLOCK
+				stringSignature.valueText = "runtime-header-routine"
+				stringSignature.source = result.source
+				Local stringReceiverParameter:TGenericTemplateNode = New TGenericTemplateNode
+				stringReceiverParameter.kind = TEMPLATE_NODE_DECLARATION
+				stringReceiverParameter.valueText = PARAMETER_PASS_VALUE
+				stringReceiverParameter.semanticType = result.children[0].semanticType
+				stringReceiverParameter.source = result.source
+				stringSignature.children = [stringReceiverParameter]
+				For Local parameter:TSemanticParameter = EachIn call.resolvedCall.routine.parameters
+					If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then
+						diagnostics :+ ["BMXC3048 builtin String operation '" + result.valueText + "' has an unsupported parameter mode"]
+						Return Null
+					End If
+					Local stringParameter:TGenericTemplateNode = New TGenericTemplateNode
+					stringParameter.kind = TEMPLATE_NODE_DECLARATION
+					stringParameter.valueText = parameter.passingMode
+					stringParameter.semanticType = TemplateType(parameter.semanticType, model, parameters, diagnostics, parameterOwner)
+					stringParameter.source = result.source
+					stringSignature.children :+ [stringParameter]
+				Next
+				result.children = [stringSignature] + result.children
+				result.referencedSymbol.overloadKey = stringRoutineName
+				Return result
+			End If
 			Local ordinaryReceiver:TNamedSemanticType = TNamedSemanticType(call.receiver.semanticType)
 			If result.children[0] And result.children[0].semanticType And result.children[0].semanticType.runtimeKind = TEMPLATE_RUNTIME_STRUCT And result.children[0].semanticType.runtimeAbiName.length And ordinaryReceiver And ordinaryReceiver.symbol And Not ordinaryReceiver.symbol.genericArity Then
 				Local stableStructAbiName:String = OrdinaryStructRoutineAbiName(call.resolvedCall.routine, model)
@@ -13512,17 +13652,18 @@ Type TCompilerGenericTemplateBuilder
 				Next
 				Return result
 			End If
-			If indexExpression.access And indexExpression.access.accessKind = INDEX_ACCESS_RANGE_ARRAY Then
+			If indexExpression.access And (indexExpression.access.accessKind = INDEX_ACCESS_RANGE_ARRAY Or indexExpression.access.accessKind = INDEX_ACCESS_RANGE_STRING) Then
 				Local indexedRangeArray:TArraySemanticType = TArraySemanticType(indexExpression.receiver.semanticType)
-				If Not indexedRangeArray Or indexedRangeArray.rank <> 1 Or indexExpression.indexes.length <> 1 Then
-					diagnostics :+ ["BMXC3064 generic Range slicing requires one closed one-dimensional managed Array receiver and one Range value"]
+				Local indexedRangeString:Int = indexExpression.access.accessKind = INDEX_ACCESS_RANGE_STRING And IsBuiltinSemanticType(indexExpression.receiver.semanticType, "string")
+				If (Not indexedRangeString And (Not indexedRangeArray Or indexedRangeArray.rank <> 1)) Or indexExpression.indexes.length <> 1 Then
+					diagnostics :+ ["BMXC3064 generic Range slicing requires one closed one-dimensional managed Array or String receiver and one Range value"]
 					Return Null
 				End If
 				' Format-29 represents this operation with the existing Array-slice node.
 				' Its Range value therefore appears in both bound calls. Permit only
 				' stable expressions so specialization never duplicates side effects.
 				If Not StableSliceReceiver(indexExpression.receiver) Or Not StableSliceReceiver(indexExpression.indexes[0]) Then
-					diagnostics :+ ["BMXC3064 generic Range slicing currently requires stable Array and Range value expressions"]
+					diagnostics :+ ["BMXC3064 generic Range slicing currently requires stable receiver and Range value expressions"]
 					Return Null
 				End If
 				Local result:TGenericTemplateNode = New TGenericTemplateNode
@@ -13542,8 +13683,8 @@ Type TCompilerGenericTemplateBuilder
 				If receiver And lowerBound And upperBound Then result.children = [receiver, lowerBound, upperBound]
 				Return result
 			End If
-			If Not indexExpression.access Or (indexExpression.access.accessKind <> INDEX_ACCESS_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STATIC_ARRAY) Then
-				diagnostics :+ ["BMXC3063 generic Array element access requires a bound managed or StaticArray index"]
+			If Not indexExpression.access Or (indexExpression.access.accessKind <> INDEX_ACCESS_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STATIC_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STRING) Then
+				diagnostics :+ ["BMXC3063 generic element access requires a bound String, managed Array, or StaticArray index"]
 				Return Null
 			End If
 			Local indexedArray:TArraySemanticType = TArraySemanticType(indexExpression.receiver.semanticType)
@@ -13570,12 +13711,14 @@ Type TCompilerGenericTemplateBuilder
 		End If
 		Local sliceExpression:TBoundSliceExpression = TBoundSliceExpression(expression)
 		If sliceExpression Then
-			If Not TArraySemanticType(sliceExpression.receiver.semanticType) Then
-				diagnostics :+ ["BMXC3064 generic slicing currently requires a managed Array receiver"]
+			Local stringSlice:Int = IsBuiltinSemanticType(sliceExpression.receiver.semanticType, "string")
+			If Not stringSlice And Not TArraySemanticType(sliceExpression.receiver.semanticType) Then
+				diagnostics :+ ["BMXC3064 generic slicing requires a String or managed Array receiver"]
 				Return Null
 			End If
 			Local result:TGenericTemplateNode = New TGenericTemplateNode
 			result.kind = TEMPLATE_NODE_ARRAY_SLICE
+			If stringSlice Then result.valueText = "string-slice"
 			result.semanticType = TemplateType(expression.semanticType, model, parameters, diagnostics, parameterOwner)
 			result.source = SourceLocation(expression.syntax, model)
 			If Not StableSliceReceiver(sliceExpression.receiver) Then result.identity = "materialized-receiver:" + result.source.start
@@ -13590,19 +13733,23 @@ Type TCompilerGenericTemplateBuilder
 				lowerBound.semanticType = TemplateType(model.BuiltinType("Int"), model, parameters, diagnostics, parameterOwner)
 				lowerBound.source = result.source
 			End If
-			If sliceExpression.lowerFromEnd And lowerBound Then lowerBound = TemplateFromEndBound(receiver, lowerBound, model, parameters, diagnostics, parameterOwner, result.source)
+			If sliceExpression.lowerFromEnd And lowerBound Then
+				If stringSlice Then result.valueText :+ ";lower-from-end" Else lowerBound = TemplateFromEndBound(receiver, lowerBound, model, parameters, diagnostics, parameterOwner, result.source)
+			End If
 			Local upperBound:TGenericTemplateNode
 			If sliceExpression.upperBound Then
 				upperBound = TemplateExpression(sliceExpression.upperBound, model, parameters, diagnostics, parameterOwner, localRoutineContext)
 			Else
 				upperBound = New TGenericTemplateNode
-				upperBound.kind = TEMPLATE_NODE_ARRAY_LENGTH
-				upperBound.valueText = "length"
+				If stringSlice Then upperBound.kind = TEMPLATE_NODE_LITERAL Else upperBound.kind = TEMPLATE_NODE_ARRAY_LENGTH
+				If stringSlice Then upperBound.valueText = "0" Else upperBound.valueText = "length"
 				upperBound.semanticType = TemplateType(model.BuiltinType("Int"), model, parameters, diagnostics, parameterOwner)
 				upperBound.source = result.source
-				If receiver Then upperBound.children = [receiver]
+				If stringSlice Then result.valueText :+ ";upper-omitted" Else If receiver Then upperBound.children = [receiver]
 			End If
-			If sliceExpression.upperFromEnd And upperBound Then upperBound = TemplateFromEndBound(receiver, upperBound, model, parameters, diagnostics, parameterOwner, result.source)
+			If sliceExpression.upperFromEnd And upperBound Then
+				If stringSlice Then result.valueText :+ ";upper-from-end" Else upperBound = TemplateFromEndBound(receiver, upperBound, model, parameters, diagnostics, parameterOwner, result.source)
+			End If
 			If receiver And lowerBound And upperBound Then result.children = [receiver, lowerBound, upperBound]
 			Return result
 		End If
