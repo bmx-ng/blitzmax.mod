@@ -18,7 +18,7 @@ Type TGenericRoutineBinding
 End Type
 
 Type TGenericRoutineInference
-	Function Infer:TGenericRoutineBinding(routine:TSymbol, argumentTypes:TSemanticType[], explicitTypeArguments:TSemanticType[] = Null, effectiveParameterTypes:TSemanticType[] = Null, effectiveReturnType:TSemanticType = Null, omittedArguments:Int[] = Null)
+	Function Infer:TGenericRoutineBinding(routine:TSymbol, argumentTypes:TSemanticType[], explicitTypeArguments:TSemanticType[] = Null, effectiveParameterTypes:TSemanticType[] = Null, effectiveReturnType:TSemanticType = Null, omittedArguments:Int[] = Null, constantArguments:Int[] = Null)
 		Local result:TGenericRoutineBinding = New TGenericRoutineBinding
 		result.routine = routine
 		If Not routine Or routine.kind <> SYMBOL_ROUTINE Then Return Fail(result, "A routine symbol is required.")
@@ -45,7 +45,23 @@ Type TGenericRoutineInference
 		If Not explicitTypeArguments Then
 			For Local index:Int = 0 Until argumentTypes.length
 				If omittedArguments And index < omittedArguments.length And omittedArguments[index] Then Continue
+				' An untyped integer constant cannot override evidence supplied by
+				' a typed argument, regardless of argument order. Its range is checked
+				' later by ordinary argument conversion classification.
+				If constantArguments And index < constantArguments.length And constantArguments[index] And TTypeParameterSemanticType(parameterPatterns[index]) Then
+					Local parameter:TTypeParameterSemanticType = TTypeParameterSemanticType(parameterPatterns[index])
+					If HasNumericCapability(routine, parameter.symbol) Then Continue
+				End If
 				If Not Unify(parameterPatterns[index], argumentTypes[index], result.typeParameters, substitutions) Then Return Fail(result, "Argument " + (index + 1) + " does not match parameter type '" + parameterPatterns[index].DisplayName() + "'.")
+			Next
+			For Local index:Int = 0 Until argumentTypes.length
+				If omittedArguments And index < omittedArguments.length And omittedArguments[index] Then Continue
+				If constantArguments And index < constantArguments.length And constantArguments[index] And TTypeParameterSemanticType(parameterPatterns[index]) Then
+					Local parameter:TTypeParameterSemanticType = TTypeParameterSemanticType(parameterPatterns[index])
+					If HasNumericCapability(routine, parameter.symbol) And Not substitutions.Contains(parameter.symbol) Then
+						If Not Unify(parameterPatterns[index], argumentTypes[index], result.typeParameters, substitutions) Then Return Fail(result, "Argument " + (index + 1) + " does not match parameter type '" + parameterPatterns[index].DisplayName() + "'.")
+					End If
+				End If
 			Next
 		End If
 
@@ -61,6 +77,13 @@ Type TGenericRoutineInference
 		result.returnType = Substitute(returnPattern, substitutions)
 		result.success = True
 		Return result
+	End Function
+
+	Function HasNumericCapability:Int(routine:TSymbol, parameter:TSymbol)
+		For Local constraint:TGenericConstraintInfo = EachIn routine.genericConstraints
+			If constraint.parameterSymbol = parameter And TGenericCapabilityRules.HasCapability(TGenericCapabilityRules.ExpandedKind(constraint.capability), GENERIC_CAPABILITY_NUMERIC) Then Return True
+		Next
+		Return False
 	End Function
 
 	Function Unify:Int(pattern:TSemanticType, actual:TSemanticType, parameters:TSymbol[], substitutions:TMap)

@@ -374,6 +374,10 @@ Type TBlitzMaxLspCodeActions
 			Local constraint:TGenericConstraintInfo = routine.genericConstraints[constraintIndex]
 			If constraintIndex Then result :+ ", "
 			If constraint.parameterSymbol Then result :+ constraint.parameterSymbol.name Else result :+ "T" + (constraintIndex + 1)
+			If constraint.capability Then
+				result :+ " Is " + TGenericCapabilityRules.Name(constraint.capability)
+				Continue
+			End If
 			result :+ " Extends "
 			For Local boundIndex:Int = 0 Until constraint.bounds.length
 				If boundIndex Then result :+ " And "

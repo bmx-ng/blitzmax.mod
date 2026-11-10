@@ -647,9 +647,14 @@ Type TCompilerInterfaceEmitter
 		If Not artifact Then Return ""
 		Local result:String
 		For Local parameter:TGenericTemplateParameter = EachIn artifact.parameters
-			If Not parameter Or Not parameter.constraints.length Then Continue
+			If Not parameter Or (Not parameter.constraints.length And Not parameter.capability) Then Continue
 			If Not result.length Then result = " Where " Else result :+ ", "
-			result :+ parameter.name + " Extends "
+			result :+ parameter.name
+			If parameter.capability Then
+				result :+ " Is " + TGenericCapabilityRules.Name(parameter.capability)
+				Continue
+			End If
+			result :+ " Extends "
 			For Local index:Int = 0 Until parameter.constraints.length
 				If index Then result :+ " And "
 				result :+ GenericInheritanceName(parameter.constraints[index], artifact)

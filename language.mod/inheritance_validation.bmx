@@ -583,6 +583,20 @@ Type TInheritanceValidator
 			Local constraintInfo:TGenericConstraintInfo = New TGenericConstraintInfo
 			constraintInfo.syntax = constraint
 			constraintInfo.parameterSymbol = parameter
+			If constraint.isToken Then
+				If constraint.capabilityToken Then
+					Select constraint.capabilityToken.text.ToLower()
+						Case "numeric" constraintInfo.capability = GENERIC_CAPABILITY_NUMERIC
+						Case "integral" constraintInfo.capability = GENERIC_CAPABILITY_INTEGRAL
+						Case "floating" constraintInfo.capability = GENERIC_CAPABILITY_FLOATING
+					End Select
+				End If
+				If Not constraintInfo.capability Then
+					Local capabilityName:String
+					If constraint.capabilityToken Then capabilityName = constraint.capabilityToken.text
+					AddDiagnostic("BMX3210", "Unknown generic capability '" + capabilityName + "'; expected Numeric, Integral or Floating.", constraint.span)
+				End If
+			End If
 			constraintInfo.bounds = New TSemanticType[constraint.constraintTypes.length]
 			For Local index:Int = 0 Until constraint.constraintTypes.length
 				Local bound:TSemanticType = model.TypeOf(constraint.constraintTypes[index])
@@ -978,6 +992,10 @@ Type TInheritanceValidator
 			Local parameterIndex:Int = SymbolIndex(parameters, constraint.parameterSymbol)
 			If parameterIndex < 0 Then Continue
 			Local argumentType:TSemanticType = namedType.typeArguments[parameterIndex]
+			If constraint.capability And Not TGenericCapabilityRules.Satisfies(argumentType, constraint.capability, model) Then
+				Local capabilityName:String = TGenericCapabilityRules.Name(constraint.capability)
+				AddDiagnostic("BMX3209", TLanguageMessages.InheritanceTypeArgumentConstraintUnsatisfied(argumentType.DisplayName(), capabilityName, constraint.parameterSymbol.name), syntax.span)
+			End If
 			For Local bound:TSemanticType = EachIn constraint.bounds
 				Local required:TSemanticType = Substitute(bound, parameters, namedType.typeArguments)
 				If Not IsSubtype(argumentType, required, 0) Then

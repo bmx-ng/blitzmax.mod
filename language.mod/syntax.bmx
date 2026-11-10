@@ -268,6 +268,8 @@ End Type
 Type TGenericConstraintSyntax Extends TSyntaxNode
 	Field parameterNameToken:TSyntaxToken
 	Field extendsToken:TSyntaxToken
+	Field isToken:TSyntaxToken
+	Field capabilityToken:TSyntaxToken
 	Field constraintTypes:TTypeReferenceSyntax[]
 	Field andTokens:TSyntaxToken[]
 	Field separatorToken:TSyntaxToken

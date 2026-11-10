@@ -1736,7 +1736,7 @@ Type TExpressionBinder
 					If TFunctionLiteralExpressionSyntax(arguments[index]) Then inferenceOmitted[index] = True
 				Next
 				Local returnType:TSemanticType = TGenericRoutineInference.Substitute(routine.declaredType, substitutions)
-				Local binding:TGenericRoutineBinding = TGenericRoutineInference.Infer(routine, argumentTypes, explicitTypes, parameters, returnType, inferenceOmitted)
+				Local binding:TGenericRoutineBinding = TGenericRoutineInference.Infer(routine, argumentTypes, explicitTypes, parameters, returnType, inferenceOmitted, IntegerConstantArgumentFlags(arguments))
 				If Not binding.success Or Not ConstraintsSatisfied(binding, substitutions) Then Continue
 				parameters = binding.parameterTypes
 			Else If explicitTypes.length Then
@@ -2559,7 +2559,7 @@ Type TExpressionBinder
 			signatures.candidates :+ [signature]
 			If Not ArgumentSlotsSatisfied(routine, arguments) Or Not ArgumentsSatisfyVar(routine, arguments) Then Continue
 			If routine.genericArity > 0 Then
-				candidate.binding = TGenericRoutineInference.Infer(routine, argumentTypes, explicitTypes, candidate.parameterTypes, candidate.returnType, OmittedArgumentFlags(arguments))
+				candidate.binding = TGenericRoutineInference.Infer(routine, argumentTypes, explicitTypes, candidate.parameterTypes, candidate.returnType, OmittedArgumentFlags(arguments), IntegerConstantArgumentFlags(arguments))
 				If candidate.binding.success And ConstraintsSatisfied(candidate.binding, candidateSubstitutions) Then
 					signature.parameterTypes = candidate.binding.parameterTypes
 					signature.returnType = candidate.binding.returnType
@@ -2624,7 +2624,7 @@ Type TExpressionBinder
 			If arguments.length > signature.parameterTypes.length Or Not ArgumentsSatisfyVar(signature.routine, arguments) Then Continue
 			If explicitSyntax.length And signature.routine.genericArity <> explicitSyntax.length Then Continue
 			If signature.routine.genericArity > 0 Then
-				Local binding:TGenericRoutineBinding = TGenericRoutineInference.Infer(signature.routine, argumentTypes, explicitTypes, signature.parameterTypes, signature.returnType, OmittedArgumentFlags(arguments))
+				Local binding:TGenericRoutineBinding = TGenericRoutineInference.Infer(signature.routine, argumentTypes, explicitTypes, signature.parameterTypes, signature.returnType, OmittedArgumentFlags(arguments), IntegerConstantArgumentFlags(arguments))
 				If binding.success And ConstraintsSatisfied(binding, signature.containingSubstitutions) Then
 					signature.parameterTypes = binding.parameterTypes
 					signature.returnType = binding.returnType
@@ -2737,9 +2737,16 @@ Type TExpressionBinder
 		If arguments.length > parameters.length Then Return False
 		For Local index:Int = 0 Until arguments.length
 			If index < expressions.length And TOmittedArgumentExpressionSyntax(expressions[index]) Then Continue
-			If ContainsOpenTypeParameterType(arguments[index]) Then Continue
 			Local expression:TExpressionSyntax
 			If index < expressions.length Then expression = expressions[index]
+			If ContainsOpenTypeParameterType(arguments[index]) Then
+				' A numeric constraint gives the open parameter a definite conversion
+				' set. Do not defer an unsupported conversion to specialization.
+				If TTypeParameterSemanticType(arguments[index]) And TGenericCapabilityRules.KindForType(arguments[index], model) <> 0 And Not ContainsOpenTypeParameterType(parameters[index]) Then
+					If Not conversions.ClassifyArgumentExpression(expression, arguments[index], parameters[index]).Exists() Then Return False
+				End If
+				Continue
+			End If
 			If Not conversions.ClassifyArgumentExpression(expression, arguments[index], parameters[index]).Exists() Then Return False
 		Next
 		Return True
@@ -3113,6 +3120,15 @@ Type TExpressionBinder
 		Return False
 	End Function
 
+	Method IntegerConstantArgumentFlags:Int[](arguments:TExpressionSyntax[])
+		Local result:Int[] = New Int[arguments.length]
+		For Local index:Int = 0 Until arguments.length
+			Local value:Long
+			If conversions.TryIntegerConstant(arguments[index], value) Then result[index] = True
+		Next
+		Return result
+	End Method
+
 	Function OmittedArgumentFlags:Int[](arguments:TExpressionSyntax[])
 		Local result:Int[] = New Int[arguments.length]
 		For Local index:Int = 0 Until arguments.length
@@ -3284,6 +3300,7 @@ Type TExpressionBinder
 			Local parameterIndex:Int = SymbolIndex(binding.typeParameters, constraint.parameterSymbol)
 			If parameterIndex < 0 Then Continue
 			Local actual:TSemanticType = binding.typeArguments[parameterIndex]
+			If constraint.capability And Not TGenericCapabilityRules.Satisfies(actual, constraint.capability, model) Then Return False
 			For Local bound:TSemanticType = EachIn constraint.bounds
 				Local required:TSemanticType = TGenericRoutineInference.Substitute(bound, substitutions)
 				If Not validator.IsSubtype(actual, required, 0) Then Return False
@@ -3753,6 +3770,12 @@ Type TExpressionBinder
 			Return model.BuiltinType("Size_T")
 		End If
 		Local operand:TSemanticType = BindExpression(unary.operand, scope)
+		If TTypeParameterSemanticType(operand) Then
+			Local capability:Int = TGenericCapabilityRules.KindForType(operand, model)
+			If capability And Not TGenericCapabilityRules.UnarySupported(operation, capability) And (operation = "+" Or operation = "-" Or operation = "~~") Then
+				AddDiagnostic("BMX3305", TLanguageMessages.BindingBinaryOperatorNotDefined(unary.operatorToken.text, operand.DisplayName(), operand.DisplayName()), unary.span)
+			End If
+		End If
 		If operation = "asc" Then
 			If operand And Not conversions.ClassifyExpression(unary.operand, operand, model.BuiltinType("String")).Exists() Then AddDiagnostic("BMX3310", TLanguageMessages.BindingAscRequiresStringConversion(operand.DisplayName()), unary.operand.span)
 			Return model.BuiltinType("Int")
@@ -3818,6 +3841,15 @@ Type TExpressionBinder
 		Local left:TSemanticType = BindExpression(binary.left, scope)
 		Local right:TSemanticType = BindExpression(binary.right, scope)
 		Local operation:String = binary.operatorToken.text.ToLower()
+		Local constrainedCapability:Int
+		If TTypeParameterSemanticType(left) Then constrainedCapability = TGenericCapabilityRules.KindForType(left, model)
+		If TTypeParameterSemanticType(right) Then
+			Local rightCapability:Int = TGenericCapabilityRules.KindForType(right, model)
+			If constrainedCapability Then constrainedCapability = constrainedCapability & rightCapability Else constrainedCapability = rightCapability
+		End If
+		If constrainedCapability And Not TGenericCapabilityRules.BinarySupported(operation, constrainedCapability) Then
+			AddDiagnostic("BMX3305", TLanguageMessages.BindingBinaryOperatorNotDefined(binary.operatorToken.text, left.DisplayName(), right.DisplayName()), binary.span)
+		End If
 		If TNamedSemanticType(left) Then
 			Local resolved:TResolvedCall = ResolveOperator(binary, binary.left, binary.operatorToken.text, left, [binary.right], [right], scope)
 			If resolved Then Return resolved.returnType
@@ -3879,9 +3911,20 @@ Type TExpressionBinder
 	Method BuiltinCompoundResultType:TSemanticType(operatorText:String, left:TSemanticType, right:TSemanticType)
 		If Not left Or Not right Then Return Null
 		If TErrorSemanticType(left) Or TErrorSemanticType(right) Then Return left
-		' Open generic operations are validated after specialization, when their
-		' concrete operand types and any source-defined operators are available.
-		If TTypeParameterSemanticType(left) Or TTypeParameterSemanticType(right) Then Return left
+		' Capabilities are checked in the open body. Unconstrained parameters
+		' retain their established deferred specialization behavior.
+		If TTypeParameterSemanticType(left) Or TTypeParameterSemanticType(right) Then
+			Local capability:Int
+			If TTypeParameterSemanticType(left) Then capability = TGenericCapabilityRules.KindForType(left, model)
+			If TTypeParameterSemanticType(right) Then
+				Local rightCapability:Int = TGenericCapabilityRules.KindForType(right, model)
+				If capability Then capability = capability & rightCapability Else capability = rightCapability
+			End If
+			Local operation:String = operatorText.ToLower()
+			If operation.StartsWith(":") Then operation = operation[1..]
+			If capability And Not TGenericCapabilityRules.BinarySupported(operation, capability) Then Return Null
+			Return left
+		End If
 		Local operation:String = operatorText.ToLower()
 		If operation.StartsWith(":") Then operation = operation[1..]
 

@@ -348,6 +348,88 @@ Type TGenericConstraintInfo
 	Field syntax:TGenericConstraintSyntax
 	Field parameterSymbol:TSymbol
 	Field bounds:TSemanticType[] = New TSemanticType[0]
+	Field capability:Int
+End Type
+
+Const GENERIC_CAPABILITY_NONE:Int = 0
+Const GENERIC_CAPABILITY_NUMERIC:Int = 1
+Const GENERIC_CAPABILITY_INTEGRAL:Int = 2
+Const GENERIC_CAPABILITY_FLOATING:Int = 4
+
+' This table is the language-level definition of the built-in capabilities.
+' Explicit operator-signature requirements can be added alongside capability
+' requirements without making either one an inheritance relationship.
+Type TGenericCapabilityRules
+	Function KindForName:Int(name:String)
+		Select name.ToLower()
+			Case "byte", "short", "int", "uint", "long", "ulong", "longint", "ulongint", "size_t"
+				Return GENERIC_CAPABILITY_NUMERIC | GENERIC_CAPABILITY_INTEGRAL
+			Case "float", "double"
+				Return GENERIC_CAPABILITY_NUMERIC | GENERIC_CAPABILITY_FLOATING
+		End Select
+		Return GENERIC_CAPABILITY_NONE
+	End Function
+
+	Function KindForType:Int(value:TSemanticType, model:TSemanticModel)
+		Local builtin:TBuiltinSemanticType = TBuiltinSemanticType(value)
+		If builtin Then Return KindForName(builtin.name)
+		Local parameter:TTypeParameterSemanticType = TTypeParameterSemanticType(value)
+		If Not parameter Or Not parameter.symbol Or Not parameter.symbol.containingScope Then Return GENERIC_CAPABILITY_NONE
+		Local owner:TSymbol = parameter.symbol.containingScope.owner
+		If Not owner Then Return GENERIC_CAPABILITY_NONE
+		Local constraints:TGenericConstraintInfo[]
+		If owner.kind = SYMBOL_ROUTINE Then
+			constraints = owner.genericConstraints
+		Else
+			Local inheritance:TTypeInheritanceInfo = model.InheritanceInfo(owner)
+			If inheritance Then constraints = inheritance.constraints
+		End If
+		For Local constraint:TGenericConstraintInfo = EachIn constraints
+			If constraint.parameterSymbol = parameter.symbol Then Return ExpandedKind(constraint.capability)
+		Next
+		Return GENERIC_CAPABILITY_NONE
+	End Function
+
+	Function Satisfies:Int(value:TSemanticType, required:Int, model:TSemanticModel)
+		If required = GENERIC_CAPABILITY_NONE Then Return True
+		Return HasCapability(KindForType(value, model), required)
+	End Function
+
+	Function ExpandedKind:Int(required:Int)
+		If required = GENERIC_CAPABILITY_INTEGRAL Or required = GENERIC_CAPABILITY_FLOATING Then Return required | GENERIC_CAPABILITY_NUMERIC
+		Return required
+	End Function
+
+	Function HasCapability:Int(kind:Int, required:Int)
+		Return (kind & required) = required
+	End Function
+
+	Function Name:String(required:Int)
+		Select required
+			Case GENERIC_CAPABILITY_INTEGRAL Return "Integral"
+			Case GENERIC_CAPABILITY_FLOATING Return "Floating"
+		End Select
+		Return "Numeric"
+	End Function
+
+	Function UnarySupported:Int(operatorText:String, capability:Int)
+		If Not HasCapability(capability, GENERIC_CAPABILITY_NUMERIC) Then Return False
+		Select operatorText.ToLower()
+			Case "+", "-", "not" Return True
+			Case "~~" Return HasCapability(capability, GENERIC_CAPABILITY_INTEGRAL)
+		End Select
+		Return False
+	End Function
+
+	Function BinarySupported:Int(operatorText:String, capability:Int)
+		If Not HasCapability(capability, GENERIC_CAPABILITY_NUMERIC) Then Return False
+		Select operatorText.ToLower()
+			Case "+", "-", "*", "/", "<", "<=", ">", ">=", "=", "<>" Return True
+			Case "mod", "shl", "shr", "sar", "|", "&", "~~", "^", "and", "or", "xor"
+				Return HasCapability(capability, GENERIC_CAPABILITY_INTEGRAL)
+		End Select
+		Return False
+	End Function
 End Type
 
 Type TTypeInheritanceInfo

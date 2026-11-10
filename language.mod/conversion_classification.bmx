@@ -71,6 +71,8 @@ Type TConversionClassifier
 
 		Local numericDistance:Int = NumericWideningDistance(actual, required)
 		If numericDistance >= 0 Then Return MakeConversion(CONVERSION_NUMERIC_WIDENING, numericDistance, 100 + numericDistance)
+		If TTypeParameterSemanticType(actual) And IsFloatingType(actual) And IsBuiltinNamed(required, "double") Then Return MakeConversion(CONVERSION_NUMERIC_WIDENING, 1, 101)
+		If IsBuiltinNamed(actual, "float") And TTypeParameterSemanticType(required) And IsFloatingType(required) Then Return MakeConversion(CONVERSION_NUMERIC_WIDENING, 1, 101)
 		Local enumUnderlying:TSemanticType = EnumUnderlyingType(actual)
 		If enumUnderlying And TGenericRoutineInference.SameType(enumUnderlying, required) Then
 			Return MakeConversion(CONVERSION_ENUM_TO_UNDERLYING, 0, 50)
@@ -133,7 +135,8 @@ Type TConversionClassifier
 		Local integerValue:Long
 		If TPointerSemanticType(required) And TryIntegerConstant(expression, integerValue) And integerValue = 0 Then Return MakeConversion(CONVERSION_NULL, 0, 300)
 		If IntegerConstantFits(expression, required) Then Return MakeConversion(CONVERSION_CONSTANT, 0, 100)
-		If FloatingConstantFits(expression, required) Then Return MakeConversion(CONVERSION_CONSTANT, 0, 100)
+		If FloatingConstantFits(expression, actual, required) Then Return MakeConversion(CONVERSION_CONSTANT, 0, 100)
+		If UniversalNumericConstantFits(expression, actual, required) Then Return MakeConversion(CONVERSION_CONSTANT, 0, 100)
 		If CanContextuallyConvertNumericExpression(expression, actual, required) Then Return MakeConversion(CONVERSION_CONTEXTUAL_NUMERIC_EXPRESSION, 0, 110)
 		If CanConvertArrayLiteral(expression, actual, required) Then Return MakeConversion(CONVERSION_ARRAY_LITERAL, 0, 100)
 		Return NoConversion()
@@ -174,6 +177,7 @@ Type TConversionClassifier
 		If CanExplicitlyCastArrayToPointer(actual, required) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
 		If IsString(actual) And NumericRankOf(required) >= 0 Then Return MakeConversion(CONVERSION_STRING_TO_NUMERIC, 0, 0)
 		If NumericRankOf(actual) >= 0 And NumericRankOf(required) >= 0 Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
+		If (TTypeParameterSemanticType(actual) Or TTypeParameterSemanticType(required)) And TGenericCapabilityRules.Satisfies(actual, GENERIC_CAPABILITY_NUMERIC, model) And TGenericCapabilityRules.Satisfies(required, GENERIC_CAPABILITY_NUMERIC, model) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
 		If TPointerSemanticType(actual) And TPointerSemanticType(required) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
 		If TPointerSemanticType(actual) And IsIntegral(required) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
 		If IsIntegral(actual) And TPointerSemanticType(required) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
@@ -224,6 +228,7 @@ Type TConversionClassifier
 	Method ClassifyAssignmentExpression:TConversion(expression:TExpressionSyntax, actual:TSemanticType, required:TSemanticType)
 		Local standard:TConversion = ClassifyExpression(expression, actual, required)
 		If standard.Exists() Then Return standard
+		If (TTypeParameterSemanticType(actual) Or TTypeParameterSemanticType(required)) And IsFloatingType(actual) And IsFloatingType(required) Then Return MakeConversion(CONVERSION_NUMERIC_NARROWING, 0, 0)
 		If NumericRankOf(actual) >= 0 And NumericRankOf(required) >= 0 Then Return MakeConversion(CONVERSION_NUMERIC_NARROWING, 0, 0)
 		Return NoConversion()
 	End Method
@@ -242,8 +247,18 @@ Type TConversionClassifier
 			If IsIntegral(required) And TryIntegerConstant(expression, integerValue) Then Return NoConversion()
 			Return MakeConversion(CONVERSION_NUMERIC_NARROWING, 0, 150)
 		End If
+		If allowArgumentNarrowing And (TTypeParameterSemanticType(actual) Or TTypeParameterSemanticType(required)) And IsFloatingType(actual) And IsFloatingType(required) Then Return MakeConversion(CONVERSION_NUMERIC_NARROWING, 0, 150)
 		Return NoConversion()
 	End Method
+
+	Method IsFloatingType:Int(value:TSemanticType)
+		Return TGenericCapabilityRules.Satisfies(value, GENERIC_CAPABILITY_FLOATING, model)
+	End Method
+
+	Function IsBuiltinNamed:Int(value:TSemanticType, name:String)
+		Local builtin:TBuiltinSemanticType = TBuiltinSemanticType(value)
+		Return builtin And builtin.name.ToLower() = name
+	End Function
 
 	Function NumericRankOf:Int(value:TSemanticType)
 		Local builtin:TBuiltinSemanticType = TBuiltinSemanticType(value)
@@ -254,8 +269,9 @@ Type TConversionClassifier
 	Function IsIntegral:Int(value:TSemanticType)
 		Local builtin:TBuiltinSemanticType = TBuiltinSemanticType(value)
 		If Not builtin Then Return False
+		If TGenericCapabilityRules.HasCapability(TGenericCapabilityRules.KindForName(builtin.name), GENERIC_CAPABILITY_INTEGRAL) Then Return True
 		Select builtin.name.ToLower()
-			Case "byte", "short", "int", "uint", "long", "ulong", "longint", "ulongint", "size_t", "wparam", "lparam", "int128" Return True
+			Case "wparam", "lparam", "int128" Return True
 		End Select
 		Return False
 	End Function
@@ -389,12 +405,26 @@ Type TConversionClassifier
 		Return False
 	End Method
 
-	Method FloatingConstantFits:Int(expression:TExpressionSyntax, required:TSemanticType)
+	Method FloatingConstantFits:Int(expression:TExpressionSyntax, actual:TSemanticType, required:TSemanticType)
 		Local target:TBuiltinSemanticType = TBuiltinSemanticType(required)
-		If Not target Or target.name.ToLower() <> "float" Then Return False
+		If Not target Or target.name.ToLower() <> "float" Then
+			If Not TTypeParameterSemanticType(required) Or Not IsFloatingType(required) Or Not TGenericCapabilityRules.Satisfies(actual, GENERIC_CAPABILITY_NUMERIC, model) Then Return False
+		End If
 		Local value:Double
 		If Not TryFloatingConstant(expression, value) Then Return False
 		Return value >= -3.4028234663852886e38 And value <= 3.4028234663852886e38
+	End Method
+
+	Method UniversalNumericConstantFits:Int(expression:TExpressionSyntax, actual:TSemanticType, required:TSemanticType)
+		If Not TTypeParameterSemanticType(required) Or Not TGenericCapabilityRules.Satisfies(required, GENERIC_CAPABILITY_NUMERIC, model) Then Return False
+		If Not TGenericCapabilityRules.Satisfies(actual, GENERIC_CAPABILITY_NUMERIC, model) Then Return False
+		' Byte is the narrowest Numeric type. An integral value from 0 through
+		' 255 is represented exactly by every Numeric type, including Float.
+		Local integerValue:Long
+		If TryIntegerConstant(expression, integerValue) Then Return integerValue >= 0 And integerValue <= 255
+		Local floatingValue:Double
+		If Not TryFloatingConstant(expression, floatingValue) Then Return False
+		Return floatingValue >= 0.0 And floatingValue <= 255.0 And floatingValue = Double(Int(floatingValue))
 	End Method
 
 	Method TryFloatingConstant:Int(expression:TExpressionSyntax, value:Double Var)
