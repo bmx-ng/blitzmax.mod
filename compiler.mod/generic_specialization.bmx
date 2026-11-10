@@ -2515,6 +2515,10 @@ Type TCompilerGenericCUnitEmitter
 		For Local argument:TTemplateTypeReference = EachIn value.arguments
 			result :+ RuntimeTypeHeaderIncludesForSpecialization(argument, specialization, emitted)
 		Next
+		If specialization And specialization.artifact And specialization.artifact.identity And value.kind = TEMPLATE_TYPE_NAMED Then
+			Local ownIdentity:TGenericTemplateIdentity = specialization.artifact.identity
+			If value.moduleName.ToLower() = ownIdentity.moduleName.ToLower() And value.symbolName.ToLower() = ownIdentity.qualifiedName.ToLower() Then Return result
+		End If
 		If value.runtimeKind <> TEMPLATE_RUNTIME_STRUCT Or Not value.moduleName.length Then Return result
 		Local sourceUnitPath:String
 		If specialization And specialization.runtimeStructSourceUnits And value.runtimeAbiName.length Then sourceUnitPath = String(specialization.runtimeStructSourceUnits.ValueForKey(value.runtimeAbiName.ToLower()))
@@ -9358,6 +9362,25 @@ Type TCompilerGenericCUnitEmitter
 		Return WrapStabilizedCall(result + ")", receiverPrefix)
 	End Function
 
+	Function EmitStructOperation:String(structNode:TGenericSpecializationNode, operation:TGenericTemplateNode, operationMethod:TCompilerGenericMethodIr, receiver:String, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
+		If Not structNode Or Not operationMethod Then Return DefaultValue(operation.semanticType, ir)
+		Local result:String = operationMethod.abiName + "("
+		If operationMethod.isStatic Or operationMethod.isTypeFunction Then
+			For Local index:Int = 1 Until operation.children.length
+				If index > 1 Then result :+ ", "
+				result :+ EmitCallArgument(operation.children[index], operationMethod.parameters[index - 1], ir, ownerMethod, diagnostics, locals)
+			Next
+			Return result + ")"
+		End If
+		Local receiverPrefix:String
+		receiver = StabilizeCallReceiver(operation, receiver, receiverPrefix)
+		result :+ "&(" + receiver + ")"
+		For Local index:Int = 1 Until operation.children.length
+			result :+ ", " + EmitCallArgument(operation.children[index], operationMethod.parameters[index - 1], ir, ownerMethod, diagnostics, locals)
+		Next
+		Return WrapStabilizedCall(result + ")", receiverPrefix)
+	End Function
+
 	Function EmitOrdinaryClassOperation:String(operation:TGenericTemplateNode, receiver:String, ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, ownerMethod:TCompilerGenericMethodIr = Null, locals:TMap = Null)
 		If Not operation Or operation.runtimeDispatchKind <> TEMPLATE_DISPATCH_ORDINARY_CLASS Or operation.runtimeDispatchIndex < 0 Or operation.runtimeDispatchIndex >= 40 Or Not operation.children.length Then
 			diagnostics :+ ["BMXC3059 ordinary ObjectEnumerator operation has no valid runtime virtual-slot ordinal"]
@@ -10314,6 +10337,9 @@ Type TCompilerGenericCUnitEmitter
 						Local receiverExpression:String = EmitExpression(receiverNode, ir, ownerMethod, diagnostics, locals)
 						Local methodOwner:TGenericSpecializationNode = targetMethod.declaringSpecialization
 						If Not methodOwner Then methodOwner = target
+						If target.artifact.typeDeclarationKind = GENERIC_TYPE_DECLARATION_STRUCT Then
+							Return EmitStructOperation(target, node, targetMethod, receiverExpression, ir, ownerMethod, diagnostics, locals)
+						End If
 						If receiverNode.kind <> TEMPLATE_NODE_SELF Or receiverNode.valueText <> "super" Then
 							Return EmitTypeOperation(target, node, targetMethod, receiverExpression, ir, ownerMethod, diagnostics, locals)
 						End If
