@@ -2737,9 +2737,16 @@ Type TExpressionBinder
 		If arguments.length > parameters.length Then Return False
 		For Local index:Int = 0 Until arguments.length
 			If index < expressions.length And TOmittedArgumentExpressionSyntax(expressions[index]) Then Continue
-			If ContainsOpenTypeParameterType(arguments[index]) Then Continue
 			Local expression:TExpressionSyntax
 			If index < expressions.length Then expression = expressions[index]
+			If ContainsOpenTypeParameterType(arguments[index]) Then
+				' A numeric constraint gives the open parameter a definite conversion
+				' set. Do not defer an unsupported conversion to specialization.
+				If TTypeParameterSemanticType(arguments[index]) And TGenericCapabilityRules.KindForType(arguments[index], model) <> 0 And Not ContainsOpenTypeParameterType(parameters[index]) Then
+					If Not conversions.ClassifyArgumentExpression(expression, arguments[index], parameters[index]).Exists() Then Return False
+				End If
+				Continue
+			End If
 			If Not conversions.ClassifyArgumentExpression(expression, arguments[index], parameters[index]).Exists() Then Return False
 		Next
 		Return True
