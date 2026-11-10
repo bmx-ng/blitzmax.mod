@@ -2068,7 +2068,8 @@ Type TCompilerGenericSpecializationLowerer
 			End Select
 		End If
 		If value.elementType.kind = TEMPLATE_TYPE_NAMED Then
-			Return value.elementType.runtimeKind = TEMPLATE_RUNTIME_STRUCT And value.elementType.runtimeAbiName.length > 0
+			If value.elementType.runtimeKind = TEMPLATE_RUNTIME_STRUCT Then Return value.elementType.runtimeAbiName.length > 0
+			If value.elementType.runtimeKind = TEMPLATE_RUNTIME_ENUM Then Return EnumValueTypeSupported(value.elementType.runtimeValueType)
 		End If
 		Return False
 	End Function
