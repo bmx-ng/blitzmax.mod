@@ -2450,7 +2450,7 @@ Type TCompilerGenericCUnitEmitter
 		End If
 		Local result:String
 		If includeStddef Then result :+ "#include <stddef.h>~n"
-		Return result + "#include <brl.mod/blitz.mod/blitz.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
+		Return result + "#include <brl.mod/blitz.mod/blitz.h>~n#include <math.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
 	End Function
 
 	Function IsRoutineSpecialization:Int(node:TGenericSpecializationNode)
@@ -5653,7 +5653,7 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitStructImplementationUnit:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, declarationText:String = "")
 		If EmbeddedTarget(ir) Then Return EmitEmbeddedStructImplementationUnit(ir, diagnostics, declarationText)
 		Local abiName:String = ir.specialization.readableAbiName
-		Local result:String = "#include <stddef.h>~n#include <brl.mod/blitz.mod/blitz.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
+		Local result:String = UnitPreamble(ir, True)
 		Local runtimeDeclarationText:String = EmitOrdinaryRuntimeTypeDeclarationsForMembers(ir, diagnostics)
 		If runtimeDeclarationText.length Then result :+ runtimeDeclarationText + "~n"
 		If Not declarationText.length Then declarationText = EmitStructDeclarations(ir, diagnostics)
@@ -6661,7 +6661,7 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitInterfaceImplementationUnit:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var, declarationText:String = "")
 		If EmbeddedTarget(ir) Then Return EmitEmbeddedInterfaceImplementationUnit(ir, diagnostics, declarationText)
 		Local abiName:String = ir.specialization.readableAbiName
-		Local result:String = "#include <brl.mod/blitz.mod/blitz.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
+		Local result:String = UnitPreamble(ir)
 		' Closed Interface signatures can mention application-local ordinary Types.
 		' Give those tags file scope before the method table and inline call helpers;
 		' otherwise C gives a tag first seen in a parameter list prototype scope.
@@ -10226,7 +10226,12 @@ Type TCompilerGenericCUnitEmitter
 							Return "({ " + valueType + " bmx_minmax_left = " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + "; " + valueType + " bmx_minmax_right = " + EmitExpression(node.children[2], ir, ownerMethod, diagnostics, locals) + "; bmx_minmax_left " + comparison + " bmx_minmax_right ? bmx_minmax_left : bmx_minmax_right; })"
 						End If
 						If node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
-							Local ordinaryCall:String = node.referencedSymbol.overloadKey + "("
+							Local ordinaryName:String = node.referencedSymbol.overloadKey
+							' Sqr maps directly to C math for source-owned generic units,
+							' which may not include BRL.Math's generated module header.
+							If ordinaryName = "bbSqr" Then ordinaryName = "sqrt"
+							If ordinaryName = "bbSqrf" Then ordinaryName = "sqrtf"
+							Local ordinaryCall:String = ordinaryName + "("
 							Local ordinarySignature:TGenericTemplateNode = node.children[0]
 							Local ordinaryNativeParameterTypes:String[] = TCompilerNativeDeclaration.ParameterTypes(ordinarySignature.identity)
 							For Local index:Int = 1 Until node.children.length

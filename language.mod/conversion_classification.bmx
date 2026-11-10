@@ -134,6 +134,7 @@ Type TConversionClassifier
 		If TPointerSemanticType(required) And TryIntegerConstant(expression, integerValue) And integerValue = 0 Then Return MakeConversion(CONVERSION_NULL, 0, 300)
 		If IntegerConstantFits(expression, required) Then Return MakeConversion(CONVERSION_CONSTANT, 0, 100)
 		If FloatingConstantFits(expression, required) Then Return MakeConversion(CONVERSION_CONSTANT, 0, 100)
+		If UniversalNumericConstantFits(expression, actual, required) Then Return MakeConversion(CONVERSION_CONSTANT, 0, 100)
 		If CanContextuallyConvertNumericExpression(expression, actual, required) Then Return MakeConversion(CONVERSION_CONTEXTUAL_NUMERIC_EXPRESSION, 0, 110)
 		If CanConvertArrayLiteral(expression, actual, required) Then Return MakeConversion(CONVERSION_ARRAY_LITERAL, 0, 100)
 		Return NoConversion()
@@ -174,6 +175,7 @@ Type TConversionClassifier
 		If CanExplicitlyCastArrayToPointer(actual, required) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
 		If IsString(actual) And NumericRankOf(required) >= 0 Then Return MakeConversion(CONVERSION_STRING_TO_NUMERIC, 0, 0)
 		If NumericRankOf(actual) >= 0 And NumericRankOf(required) >= 0 Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
+		If (TTypeParameterSemanticType(actual) Or TTypeParameterSemanticType(required)) And TGenericCapabilityRules.KindForType(actual, model) >= GENERIC_CAPABILITY_NUMERIC And TGenericCapabilityRules.KindForType(required, model) >= GENERIC_CAPABILITY_NUMERIC Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
 		If TPointerSemanticType(actual) And TPointerSemanticType(required) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
 		If TPointerSemanticType(actual) And IsIntegral(required) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
 		If IsIntegral(actual) And TPointerSemanticType(required) Then Return MakeConversion(CONVERSION_EXPLICIT, 0, 0)
@@ -396,6 +398,18 @@ Type TConversionClassifier
 		Local value:Double
 		If Not TryFloatingConstant(expression, value) Then Return False
 		Return value >= -3.4028234663852886e38 And value <= 3.4028234663852886e38
+	End Method
+
+	Method UniversalNumericConstantFits:Int(expression:TExpressionSyntax, actual:TSemanticType, required:TSemanticType)
+		If Not TTypeParameterSemanticType(required) Or TGenericCapabilityRules.KindForType(required, model) < GENERIC_CAPABILITY_NUMERIC Then Return False
+		If TGenericCapabilityRules.KindForType(actual, model) < GENERIC_CAPABILITY_NUMERIC Then Return False
+		' Byte is the narrowest Numeric type. An integral value from 0 through
+		' 255 is represented exactly by every Numeric type, including Float.
+		Local integerValue:Long
+		If TryIntegerConstant(expression, integerValue) Then Return integerValue >= 0 And integerValue <= 255
+		Local floatingValue:Double
+		If Not TryFloatingConstant(expression, floatingValue) Then Return False
+		Return floatingValue >= 0.0 And floatingValue <= 255.0 And floatingValue = Double(Int(floatingValue))
 	End Method
 
 	Method TryFloatingConstant:Int(expression:TExpressionSyntax, value:Double Var)
