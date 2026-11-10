@@ -81,7 +81,7 @@ Type TGenericRoutineInference
 
 	Function HasNumericCapability:Int(routine:TSymbol, parameter:TSymbol)
 		For Local constraint:TGenericConstraintInfo = EachIn routine.genericConstraints
-			If constraint.parameterSymbol = parameter And constraint.capability >= GENERIC_CAPABILITY_NUMERIC Then Return True
+			If constraint.parameterSymbol = parameter And TGenericCapabilityRules.HasCapability(TGenericCapabilityRules.ExpandedKind(constraint.capability), GENERIC_CAPABILITY_NUMERIC) Then Return True
 		Next
 		Return False
 	End Function

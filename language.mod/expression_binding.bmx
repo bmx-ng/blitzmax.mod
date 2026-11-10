@@ -3838,7 +3838,7 @@ Type TExpressionBinder
 		If TTypeParameterSemanticType(left) Then constrainedCapability = TGenericCapabilityRules.KindForType(left, model)
 		If TTypeParameterSemanticType(right) Then
 			Local rightCapability:Int = TGenericCapabilityRules.KindForType(right, model)
-			If constrainedCapability Then constrainedCapability = Min(constrainedCapability, rightCapability) Else constrainedCapability = rightCapability
+			If constrainedCapability Then constrainedCapability = constrainedCapability & rightCapability Else constrainedCapability = rightCapability
 		End If
 		If constrainedCapability And Not TGenericCapabilityRules.BinarySupported(operation, constrainedCapability) Then
 			AddDiagnostic("BMX3305", TLanguageMessages.BindingBinaryOperatorNotDefined(binary.operatorToken.text, left.DisplayName(), right.DisplayName()), binary.span)
@@ -3911,7 +3911,7 @@ Type TExpressionBinder
 			If TTypeParameterSemanticType(left) Then capability = TGenericCapabilityRules.KindForType(left, model)
 			If TTypeParameterSemanticType(right) Then
 				Local rightCapability:Int = TGenericCapabilityRules.KindForType(right, model)
-				If capability Then capability = Min(capability, rightCapability) Else capability = rightCapability
+				If capability Then capability = capability & rightCapability Else capability = rightCapability
 			End If
 			Local operation:String = operatorText.ToLower()
 			If operation.StartsWith(":") Then operation = operation[1..]

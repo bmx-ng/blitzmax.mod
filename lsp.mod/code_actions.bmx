@@ -375,7 +375,7 @@ Type TBlitzMaxLspCodeActions
 			If constraintIndex Then result :+ ", "
 			If constraint.parameterSymbol Then result :+ constraint.parameterSymbol.name Else result :+ "T" + (constraintIndex + 1)
 			If constraint.capability Then
-				If constraint.capability = GENERIC_CAPABILITY_INTEGRAL Then result :+ " Is Integral" Else result :+ " Is Numeric"
+				result :+ " Is " + TGenericCapabilityRules.Name(constraint.capability)
 				Continue
 			End If
 			result :+ " Extends "

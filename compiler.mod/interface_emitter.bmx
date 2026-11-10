@@ -651,7 +651,7 @@ Type TCompilerInterfaceEmitter
 			If Not result.length Then result = " Where " Else result :+ ", "
 			result :+ parameter.name
 			If parameter.capability Then
-				If parameter.capability = GENERIC_CAPABILITY_INTEGRAL Then result :+ " Is Integral" Else result :+ " Is Numeric"
+				result :+ " Is " + TGenericCapabilityRules.Name(parameter.capability)
 				Continue
 			End If
 			result :+ " Extends "

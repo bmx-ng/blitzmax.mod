@@ -446,9 +446,8 @@ Type TGenericSpecializationRegistry
 			If argument And argument.kind = TEMPLATE_TYPE_PARAMETER Then Continue
 			Local actual:Int
 			If argument And argument.kind = TEMPLATE_TYPE_BUILTIN Then actual = TGenericCapabilityRules.KindForName(argument.symbolName)
-			If actual < required Then
-				Local capabilityName:String = "Numeric"
-				If required = GENERIC_CAPABILITY_INTEGRAL Then capabilityName = "Integral"
+			If Not TGenericCapabilityRules.HasCapability(actual, required) Then
+				Local capabilityName:String = TGenericCapabilityRules.Name(required)
 				Local argumentName:String = "<missing>"
 				If argument Then argumentName = argument.CanonicalName()
 				AddDiagnostic("BMXC3093 template '" + templateName + "' type argument '" + argumentName + "' does not satisfy " + capabilityName + " for '" + parameters[index].name + "'")
@@ -10518,12 +10517,12 @@ Type TCompilerGenericCUnitEmitter
 
 	Function ScalarNumericType:Int(value:TTemplateTypeReference)
 		If Not value Or value.kind <> TEMPLATE_TYPE_BUILTIN Then Return False
-		Return TGenericCapabilityRules.KindForName(value.symbolName) >= GENERIC_CAPABILITY_NUMERIC
+		Return TGenericCapabilityRules.HasCapability(TGenericCapabilityRules.KindForName(value.symbolName), GENERIC_CAPABILITY_NUMERIC)
 	End Function
 
 	Function ScalarIntegralType:Int(value:TTemplateTypeReference)
 		If Not value Or value.kind <> TEMPLATE_TYPE_BUILTIN Then Return False
-		Return TGenericCapabilityRules.KindForName(value.symbolName) >= GENERIC_CAPABILITY_INTEGRAL
+		Return TGenericCapabilityRules.HasCapability(TGenericCapabilityRules.KindForName(value.symbolName), GENERIC_CAPABILITY_INTEGRAL)
 	End Function
 
 	Function UnaryOperandsSupported:Int(operatorText:String, operand:TTemplateTypeReference)
@@ -10552,7 +10551,7 @@ Type TCompilerGenericCUnitEmitter
 			If IsNullType(right) And left And left.kind = TEMPLATE_TYPE_POINTER Then Return True
 		End If
 		If Not ScalarNumericType(left) Or Not ScalarNumericType(right) Then Return False
-		Local sharedCapability:Int = Min(TGenericCapabilityRules.KindForName(left.symbolName), TGenericCapabilityRules.KindForName(right.symbolName))
+		Local sharedCapability:Int = TGenericCapabilityRules.KindForName(left.symbolName) & TGenericCapabilityRules.KindForName(right.symbolName)
 		Return TGenericCapabilityRules.BinarySupported(operatorText, sharedCapability)
 	End Function
 

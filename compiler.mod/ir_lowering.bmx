@@ -10850,7 +10850,7 @@ Type TCompilerIrLowerer
 	Function IsNumericType:Int(semanticType:TSemanticType)
 		Local builtin:TBuiltinSemanticType = TBuiltinSemanticType(semanticType)
 		If Not builtin Then Return False
-		If TGenericCapabilityRules.KindForName(builtin.name) >= GENERIC_CAPABILITY_NUMERIC Then Return True
+		If TGenericCapabilityRules.HasCapability(TGenericCapabilityRules.KindForName(builtin.name), GENERIC_CAPABILITY_NUMERIC) Then Return True
 		Select builtin.name.ToLower()
 			Case "wparam", "lparam", "float64" Return True
 		End Select

@@ -487,12 +487,13 @@ Type TTypeResolver
 				Select syntax.capabilityToken.text.ToLower()
 					Case "numeric" info.capability = GENERIC_CAPABILITY_NUMERIC
 					Case "integral" info.capability = GENERIC_CAPABILITY_INTEGRAL
+					Case "floating" info.capability = GENERIC_CAPABILITY_FLOATING
 				End Select
 			End If
 			If syntax.isToken And Not info.capability Then
 				Local capabilityName:String
 				If syntax.capabilityToken Then capabilityName = syntax.capabilityToken.text
-				AddDiagnostic("BMX3210", "Unknown generic capability '" + capabilityName + "'; expected Numeric or Integral.", syntax.span)
+				AddDiagnostic("BMX3210", "Unknown generic capability '" + capabilityName + "'; expected Numeric, Integral or Floating.", syntax.span)
 			End If
 			info.bounds = New TSemanticType[syntax.constraintTypes.length]
 			For Local index:Int = 0 Until syntax.constraintTypes.length

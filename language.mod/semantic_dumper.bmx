@@ -29,7 +29,7 @@ Type TSemanticDumper
 				For Local constraint:TGenericConstraintInfo = EachIn inheritance.constraints
 					result :+ indent + "  Where " + constraint.parameterSymbol.name
 					If constraint.capability Then
-						If constraint.capability = GENERIC_CAPABILITY_INTEGRAL Then result :+ " Is Integral~n" Else result :+ " Is Numeric~n"
+						result :+ " Is " + TGenericCapabilityRules.Name(constraint.capability) + "~n"
 						Continue
 					End If
 					result :+ " Extends "
