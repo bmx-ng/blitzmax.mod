@@ -388,9 +388,30 @@ Type TGenericTemplateRecordWriter
 
 	Method WriteInheritance(value:TGenericTemplateInheritanceReference, depth:Int)
 		If Not value Or Not value.semanticType Then diagnostics :+ ["BMXGT126 invalid generic template inheritance reference"]; Return
+		If depth > GENERIC_TEMPLATE_ARTIFACT_MAX_DEPTH Then diagnostics :+ ["BMXGT110 excessively nested Interface inheritance record"]; Return
 		Line("inheritance")
 		WriteType(value.semanticType, depth)
 		WriteSource(value.source)
+		If documentVersion >= 35 Then
+			If value.runtimeInterfaceLayoutPublished <> 0 And value.runtimeInterfaceLayoutPublished <> 1 Then diagnostics :+ ["BMXGT148 invalid ordinary Interface layout marker"]; Return
+			If value.runtimeInterfaceLayoutPublished And (value.semanticType.runtimeKind <> TEMPLATE_RUNTIME_INTERFACE Or Not value.semanticType.runtimeAbiName.length) Then diagnostics :+ ["BMXGT148 ordinary Interface layout requires a runtime Interface identity"]; Return
+			If Not value.runtimeInterfaceLayoutPublished And (value.runtimeInterfaceSlots.length Or value.runtimeInterfaceParents.length) Then diagnostics :+ ["BMXGT148 ordinary Interface slot records require a published layout marker"]; Return
+			For Local slotIndex:Int = 0 Until value.runtimeInterfaceSlots.length
+				Local slot:TGenericTemplateMember = value.runtimeInterfaceSlots[slotIndex]
+				If Not slot Or slot.kind <> TEMPLATE_MEMBER_METHOD Or Not slot.name.length Or Not slot.semanticType Or slot.isStatic Or slot.body Or slot.identity <> "runtime-slot:" + slotIndex Then diagnostics :+ ["BMXGT148 invalid ordinary Interface slot signature"]; Return
+				For Local parameter:TGenericTemplateValueParameter = EachIn slot.parameters
+					If Not parameter Or Not parameter.semanticType Or parameter.optional Or (parameter.passingMode <> GENERIC_TEMPLATE_PARAMETER_PASS_VALUE And parameter.passingMode <> GENERIC_TEMPLATE_PARAMETER_PASS_VAR) Then diagnostics :+ ["BMXGT148 invalid ordinary Interface slot parameter ABI"]; Return
+				Next
+			Next
+			IntValue(value.runtimeInterfaceLayoutPublished)
+			WriteMembers("runtime-interface-slots", value.runtimeInterfaceSlots)
+			Line("runtime-interface-parents " + value.runtimeInterfaceParents.length)
+			For Local parent:TGenericTemplateInheritanceReference = EachIn value.runtimeInterfaceParents
+				WriteInheritance(parent, depth + 1)
+			Next
+		Else If value.runtimeInterfaceLayoutPublished Or value.runtimeInterfaceSlots.length Or value.runtimeInterfaceParents.length Then
+			diagnostics :+ ["BMXGT148 ordinary Interface slots require artifact format 35"]
+		End If
 	End Method
 
 	Method WriteOptionalType(value:TTemplateTypeReference, depth:Int)
@@ -591,6 +612,10 @@ Type TGenericTemplateRecordWriter
 		End If
 		If value.kind = TEMPLATE_NODE_FUNCTION_LITERAL And documentVersion < 27 Then
 			diagnostics :+ ["BMXGT142 Function literals require generic template artifact format 27"]
+			Return
+		End If
+		If value.identity = "closure-capture-bound-receiver" And (documentVersion < 35 Or value.kind <> TEMPLATE_NODE_DECLARATION Or Not value.semanticType Or Not value.valueText.length Or value.children.length <> 1) Then
+			diagnostics :+ ["BMXGT147 computed Method receiver capture requires a typed initializer in artifact format 35"]
 			Return
 		End If
 		If value.kind = TEMPLATE_NODE_RELEASE And documentVersion < 29 Then
@@ -1007,10 +1032,30 @@ Type TGenericTemplateRecordReader
 	End Method
 
 	Method ReadInheritance:TGenericTemplateInheritanceReference(depth:Int)
+		If depth > GENERIC_TEMPLATE_ARTIFACT_MAX_DEPTH Then Fail("BMXGT110 excessively nested Interface inheritance record"); Return Null
 		ReadLine("inheritance")
 		Local result:TGenericTemplateInheritanceReference = New TGenericTemplateInheritanceReference
 		result.semanticType = ReadType(depth)
 		result.source = ReadSource()
+		If documentVersion >= 35 Then
+			result.runtimeInterfaceLayoutPublished = ReadInt()
+			If result.runtimeInterfaceLayoutPublished <> 0 And result.runtimeInterfaceLayoutPublished <> 1 Then Fail("BMXGT148 invalid ordinary Interface layout marker")
+			If result.runtimeInterfaceLayoutPublished And (result.semanticType.runtimeKind <> TEMPLATE_RUNTIME_INTERFACE Or Not result.semanticType.runtimeAbiName.length) Then Fail("BMXGT148 ordinary Interface layout requires a runtime Interface identity")
+			result.runtimeInterfaceSlots = ReadMembers("runtime-interface-slots")
+			For Local slotIndex:Int = 0 Until result.runtimeInterfaceSlots.length
+				Local slot:TGenericTemplateMember = result.runtimeInterfaceSlots[slotIndex]
+				If Not slot Or slot.kind <> TEMPLATE_MEMBER_METHOD Or Not slot.name.length Or Not slot.semanticType Or slot.isStatic Or slot.body Or slot.identity <> "runtime-slot:" + slotIndex Then Fail("BMXGT148 invalid ordinary Interface slot signature")
+				For Local parameter:TGenericTemplateValueParameter = EachIn slot.parameters
+					If Not parameter Or Not parameter.semanticType Or parameter.optional Or (parameter.passingMode <> GENERIC_TEMPLATE_PARAMETER_PASS_VALUE And parameter.passingMode <> GENERIC_TEMPLATE_PARAMETER_PASS_VAR) Then Fail("BMXGT148 invalid ordinary Interface slot parameter ABI")
+				Next
+			Next
+			Local parentCount:Int = ReadCount("runtime-interface-parents")
+			result.runtimeInterfaceParents = New TGenericTemplateInheritanceReference[parentCount]
+			For Local index:Int = 0 Until parentCount
+				result.runtimeInterfaceParents[index] = ReadInheritance(depth + 1)
+			Next
+			If Not result.runtimeInterfaceLayoutPublished And (result.runtimeInterfaceSlots.length Or result.runtimeInterfaceParents.length) Then Fail("BMXGT148 ordinary Interface slot records require a published layout marker")
+		End If
 		If Not result.semanticType Then Fail("BMXGT126 invalid generic template inheritance reference")
 		Return result
 	End Method
@@ -1156,6 +1201,7 @@ Type TGenericTemplateRecordReader
 		For Local childIndex:Int = 0 Until childCount
 			value.children[childIndex] = ReadNode(depth + 1)
 		Next
+		If value.identity = "closure-capture-bound-receiver" And (documentVersion < 35 Or value.kind <> TEMPLATE_NODE_DECLARATION Or Not value.semanticType Or Not value.valueText.length Or value.children.length <> 1) Then Fail("BMXGT147 computed Method receiver capture requires a typed initializer in artifact format 35")
 		If value.kind = TEMPLATE_NODE_ARRAY_LENGTH And value.children.length <> 1 Then Fail("BMXGT133 managed array length requires one receiver child")
 		If value.kind = TEMPLATE_NODE_ARRAY_ELEMENT Then
 			If documentVersion < 22 And value.children.length <> 2 Then Fail("BMXGT133 managed array element access requires receiver and index children")

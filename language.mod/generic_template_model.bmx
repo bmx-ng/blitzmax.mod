@@ -5,7 +5,7 @@ SuperStrict
 
 Import BRL.Map
 
-Const GENERIC_TEMPLATE_FORMAT_VERSION:Int = 34
+Const GENERIC_TEMPLATE_FORMAT_VERSION:Int = 35
 Const GENERIC_TEMPLATE_MIN_READ_VERSION:Int = 1
 
 Const GENERIC_DECLARATION_TYPE:Int = 1
@@ -212,6 +212,9 @@ End Type
 Type TGenericTemplateInheritanceReference
 	Field semanticType:TTemplateTypeReference
 	Field source:TTemplateSourceLocation
+	Field runtimeInterfaceLayoutPublished:Int
+	Field runtimeInterfaceSlots:TGenericTemplateMember[] = New TGenericTemplateMember[0]
+	Field runtimeInterfaceParents:TGenericTemplateInheritanceReference[] = New TGenericTemplateInheritanceReference[0]
 End Type
 
 Type TTemplateSymbolReference

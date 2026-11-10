@@ -1486,6 +1486,12 @@ Type TCompilerIrLowerer
 		If genericPlan Then
 			For Local unit:TCompilerGenericUnit = EachIn genericPlan.units
 				If Not unit Or Not unit.ir Then Continue
+				For Local runtimeInterface:TTemplateTypeReference = EachIn unit.ir.implementedRuntimeInterfaces
+					MarkTemplateRuntimeLayouts(runtimeInterface, visiting)
+				Next
+				For Local runtimeInterface:TTemplateTypeReference = EachIn unit.ir.inheritedRuntimeInterfaces
+					MarkTemplateRuntimeLayouts(runtimeInterface, visiting)
+				Next
 				For Local fieldRecord:TCompilerGenericFieldIr = EachIn unit.ir.fields
 					If fieldRecord Then
 						MarkTemplateRuntimeLayouts(fieldRecord.semanticType, visiting)
