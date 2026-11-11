@@ -2463,7 +2463,10 @@ Type TCompilerGenericCUnitEmitter
 			Case TEMPLATE_NODE_NEW, TEMPLATE_NODE_THROW, TEMPLATE_NODE_CONSTRUCTOR_DELEGATION, TEMPLATE_NODE_ARRAY_LENGTH, TEMPLATE_NODE_ARRAY_ELEMENT, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ASSERT, TEMPLATE_NODE_ARRAY_LITERAL, TEMPLATE_NODE_TRY, TEMPLATE_NODE_USING, TEMPLATE_NODE_DATA, TEMPLATE_NODE_FUNCTION_LITERAL, TEMPLATE_NODE_RELEASE, TEMPLATE_NODE_YIELD
 				Return False
 			Case TEMPLATE_NODE_CALL
-				If node.children.length <> 1 Or node.children[0].kind <> TEMPLATE_NODE_BLOCK Or node.children[0].valueText <> "ordinary-routine-signature" Then Return False
+				' A single argument has no competing C argument evaluations. Calls
+				' with several arguments need ordered, rooted temporaries first.
+				If node.children.length < 1 Or node.children.length > 2 Then Return False
+				If node.children[0].kind <> TEMPLATE_NODE_BLOCK Or node.children[0].valueText <> "ordinary-routine-signature" Then Return False
 			Case TEMPLATE_NODE_OPERATOR
 				If StringTemplateType(node.semanticType) Then
 					For Local operand:TGenericTemplateNode = EachIn node.children
@@ -6701,6 +6704,8 @@ Type TCompilerGenericCUnitEmitter
 		If helperNameOverride.length Then helperName = helperNameOverride
 		Local result:String = "struct " + abiName + " " + helperName + "(" + StructConstructorParameters(constructor, ir, True) + ") {~n"
 		result :+ "    struct " + abiName + " bmx_value = {0};~n"
+		result :+ "    struct " + abiName + " *self = &bmx_value;~n"
+		result :+ "    (void)self;~n"
 		' Install valid sentinels before publishing the in-progress value to the
 		' collector. Field initializers may allocate after the frame is active.
 		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
