@@ -122,6 +122,7 @@ Type TCompilerDirectMethodAbi
 		Local digest:String = TCompilerStableDigest.Sha256(semanticIdentity)
 		Return "bmx_direct_" + TCompilerAbiNamer.Sanitize(symbol.QualifiedName().ToLower()) + "_" + digest[..16]
 	End Function
+
 End Type
 
 Type TCompilerGenericInheritance
@@ -845,6 +846,7 @@ Type TCompilerGenericClosureCaptureIr
 	Field semanticType:TTemplateTypeReference
 	Field isParameter:Int
 	Field isSelf:Int
+	Field isBoundReceiver:Int
 	Field activationIdentity:String
 	Field source:TTemplateSourceLocation
 End Type
@@ -1030,7 +1032,7 @@ Type TCompilerGenericSpecializationLowerer
 			result.inheritedRuntimeInterfaces = DirectRuntimeInterfaceParents(node, result)
 			Local expectedParentCount:Int = node.artifact.interfaces.length
 			If node.artifact.baseType Then expectedParentCount :+ 1
-			If result.inheritedInterfaces.length + result.inheritedRuntimeInterfaces.length <> expectedParentCount Then
+			If result.inheritedInterfaces.length + DirectRuntimeInterfaceParentCount(node, result) <> expectedParentCount Then
 				diagnostics :+ ["BMXC3017 generic Interface inheritance has no canonical specialization graph target"]
 				node.state = GENERIC_SPECIALIZATION_FAILED
 			End If
@@ -1043,7 +1045,7 @@ Type TCompilerGenericSpecializationLowerer
 		Else If node.artifact.interfaces.length Then
 			Local directInterfaces:TGenericSpecializationNode[] = InterfaceTargets(node)
 			result.implementedRuntimeInterfaces = DirectRuntimeInterfaceParents(node, result)
-			If directInterfaces.length + result.implementedRuntimeInterfaces.length <> node.artifact.interfaces.length Then
+			If directInterfaces.length + DirectRuntimeInterfaceParentCount(node, result) <> node.artifact.interfaces.length Then
 				diagnostics :+ ["BMXC3017 generic Interface implementation has no canonical specialization graph target"]
 				node.state = GENERIC_SPECIALIZATION_FAILED
 			End If
@@ -1107,6 +1109,36 @@ Type TCompilerGenericSpecializationLowerer
 		values :+ [candidate]
 	End Function
 
+	Function RuntimeInterfaceReferenceForAbi:TGenericTemplateInheritanceReference(node:TGenericSpecializationNode, abiName:String, visiting:TMap = Null)
+		If Not node Or Not node.artifact Then Return Null
+		If Not visiting Then visiting = New TMap
+		If visiting.Contains(node.key.CanonicalName()) Then Return Null
+		visiting.Insert(node.key.CanonicalName(), node)
+		Local baseReference:TGenericTemplateInheritanceReference = RuntimeInterfaceReferenceInTree(node.artifact.baseType, abiName)
+		If baseReference Then Return baseReference
+		For Local reference:TGenericTemplateInheritanceReference = EachIn node.artifact.interfaces
+			Local found:TGenericTemplateInheritanceReference = RuntimeInterfaceReferenceInTree(reference, abiName)
+			If found Then Return found
+		Next
+		For Local parent:TGenericSpecializationNode = EachIn DirectInterfaceParents(node)
+			Local found:TGenericTemplateInheritanceReference = RuntimeInterfaceReferenceForAbi(parent, abiName, visiting)
+			If found Then Return found
+		Next
+		Local base:TGenericSpecializationNode = InheritanceTarget(node)
+		If base Then Return RuntimeInterfaceReferenceForAbi(base, abiName, visiting)
+		Return Null
+	End Function
+
+	Function RuntimeInterfaceReferenceInTree:TGenericTemplateInheritanceReference(reference:TGenericTemplateInheritanceReference, abiName:String)
+		If Not reference Then Return Null
+		If reference.semanticType And reference.semanticType.runtimeAbiName.ToLower() = abiName.ToLower() Then Return reference
+		For Local parent:TGenericTemplateInheritanceReference = EachIn reference.runtimeInterfaceParents
+			Local found:TGenericTemplateInheritanceReference = RuntimeInterfaceReferenceInTree(parent, abiName)
+			If found Then Return found
+		Next
+		Return Null
+	End Function
+
 	Function CollectClosureCaptureNodes(node:TGenericTemplateNode, captures:TGenericTemplateNode[] Var)
 		If Not node Then Return
 		If node.kind = TEMPLATE_NODE_FUNCTION_LITERAL And node.children.length = 3 Then
@@ -1130,7 +1162,7 @@ Type TCompilerGenericSpecializationLowerer
 		environment.abiName = TCompilerAbiNamer.Sanitize(ownerName + "_closure_environment")
 		environment.localName = "bmx_closure_environment"
 		For Local captureNode:TGenericTemplateNode = EachIn captureNodes
-			If Not captureNode Or captureNode.kind <> TEMPLATE_NODE_DECLARATION Or (captureNode.identity <> "closure-capture-local" And captureNode.identity <> "closure-capture-parameter" And captureNode.identity <> "closure-capture-self") Or Not captureNode.valueText.length Or Not captureNode.semanticType Then
+			If Not captureNode Or captureNode.kind <> TEMPLATE_NODE_DECLARATION Or (captureNode.identity <> "closure-capture-local" And captureNode.identity <> "closure-capture-parameter" And captureNode.identity <> "closure-capture-self" And captureNode.identity <> "closure-capture-bound-receiver") Or Not captureNode.valueText.length Or Not captureNode.semanticType Then
 				diagnostics :+ ["BMXC1243 generic Closure literal has an invalid canonical capture record"]
 				Continue
 			End If
@@ -1144,7 +1176,7 @@ Type TCompilerGenericSpecializationLowerer
 			End If
 			' Loop- and Catch-owned cells are planned by the C-unit closure hierarchy,
 			' where the environment can be allocated for each executed activation.
-			If TCompilerGenericCUnitEmitter.InnermostActivationContainingSource(routine.body, captureNode.source) Then Continue
+			If captureNode.identity <> "closure-capture-bound-receiver" And TCompilerGenericCUnitEmitter.InnermostActivationContainingSource(routine.body, captureNode.source) Then Continue
 			If captureNode.semanticType.kind = TEMPLATE_TYPE_STATIC_ARRAY Or Not SupportedType(captureNode.semanticType, ir) Then
 				diagnostics :+ ["BMXC1243 generic Closure capture '" + captureNode.valueText + "' has no supported managed-environment ABI"]
 				Continue
@@ -1155,6 +1187,7 @@ Type TCompilerGenericSpecializationLowerer
 			capture.semanticType = captureNode.semanticType
 			capture.isParameter = captureNode.identity = "closure-capture-parameter"
 			capture.isSelf = captureNode.identity = "closure-capture-self"
+			capture.isBoundReceiver = captureNode.identity = "closure-capture-bound-receiver"
 			capture.source = captureNode.source
 			environment.captures :+ [capture]
 			environment.capturesByName.Insert(key, capture)
@@ -1386,11 +1419,34 @@ Type TCompilerGenericSpecializationLowerer
 	Function DirectRuntimeInterfaceParents:TTemplateTypeReference[](node:TGenericSpecializationNode, ir:TCompilerGenericSpecializationIr)
 		Local result:TTemplateTypeReference[] = New TTemplateTypeReference[0]
 		If Not node Or Not node.artifact Then Return result
-		If node.artifact.baseType Then AppendRuntimeInterfaceParent(node.artifact.baseType.semanticType, node, ir, result)
+		If node.artifact.baseType Then AppendRuntimeInterfaceParentReference(node.artifact.baseType, node, ir, result)
 		For Local parent:TGenericTemplateInheritanceReference = EachIn node.artifact.interfaces
-			If parent Then AppendRuntimeInterfaceParent(parent.semanticType, node, ir, result)
+			AppendRuntimeInterfaceParentReference(parent, node, ir, result)
 		Next
 		Return result
+	End Function
+
+	Function DirectRuntimeInterfaceParentCount:Int(node:TGenericSpecializationNode, ir:TCompilerGenericSpecializationIr)
+		Local result:Int
+		If Not node Or Not node.artifact Then Return result
+		If node.artifact.baseType Then
+			Local baseType:TTemplateTypeReference = node.artifact.baseType.semanticType
+			If baseType And baseType.runtimeKind = TEMPLATE_RUNTIME_INTERFACE And baseType.runtimeAbiName.length And Not ReferencedSpecialization(baseType, ir) Then result :+ 1
+		End If
+		For Local reference:TGenericTemplateInheritanceReference = EachIn node.artifact.interfaces
+			If Not reference Or Not reference.semanticType Then Continue
+			Local interfaceType:TTemplateTypeReference = reference.semanticType
+			If interfaceType.runtimeKind = TEMPLATE_RUNTIME_INTERFACE And interfaceType.runtimeAbiName.length And Not ReferencedSpecialization(interfaceType, ir) Then result :+ 1
+		Next
+		Return result
+	End Function
+
+	Function AppendRuntimeInterfaceParentReference(reference:TGenericTemplateInheritanceReference, node:TGenericSpecializationNode, ir:TCompilerGenericSpecializationIr, result:TTemplateTypeReference[] Var)
+		If Not reference Then Return
+		AppendRuntimeInterfaceParent(reference.semanticType, node, ir, result)
+		For Local parent:TGenericTemplateInheritanceReference = EachIn reference.runtimeInterfaceParents
+			AppendRuntimeInterfaceParentReference(parent, node, ir, result)
+		Next
 	End Function
 
 	Function AppendRuntimeInterfaceParent(value:TTemplateTypeReference, node:TGenericSpecializationNode, ir:TCompilerGenericSpecializationIr, result:TTemplateTypeReference[] Var)
@@ -1530,6 +1586,33 @@ Type TCompilerGenericSpecializationLowerer
 				Next
 				If Not found Then
 					diagnostics :+ ["BMXC3017 generic Type '" + ir.specialization.artifact.identity.qualifiedName + "' does not implement Interface method '" + requirement.name + "'"]
+					ir.specialization.state = GENERIC_SPECIALIZATION_FAILED
+				End If
+			Next
+		Next
+		For Local runtimeInterface:TTemplateTypeReference = EachIn ir.implementedRuntimeInterfaces
+			Local reference:TGenericTemplateInheritanceReference = RuntimeInterfaceReferenceForAbi(ir.specialization, runtimeInterface.runtimeAbiName)
+			If Not reference Or (Not reference.runtimeInterfaceLayoutPublished And runtimeInterface.runtimeAbiName.ToLower() <> "brl_blitz_icloseable") Then
+				diagnostics :+ ["BMXC3017 ordinary Interface '" + runtimeInterface.runtimeAbiName + "' has no published slot layout"]
+				ir.specialization.state = GENERIC_SPECIALIZATION_FAILED
+				Continue
+			End If
+			For Local slot:TGenericTemplateMember = EachIn reference.runtimeInterfaceSlots
+				If Not slot Or slot.kind <> TEMPLATE_MEMBER_METHOD Or Not slot.semanticType Then
+					diagnostics :+ ["BMXC3017 ordinary Interface '" + runtimeInterface.runtimeAbiName + "' has an invalid published slot"]
+					ir.specialization.state = GENERIC_SPECIALIZATION_FAILED
+					Continue
+				End If
+				Local requirement:TCompilerGenericMethodIr = New TCompilerGenericMethodIr
+				requirement.name = slot.name
+				requirement.returnType = slot.semanticType
+				requirement.parameters = slot.parameters
+				Local found:Int = slot.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_DEFAULT And slot.linkageName.length > 0
+				For Local implementation:TCompilerGenericMethodIr = EachIn ir.methods
+					If ImplementationMatchesRequirement(implementation, requirement, ir) Then found = True; Exit
+				Next
+				If Not found Then
+					diagnostics :+ ["BMXC3017 generic Type '" + ir.specialization.artifact.identity.qualifiedName + "' does not implement ordinary Interface method '" + slot.name + "'"]
 					ir.specialization.state = GENERIC_SPECIALIZATION_FAILED
 				End If
 			Next
@@ -1985,7 +2068,8 @@ Type TCompilerGenericSpecializationLowerer
 			End Select
 		End If
 		If value.elementType.kind = TEMPLATE_TYPE_NAMED Then
-			Return value.elementType.runtimeKind = TEMPLATE_RUNTIME_STRUCT And value.elementType.runtimeAbiName.length > 0
+			If value.elementType.runtimeKind = TEMPLATE_RUNTIME_STRUCT Then Return value.elementType.runtimeAbiName.length > 0
+			If value.elementType.runtimeKind = TEMPLATE_RUNTIME_ENUM Then Return EnumValueTypeSupported(value.elementType.runtimeValueType)
 		End If
 		Return False
 	End Function
@@ -2449,7 +2533,40 @@ Type TCompilerGenericCUnitEmitter
 		End If
 		Local result:String
 		If includeStddef Then result :+ "#include <stddef.h>~n"
-		Return result + "#include <brl.mod/blitz.mod/blitz.h>~n#include <math.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
+		result :+ "#include <brl.mod/blitz.mod/blitz.h>~n#include <math.h>~n" + DefiningModuleHeaderInclude(ir) + RuntimeArgumentHeaderIncludes(ir) + "~n" + ClosureRuntimeDeclaration()
+		If ir And ir.specialization And ir.specialization.debugInstrumentation And UnitUsesRawPointerElement(ir) Then
+			result :+ "static inline void *bmx_generic_debug_pointer_element(void *data, ptrdiff_t index, size_t element_size) {~n"
+			result :+ "    if (!data) brl_blitz_RuntimeError(bbStringFromCString(~qAttempt to access null pointer~q));~n"
+			result :+ "    return (char *)data + index * (ptrdiff_t)element_size;~n}~n~n"
+		End If
+		Return result
+	End Function
+
+	Function UnitUsesRawPointerElement:Int(ir:TCompilerGenericSpecializationIr)
+		If Not ir Then Return False
+		If ir.routine And NodeUsesRawPointerElement(ir.routine.body) Then Return True
+		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
+			If NodeUsesRawPointerElement(method.body) Then Return True
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			If NodeUsesRawPointerElement(constructor.body) Then Return True
+		Next
+		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
+			If NodeUsesRawPointerElement(field.initializer) Then Return True
+		Next
+		For Local field:TCompilerGenericFieldIr = EachIn ir.staticFields
+			If NodeUsesRawPointerElement(field.initializer) Then Return True
+		Next
+		Return False
+	End Function
+
+	Function NodeUsesRawPointerElement:Int(node:TGenericTemplateNode)
+		If Not node Then Return False
+		If node.kind = TEMPLATE_NODE_ARRAY_ELEMENT And node.children.length And node.children[0].semanticType And node.children[0].semanticType.kind = TEMPLATE_TYPE_POINTER Then Return True
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If NodeUsesRawPointerElement(child) Then Return True
+		Next
+		Return False
 	End Function
 
 	Function IsRoutineSpecialization:Int(node:TGenericSpecializationNode)
@@ -3142,6 +3259,14 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitReferencedCallDeclarations:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, emitted:TMap, diagnostics:String[] Var)
 		If Not node Then Return ""
 		Local result:String
+		If node.kind = TEMPLATE_NODE_MEMBER And node.identity = "ordinary-field-getter" Then
+			If Not node.referencedSymbol Or Not node.referencedSymbol.overloadKey.length Or Not node.semanticType Or node.children.length <> 1 Then
+				diagnostics :+ ["BMXC3075 ordinary field getter has no retained linkage or result type"]
+			Else If Not emitted.Contains(node.referencedSymbol.overloadKey) Then
+				result :+ "extern " + CFunctionDeclaration(node.semanticType, node.referencedSymbol.overloadKey, "BBOBJECT receiver", ir) + ";~n"
+				emitted.Insert(node.referencedSymbol.overloadKey, node)
+			End If
+		End If
 		If node.kind = TEMPLATE_NODE_NAME And node.identity = "ordinary-callable-reference" Then
 			If Not node.referencedSymbol Or Not node.referencedSymbol.overloadKey.length Or Not node.semanticType Or node.semanticType.kind <> TEMPLATE_TYPE_CALLABLE Then
 				diagnostics :+ ["BMXC3075 ordinary callable reference has no stable signature/linkage record"]
@@ -3612,7 +3737,7 @@ Type TCompilerGenericCUnitEmitter
 		Local capturesSelf:Int
 		If captureBlock Then
 			For Local captureNode:TGenericTemplateNode = EachIn captureBlock.children
-				If Not captureNode Or captureNode.kind <> TEMPLATE_NODE_DECLARATION Or (captureNode.identity <> "closure-capture-local" And captureNode.identity <> "closure-capture-parameter" And captureNode.identity <> "closure-capture-self") Or Not captureNode.valueText.length Or Not captureNode.semanticType Then
+				If Not captureNode Or captureNode.kind <> TEMPLATE_NODE_DECLARATION Or (captureNode.identity <> "closure-capture-local" And captureNode.identity <> "closure-capture-parameter" And captureNode.identity <> "closure-capture-self" And captureNode.identity <> "closure-capture-bound-receiver") Or Not captureNode.valueText.length Or Not captureNode.semanticType Then
 					diagnostics :+ ["BMXC1243 generic Closure literal has an invalid capture record"]
 					Return Null
 				End If
@@ -3625,9 +3750,12 @@ Type TCompilerGenericCUnitEmitter
 				capture.semanticType = captureNode.semanticType
 				capture.isParameter = captureNode.identity = "closure-capture-parameter"
 				capture.isSelf = captureNode.identity = "closure-capture-self"
+				capture.isBoundReceiver = captureNode.identity = "closure-capture-bound-receiver"
 				capture.source = captureNode.source
-				Local captureActivation:TGenericTemplateNode = InnermostActivationContainingSource(ownerMethod.body, capture.source)
-				If captureActivation Then capture.activationIdentity = ClosureActivationIdentity(captureActivation)
+				If Not capture.isBoundReceiver Then
+					Local captureActivation:TGenericTemplateNode = InnermostActivationContainingSource(ownerMethod.body, capture.source)
+					If captureActivation Then capture.activationIdentity = ClosureActivationIdentity(captureActivation)
+				End If
 				result.closureCaptures :+ [capture]
 				If capture.isSelf Then capturesSelf = True
 			Next
@@ -3784,6 +3912,7 @@ Type TCompilerGenericCUnitEmitter
 
 	Function MethodOwnsClosureCapture:Int(ownerMethod:TCompilerGenericMethodIr, capture:TCompilerGenericClosureCaptureIr)
 		If Not ownerMethod Or Not capture Then Return False
+		If capture.isBoundReceiver Then Return True
 		If Not ownerMethod.isClosureInvoke Then Return True
 		If capture.isSelf Then Return False
 		For Local parameter:TGenericTemplateValueParameter = EachIn ownerMethod.parameters
@@ -3903,6 +4032,43 @@ Type TCompilerGenericCUnitEmitter
 		Return result
 	End Function
 
+	Function BoundMethodReceiverCaptureNode:TGenericTemplateNode(literal:TGenericTemplateNode)
+		If Not literal Or literal.kind <> TEMPLATE_NODE_FUNCTION_LITERAL Or literal.children.length <> 3 Then Return Null
+		Local captureBlock:TGenericTemplateNode = literal.children[1]
+		If Not captureBlock Or captureBlock.kind <> TEMPLATE_NODE_BLOCK Or captureBlock.valueText <> "closure-literal-captures" Then Return Null
+		For Local capture:TGenericTemplateNode = EachIn captureBlock.children
+			If capture And capture.identity = "closure-capture-bound-receiver" Then Return capture
+		Next
+		Return Null
+	End Function
+
+	Function EmitBoundMethodReceiverSupport:String(ownerMethod:TCompilerGenericMethodIr, literal:TGenericTemplateNode, routine:TCompilerGenericMethodIr, ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
+		Local captureNode:TGenericTemplateNode = BoundMethodReceiverCaptureNode(literal)
+		If Not captureNode Then Return ""
+		Local environment:TCompilerGenericClosureEnvironmentIr = ClosureEnvironmentForCaptures(ownerMethod, routine.closureCaptures)
+		If Not environment Then
+			diagnostics :+ ["BMXC1243 computed Method receiver has no specialization-owned closure environment"]
+			Return ""
+		End If
+		Local boundCapture:TCompilerGenericClosureCaptureIr = TCompilerGenericClosureCaptureIr(environment.capturesByName.ValueForKey(captureNode.valueText.ToLower()))
+		If Not boundCapture Then
+			diagnostics :+ ["BMXC1243 computed Method receiver has no canonical closure field"]
+			Return ""
+		End If
+		Local result:String = "static BBClosure *" + routine.abiName + "_bind(" + CValueDeclaration(boundCapture.semanticType, "receiver", ir) + ", struct " + environment.abiName + "_obj *source) {~n"
+		result :+ "    struct " + environment.abiName + "_obj *bound = " + environment.abiName + "_new();~n"
+		If environment.parent Then result :+ "    bound->" + environment.parentFieldName + " = source->" + environment.parentFieldName + ";~n"
+		For Local capture:TCompilerGenericClosureCaptureIr = EachIn environment.captures
+			If capture = boundCapture Then
+				result :+ "    bound->" + capture.abiName + " = receiver;~n"
+			Else
+				result :+ "    bound->" + capture.abiName + " = source->" + capture.abiName + ";~n"
+			End If
+		Next
+		result :+ "    return " + environment.abiName + "_closure_new((BBFuncPtr)&" + routine.abiName + ", (BBOBJECT)bound);~n}~n"
+		Return result
+	End Function
+
 	Function EmitClosureLiteralSupport:String(ownerMethod:TCompilerGenericMethodIr, body:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
 		Local literals:TGenericTemplateNode[]
 		Local literalParents:TMap = New TMap
@@ -3951,6 +4117,13 @@ Type TCompilerGenericCUnitEmitter
 		Next
 		For Local environment:TCompilerGenericClosureEnvironmentIr = EachIn environments
 			result = EmitClosureEnvironmentSupport(environment, ir) + result
+		Next
+		For Local index:Int = 0 Until literals.length
+			If Not routines[index] Then Continue
+			Local lexicalOwner:TCompilerGenericMethodIr = ownerMethod
+			Local parentLiteral:TGenericTemplateNode = TGenericTemplateNode(literalParents.ValueForKey(literals[index]))
+			If parentLiteral Then lexicalOwner = TCompilerGenericMethodIr(routinesByLiteral.ValueForKey(parentLiteral))
+			result :+ EmitBoundMethodReceiverSupport(lexicalOwner, literals[index], routines[index], ir, diagnostics)
 		Next
 		For Local index:Int = 0 Until literals.length
 			If Not routines[index] Then Continue
@@ -6578,12 +6751,25 @@ Type TCompilerGenericCUnitEmitter
 		Local vdefName:String = abiName + "_interface_vdef"
 		Local result:String
 		For Local runtimeInterface:TTemplateTypeReference = EachIn ir.implementedRuntimeInterfaces
-			If runtimeInterface.runtimeAbiName.ToLower() = "brl_blitz_icloseable" Then
-				result :+ "extern const struct BBInterface brl_blitz_ICloseable_ifc;~n"
-			End If
+			result :+ "extern const struct BBInterface " + runtimeInterface.runtimeAbiName + "_ifc;~n"
 		Next
 		For Local index:Int = 0 Until ir.implementedRuntimeInterfaces.length
-			result :+ "struct " + vdefName + "_runtime_methods_" + index + " { void (*m_Close)(BBOBJECT); };~n"
+			Local runtimeInterface:TTemplateTypeReference = ir.implementedRuntimeInterfaces[index]
+			Local reference:TGenericTemplateInheritanceReference = TCompilerGenericSpecializationLowerer.RuntimeInterfaceReferenceForAbi(ir.specialization, runtimeInterface.runtimeAbiName)
+			result :+ "struct " + vdefName + "_runtime_methods_" + index + " { "
+			If reference And reference.runtimeInterfaceSlots.length Then
+				For Local slotIndex:Int = 0 Until reference.runtimeInterfaceSlots.length
+					Local slot:TGenericTemplateMember = reference.runtimeInterfaceSlots[slotIndex]
+					Local parameters:String = "BBOBJECT"
+					For Local parameter:TGenericTemplateValueParameter = EachIn slot.parameters
+						parameters :+ ", " + CValueDeclaration(parameter.semanticType, "", ir, parameter.passingMode)
+					Next
+					result :+ CFunctionPointerDeclaration(slot.semanticType, "slot_" + slotIndex, parameters, ir) + "; "
+				Next
+			Else
+				result :+ "void *reserved; "
+			End If
+			result :+ "};~n"
 		Next
 		result :+ "struct " + vdefName + " {~n"
 		For Local index:Int = 0 Until ir.implementedInterfaces.length
@@ -6636,7 +6822,35 @@ Type TCompilerGenericCUnitEmitter
 			result :+ " },~n"
 		Next
 		For Local runtimeInterface:TTemplateTypeReference = EachIn ir.implementedRuntimeInterfaces
-			If runtimeInterface.runtimeAbiName.ToLower() = "brl_blitz_icloseable" Then
+			Local reference:TGenericTemplateInheritanceReference = TCompilerGenericSpecializationLowerer.RuntimeInterfaceReferenceForAbi(ir.specialization, runtimeInterface.runtimeAbiName)
+			If reference And reference.runtimeInterfaceSlots.length Then
+				result :+ "    { "
+				For Local slotIndex:Int = 0 Until reference.runtimeInterfaceSlots.length
+					If slotIndex Then result :+ ", "
+					Local slot:TGenericTemplateMember = reference.runtimeInterfaceSlots[slotIndex]
+					Local requirement:TCompilerGenericMethodIr = New TCompilerGenericMethodIr
+					requirement.name = slot.name
+					requirement.returnType = slot.semanticType
+					requirement.parameters = slot.parameters
+					Local implementation:TCompilerGenericMethodIr
+					For Local candidate:TCompilerGenericMethodIr = EachIn ir.methods
+						If TCompilerGenericSpecializationLowerer.ImplementationMatchesRequirement(candidate, requirement, ir) Then implementation = candidate; Exit
+					Next
+					Local parameters:String = "BBOBJECT"
+					For Local parameter:TGenericTemplateValueParameter = EachIn slot.parameters
+						parameters :+ ", " + CValueDeclaration(parameter.semanticType, "", ir, parameter.passingMode)
+					Next
+					Local castType:String = CFunctionPointerDeclaration(slot.semanticType, "", parameters, ir)
+					If implementation Then
+						result :+ "(" + castType + ")" + implementation.abiName
+					Else If slot.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_DEFAULT And slot.linkageName.length Then
+						result :+ "(" + castType + ")" + slot.linkageName
+					Else
+						result :+ "0"
+					End If
+				Next
+				result :+ " },~n"
+			Else If runtimeInterface.runtimeAbiName.ToLower() = "brl_blitz_icloseable" Then
 				Local implementation:TCompilerGenericMethodIr
 				For Local candidate:TCompilerGenericMethodIr = EachIn ir.methods
 					If candidate.name.ToLower() = "close" And candidate.parameters.length = 0 Then implementation = candidate; Exit
@@ -9628,6 +9842,8 @@ Type TCompilerGenericCUnitEmitter
 						diagnostics :+ ["BMXC1243 generic capturing Closure literal has no specialization-owned environment"]
 						Return DefaultValue(node.semanticType, ir)
 					End If
+					Local boundReceiver:TGenericTemplateNode = BoundMethodReceiverCaptureNode(node)
+					If boundReceiver Then Return literalRoutine.abiName + "_bind(" + EmitExpression(boundReceiver.children[0], ir, ownerMethod, diagnostics, locals) + ", " + literalEnvironment.localName + ")"
 					Return literalEnvironment.abiName + "_closure_new((BBFuncPtr)&" + literalRoutine.abiName + ", (BBOBJECT)" + literalEnvironment.localName + ")"
 				End If
 				Return "(&" + literalRoutine.abiName + "_value)"
@@ -9671,6 +9887,10 @@ Type TCompilerGenericCUnitEmitter
 				If ownerMethod And ownerMethod.receiverIsStruct Then Return "(*((" + receiverType + " *)self))"
 				Return "((" + receiverType + ")self)"
 			Case TEMPLATE_NODE_MEMBER
+				If node.identity = "ordinary-field-getter" And node.children.length = 1 And node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
+					Local receiver:String = EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals)
+					Return node.referencedSymbol.overloadKey + "((BBOBJECT)" + DebugManagedValue(receiver, node.children[0].semanticType, ir) + ")"
+				End If
 				If node.children.length = 1 Then
 					Local memberReceiver:TGenericTemplateNode = node.children[0]
 					Local receiverExpression:String = EmitExpression(memberReceiver, ir, ownerMethod, diagnostics, locals)
@@ -9743,6 +9963,20 @@ Type TCompilerGenericCUnitEmitter
 				If node.children.length < 2 Or Not node.children[0].semanticType Then
 					diagnostics :+ ["BMXC3063 generic Array element access requires a closed receiver and integral indexes"]
 					Return DefaultValue(node.semanticType, ir)
+				End If
+				If node.children[0].semanticType.kind = TEMPLATE_TYPE_POINTER Then
+					Local pointerType:TTemplateTypeReference = node.children[0].semanticType
+					If node.children.length <> 2 Or Not pointerType.elementType Or VoidType(pointerType.elementType) Or Not TCompilerGenericSpecializationLowerer.SupportedPointerType(pointerType) Or Not ScalarIntegralType(node.children[1].semanticType) Then
+						diagnostics :+ ["BMXC3063 generic raw pointer element access requires one integral index and a supported non-Void element type"]
+						Return DefaultValue(node.semanticType, ir)
+					End If
+					Local pointerReceiver:String = EmitExpression(node.children[0], ir, ownerMethod, diagnostics, locals)
+					Local pointerIndex:String = EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals)
+					Local pointerElementType:String = CType(pointerType.elementType, ir)
+					If ir.specialization.debugInstrumentation Then
+						Return "(*((" + pointerElementType + " *)bmx_generic_debug_pointer_element((void *)(" + pointerReceiver + "), (ptrdiff_t)(" + pointerIndex + "), sizeof(" + pointerElementType + "))))"
+					End If
+					Return "(((" + pointerElementType + " *)(" + pointerReceiver + "))[" + pointerIndex + "])"
 				End If
 				If StringTemplateType(node.children[0].semanticType) Then
 					If node.children.length <> 2 Or Not ScalarIntegralType(node.children[1].semanticType) Then
@@ -11170,6 +11404,87 @@ Type TCompilerGenericTemplateBuilder
 	' so those trees are indexed once without retaining compiler state afterward.
 	Global activeSourceLocator:TCompilerGenericTemplateSourceLocator
 
+	Function RuntimeInterfaceSlots:TGenericTemplateMember[](value:TSemanticType, model:TSemanticModel, diagnostics:String[] Var)
+		Local result:TGenericTemplateMember[] = New TGenericTemplateMember[0]
+		Local named:TNamedSemanticType = TNamedSemanticType(value)
+		If Not named Or Not named.symbol Or named.symbol.kind <> SYMBOL_INTERFACE Or named.typeArguments.length Or named.symbol.genericArity Then Return result
+		Local declaration:TTypeDeclarationSyntax = TTypeDeclarationSyntax(named.symbol.declaration)
+		If declaration And declaration.header And declaration.header.genericParameters.length Then Return result
+		AppendRuntimeInterfaceSlots(named.symbol, model, result, New TMap, New TMap, diagnostics)
+		Return result
+	End Function
+
+	Function PopulateRuntimeInterfaceReference(reference:TGenericTemplateInheritanceReference, value:TSemanticType, model:TSemanticModel, diagnostics:String[] Var, visiting:TMap = Null)
+		If Not reference Or Not reference.semanticType Or reference.semanticType.runtimeKind <> TEMPLATE_RUNTIME_INTERFACE Then Return
+		Local named:TNamedSemanticType = TNamedSemanticType(value)
+		If Not named Or Not named.symbol Or named.symbol.kind <> SYMBOL_INTERFACE Or named.typeArguments.length Or named.symbol.genericArity Then Return
+		Local declaration:TTypeDeclarationSyntax = TTypeDeclarationSyntax(named.symbol.declaration)
+		If declaration And declaration.header And declaration.header.genericParameters.length Then Return
+		If Not visiting Then visiting = New TMap
+		If visiting.Contains(named.symbol) Then
+			diagnostics :+ ["BMXC3017 ordinary Interface inheritance has a recursive slot layout"]
+			Return
+		End If
+		visiting.Insert(named.symbol, named.symbol)
+		reference.runtimeInterfaceLayoutPublished = True
+		reference.runtimeInterfaceSlots = RuntimeInterfaceSlots(value, model, diagnostics)
+		Local info:TTypeInheritanceInfo = model.InheritanceInfo(named.symbol)
+		If info Then
+			For Local edge:TInheritanceEdge = EachIn info.baseEdges + info.interfaceEdges
+				Local parentType:TNamedSemanticType = TNamedSemanticType(edge.semanticType)
+				If Not parentType Or Not parentType.symbol Or parentType.symbol.kind <> SYMBOL_INTERFACE Then Continue
+				Local parent:TGenericTemplateInheritanceReference = New TGenericTemplateInheritanceReference
+				parent.semanticType = TemplateType(edge.semanticType, model, New TSymbol[0], diagnostics)
+				parent.source = SourceLocation(edge.syntax, model)
+				PopulateRuntimeInterfaceReference(parent, edge.semanticType, model, diagnostics, visiting)
+				reference.runtimeInterfaceParents :+ [parent]
+			Next
+		End If
+		visiting.Remove(named.symbol)
+	End Function
+
+	Function AppendRuntimeInterfaceSlots(symbol:TSymbol, model:TSemanticModel, slots:TGenericTemplateMember[] Var, seen:TMap, visiting:TMap, diagnostics:String[] Var)
+		If Not symbol Or visiting.Contains(symbol) Then
+			diagnostics :+ ["BMXC3017 ordinary Interface inheritance has a recursive or unresolved slot layout"]
+			Return
+		End If
+		visiting.Insert(symbol, symbol)
+		Local info:TTypeInheritanceInfo = model.InheritanceInfo(symbol)
+		If info Then
+			For Local edge:TInheritanceEdge = EachIn info.baseEdges + info.interfaceEdges
+				Local parent:TNamedSemanticType = TNamedSemanticType(edge.semanticType)
+				If parent And parent.symbol And parent.symbol.kind = SYMBOL_INTERFACE Then AppendRuntimeInterfaceSlots(parent.symbol, model, slots, seen, visiting, diagnostics)
+			Next
+		End If
+		If symbol.memberScope Then
+			For Local member:TSymbol = EachIn symbol.memberScope.declaredSymbols
+				If Not member Or member.kind <> SYMBOL_ROUTINE Or member.genericArity Or seen.Contains(member) Then Continue
+				seen.Insert(member, member)
+				Local slot:TGenericTemplateMember = New TGenericTemplateMember
+				slot.kind = TEMPLATE_MEMBER_METHOD
+				slot.identity = "runtime-slot:" + slots.length
+				slot.name = member.name
+				slot.semanticType = TemplateType(member.declaredType, model, New TSymbol[0], diagnostics)
+				slot.interfaceMethodKind = member.interfaceMethodKind
+				slot.linkageName = member.externalName
+				slot.source = SourceLocation(member.declaration, model)
+				For Local index:Int = 0 Until member.parameters.length
+					Local sourceParameter:TSemanticParameter = member.parameters[index]
+					Local parameter:TGenericTemplateValueParameter = New TGenericTemplateValueParameter
+					parameter.name = "arg" + index
+					If sourceParameter.symbol Then parameter.name = sourceParameter.symbol.name
+					parameter.ordinal = index
+					parameter.semanticType = TemplateType(sourceParameter.semanticType, model, New TSymbol[0], diagnostics)
+					parameter.passingMode = sourceParameter.passingMode
+					parameter.source = slot.source
+					slot.parameters :+ [parameter]
+				Next
+				slots :+ [slot]
+			Next
+		End If
+		visiting.Remove(symbol)
+	End Function
+
 	Function Build:TGenericTemplateArtifact(model:TSemanticModel, symbol:TSymbol, definingModuleIdentity:String, languageLinkageRevision:String, diagnostics:String[] Var, deferContentRevision:Int = False)
 		Local previousSourceLocator:TCompilerGenericTemplateSourceLocator = activeSourceLocator
 		activeSourceLocator = TCompilerGenericTemplateSourceLocator.Create(model)
@@ -11251,8 +11566,10 @@ Type TCompilerGenericTemplateBuilder
 		Local additionalInterfaceStart:Int
 		If header.extendsTypes.length Then
 			artifact.baseType = New TGenericTemplateInheritanceReference
-			artifact.baseType.semanticType = TemplateType(model.TypeOf(header.extendsTypes[0]), model, parameterSymbols, diagnostics)
+			Local baseType:TSemanticType = model.TypeOf(header.extendsTypes[0])
+			artifact.baseType.semanticType = TemplateType(baseType, model, parameterSymbols, diagnostics)
 			artifact.baseType.source = SourceLocation(header.extendsTypes[0], model)
+			PopulateRuntimeInterfaceReference(artifact.baseType, baseType, model, diagnostics)
 			If symbol.kind = SYMBOL_INTERFACE Then additionalInterfaceStart = 1
 		End If
 		Local interfaceCount:Int = header.implementedTypes.length
@@ -11266,8 +11583,10 @@ Type TCompilerGenericTemplateBuilder
 				sourceType = header.implementedTypes[index]
 			End If
 			Local reference:TGenericTemplateInheritanceReference = New TGenericTemplateInheritanceReference
-			reference.semanticType = TemplateType(model.TypeOf(sourceType), model, parameterSymbols, diagnostics)
+			Local implementedType:TSemanticType = model.TypeOf(sourceType)
+			reference.semanticType = TemplateType(implementedType, model, parameterSymbols, diagnostics)
 			reference.source = SourceLocation(sourceType, model)
+			PopulateRuntimeInterfaceReference(reference, implementedType, model, diagnostics)
 			artifact.interfaces[index] = reference
 		Next
 
@@ -13683,8 +14002,8 @@ Type TCompilerGenericTemplateBuilder
 				If receiver And lowerBound And upperBound Then result.children = [receiver, lowerBound, upperBound]
 				Return result
 			End If
-			If Not indexExpression.access Or (indexExpression.access.accessKind <> INDEX_ACCESS_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STATIC_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STRING) Then
-				diagnostics :+ ["BMXC3063 generic element access requires a bound String, managed Array, or StaticArray index"]
+			If Not indexExpression.access Or (indexExpression.access.accessKind <> INDEX_ACCESS_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STATIC_ARRAY And indexExpression.access.accessKind <> INDEX_ACCESS_STRING And indexExpression.access.accessKind <> INDEX_ACCESS_POINTER) Then
+				diagnostics :+ ["BMXC3063 generic element access requires a bound String, managed Array, StaticArray, or raw pointer index"]
 				Return Null
 			End If
 			Local indexedArray:TArraySemanticType = TArraySemanticType(indexExpression.receiver.semanticType)
@@ -13695,6 +14014,13 @@ Type TCompilerGenericTemplateBuilder
 			If indexExpression.access.accessKind = INDEX_ACCESS_STATIC_ARRAY And indexExpression.indexes.length <> 1 Then
 				diagnostics :+ ["BMXC3063 generic StaticArray element access requires one index"]
 				Return Null
+			End If
+			If indexExpression.access.accessKind = INDEX_ACCESS_POINTER Then
+				Local pointerType:TPointerSemanticType = TPointerSemanticType(indexExpression.receiver.semanticType)
+				If Not pointerType Or indexExpression.indexes.length <> 1 Or IsBuiltinSemanticType(pointerType.elementType, "void") Then
+					diagnostics :+ ["BMXC3063 generic raw pointer element access requires one index and a non-Void element type"]
+					Return Null
+				End If
 			End If
 			Local result:TGenericTemplateNode = New TGenericTemplateNode
 			result.kind = TEMPLATE_NODE_ARRAY_ELEMENT
@@ -13849,17 +14175,34 @@ Type TCompilerGenericTemplateBuilder
 			diagnostics :+ ["BMXC3075 bound Method reference requires a complete managed Closure signature"]
 			Return Null
 		End If
-		If reference.routine.genericArity Then
-			diagnostics :+ ["BMXC3075 explicitly specialized generic Method references are not yet supported"]
+		If reference.routine.genericArity And reference.typeArguments.length <> reference.routine.genericArity Then
+			diagnostics :+ ["BMXC3075 generic Method reference requires a complete explicit type-argument binding"]
 			Return Null
 		End If
 
 		Local receiverSymbol:TBoundSymbolExpression = TBoundSymbolExpression(reference.receiver)
 		Local receiverSelf:TBoundSelfExpression = TBoundSelfExpression(reference.receiver)
 		If receiverSymbol And (Not receiverSymbol.symbol Or (receiverSymbol.symbol.kind <> SYMBOL_PARAMETER And receiverSymbol.symbol.kind <> SYMBOL_LOCAL And receiverSymbol.symbol.kind <> SYMBOL_CATCH_PARAMETER)) Then receiverSymbol = Null
-		If Not receiverSymbol And Not receiverSelf Then
-			diagnostics :+ ["BMXC3075 a bound Method receiver created inside a generic routine must currently be Self, a parameter, or a Local"]
-			Return Null
+		Local computedReceiver:Int = Not receiverSymbol And Not receiverSelf
+		Local ordinaryFieldGetter:String
+		If computedReceiver Then
+			Local fieldReceiver:TBoundMemberExpression = TBoundMemberExpression(reference.receiver)
+			If fieldReceiver And fieldReceiver.access And fieldReceiver.access.member And fieldReceiver.access.member.kind = SYMBOL_FIELD Then
+				Local fieldOwner:TNamedSemanticType = TNamedSemanticType(fieldReceiver.receiver.semanticType)
+				If fieldOwner And fieldOwner.symbol And fieldOwner.symbol.genericArity = 0 And fieldOwner.symbol.kind = SYMBOL_TYPE Then
+					Local declaringOwner:TSymbol = fieldOwner.symbol
+					If fieldReceiver.access.member.containingScope And fieldReceiver.access.member.containingScope.owner Then declaringOwner = fieldReceiver.access.member.containingScope.owner
+					If declaringOwner.isImported Then
+						diagnostics :+ ["BMXC3075 computed Method receiver field requires a getter published by its defining source unit"]
+						Return Null
+					End If
+					ordinaryFieldGetter = TCompilerAbiNamer.FieldGetterAbiName(TCompilerDirectMethodAbi.OwnerAbiName(model, declaringOwner), fieldReceiver.access.member.name)
+					If Not ordinaryFieldGetter.length Then
+						diagnostics :+ ["BMXC3075 computed Method receiver field has no stable owner accessor ABI"]
+						Return Null
+					End If
+				End If
+			End If
 		End If
 
 		Local result:TGenericTemplateNode = New TGenericTemplateNode
@@ -13892,7 +14235,21 @@ Type TCompilerGenericTemplateBuilder
 		capture.kind = TEMPLATE_NODE_DECLARATION
 		capture.semanticType = TemplateType(reference.receiver.semanticType, model, parameters, diagnostics, parameterOwner)
 		capture.source = result.source
-		If receiverSelf Then
+		If computedReceiver Then
+			capture.valueText = "bmx_bound_receiver_" + result.source.start
+			capture.identity = "closure-capture-bound-receiver"
+			Local initializer:TGenericTemplateNode = TemplateExpression(reference.receiver, model, parameters, diagnostics, parameterOwner, localRoutineContext)
+			If Not initializer Then Return Null
+			If ordinaryFieldGetter.length Then
+				If initializer.kind <> TEMPLATE_NODE_MEMBER Or initializer.children.length <> 1 Or Not initializer.referencedSymbol Then
+					diagnostics :+ ["BMXC3075 computed Method receiver field has no canonical read accessor record"]
+					Return Null
+				End If
+				initializer.identity = "ordinary-field-getter"
+				initializer.referencedSymbol.overloadKey = ordinaryFieldGetter
+			End If
+			capture.children = [initializer]
+		Else If receiverSelf Then
 			capture.valueText = "Self"
 			capture.identity = "closure-capture-self"
 		Else
@@ -13904,6 +14261,7 @@ Type TCompilerGenericTemplateBuilder
 		Local resolved:TResolvedCall = New TResolvedCall
 		resolved.routine = reference.routine
 		resolved.returnType = closureType.signature.returnType
+		resolved.typeArguments = reference.typeArguments
 		resolved.parameterTypes = closureType.signature.parameterTypes
 		resolved.argumentTypes = closureType.signature.parameterTypes
 		Local call:TBoundCallExpression = New TBoundCallExpression
@@ -13923,6 +14281,20 @@ Type TCompilerGenericTemplateBuilder
 		Next
 		Local invocation:TGenericTemplateNode = TemplateExpression(call, model, parameters, diagnostics, parameterOwner, localRoutineContext)
 		If Not invocation Then Return Null
+		If computedReceiver Then
+			Local receiverIndex:Int
+			If invocation.children.length And invocation.children[0].kind = TEMPLATE_NODE_BLOCK Then receiverIndex = 1
+			If receiverIndex >= invocation.children.length Or Not invocation.children[receiverIndex] Then
+				diagnostics :+ ["BMXC3075 computed Method reference has no bound invocation receiver"]
+				Return Null
+			End If
+			Local receiver:TGenericTemplateNode = New TGenericTemplateNode
+			receiver.kind = TEMPLATE_NODE_NAME
+			receiver.valueText = capture.valueText
+			receiver.semanticType = invocation.children[receiverIndex].semanticType
+			receiver.source = result.source
+			invocation.children[receiverIndex] = receiver
+		End If
 
 		Local statement:TGenericTemplateNode = New TGenericTemplateNode
 		statement.source = result.source

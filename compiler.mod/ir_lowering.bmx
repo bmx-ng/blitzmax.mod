@@ -1061,6 +1061,12 @@ Type TCompilerIrLowerer
 	Method GenericIrTypeName:String(value:TTemplateTypeReference)
 		If Not value Then Return ""
 		If value.kind = TEMPLATE_TYPE_BUILTIN Then Return CanonicalBuiltinDisplayName(value.symbolName)
+		If value.kind = TEMPLATE_TYPE_POINTER And value.elementType Then
+			' An Enum pointer has the same element layout as its integral value
+			' type. The generic unit retains the Enum identity separately.
+			If value.elementType.kind = TEMPLATE_TYPE_NAMED And value.elementType.runtimeKind = TEMPLATE_RUNTIME_ENUM Then Return CanonicalBuiltinDisplayName(value.elementType.runtimeValueType) + " Ptr"
+			Return GenericIrTypeName(value.elementType) + " Ptr"
+		End If
 		If value.kind = TEMPLATE_TYPE_ARRAY And value.elementType Then
 			Local suffix:String = "["
 			For Local rankIndex:Int = 1 Until value.rank
@@ -1486,6 +1492,12 @@ Type TCompilerIrLowerer
 		If genericPlan Then
 			For Local unit:TCompilerGenericUnit = EachIn genericPlan.units
 				If Not unit Or Not unit.ir Then Continue
+				For Local runtimeInterface:TTemplateTypeReference = EachIn unit.ir.implementedRuntimeInterfaces
+					MarkTemplateRuntimeLayouts(runtimeInterface, visiting)
+				Next
+				For Local runtimeInterface:TTemplateTypeReference = EachIn unit.ir.inheritedRuntimeInterfaces
+					MarkTemplateRuntimeLayouts(runtimeInterface, visiting)
+				Next
 				For Local fieldRecord:TCompilerGenericFieldIr = EachIn unit.ir.fields
 					If fieldRecord Then
 						MarkTemplateRuntimeLayouts(fieldRecord.semanticType, visiting)

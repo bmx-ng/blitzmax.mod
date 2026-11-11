@@ -92,6 +92,11 @@ Type TCompilerAbiNamer
 		Return Sanitize("_" + classAbiName.ToLower() + "_" + fieldName.ToLower())
 	End Function
 
+	Function FieldGetterAbiName:String(ownerAbiName:String, fieldName:String)
+		If Not ownerAbiName.length Or Not fieldName.length Then Return ""
+		Return Sanitize("bmx_generic_field_get_" + ownerAbiName + "_" + fieldName.ToLower())
+	End Function
+
 	Function ClassSlotName:String(symbol:TSymbol)
 		If Not symbol Then Return ""
 		Local prefix:String = "f_"
