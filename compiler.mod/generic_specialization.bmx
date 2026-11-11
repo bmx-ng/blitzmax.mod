@@ -2550,8 +2550,9 @@ Type TCompilerGenericCUnitEmitter
 		If Not EmbeddedScalarType(ir.routine.returnType) Then Return "routine has unsupported return type '" + ir.routine.returnType.CanonicalName() + "'"
 		For Local parameter:TGenericTemplateValueParameter = EachIn ir.routine.parameters
 			If Not parameter Then Return "routine has missing parameter IR"
-			If parameter.passingMode <> PARAMETER_PASS_VALUE Then Return "routine parameter '" + parameter.name + "' has unsupported passing mode"
+			If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "routine parameter '" + parameter.name + "' has unsupported passing mode"
 			If Not EmbeddedScalarType(parameter.semanticType) Then Return "routine parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+			If parameter.passingMode = PARAMETER_PASS_VAR And parameter.semanticType.kind = TEMPLATE_TYPE_POINTER Then Return "routine parameter '" + parameter.name + "' has unsupported pointer Var ABI"
 		Next
 		If Not EmbeddedScalarNode(ir.routine.body) Then Return "routine body uses an unsupported ABI shape or operation"
 		Return ""
@@ -11138,8 +11139,9 @@ Type TCompilerGenericCUnitEmitter
 				Case "uint" Return "uint32_t"
 				Case "long" Return "int64_t"
 				Case "ulong" Return "uint64_t"
-				Case "longint" Return "intptr_t"
-				Case "ulongint", "size_t" Return "uintptr_t"
+				Case "longint" Return "long"
+				Case "ulongint" Return "unsigned long"
+				Case "size_t" Return "size_t"
 				Case "float" Return "float"
 				Case "double" Return "double"
 				Case "string" Return "const BMXEmbeddedString *"
@@ -11220,8 +11222,9 @@ Type TCompilerGenericCUnitEmitter
 				Case "uint" Return "uint32_t"
 				Case "long" Return "int64_t"
 				Case "ulong" Return "uint64_t"
-				Case "longint" Return "intptr_t"
-				Case "ulongint", "size_t" Return "uintptr_t"
+				Case "longint" Return "long"
+				Case "ulongint" Return "unsigned long"
+				Case "size_t" Return "size_t"
 			End Select
 			Return ""
 		End If
