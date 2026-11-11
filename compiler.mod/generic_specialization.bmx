@@ -2467,6 +2467,14 @@ Type TCompilerGenericCUnitEmitter
 		Return False
 	End Function
 
+	Function EmbeddedStructCallRequiresSequence:Int(node:TGenericTemplateNode)
+		If Not node Or node.kind <> TEMPLATE_NODE_CALL Or node.children.length <= 2 Then Return False
+		For Local index:Int = 1 Until node.children.length
+			If Not EmbeddedStructStableCallArgument(node.children[index]) Then Return True
+		Next
+		Return False
+	End Function
+
 	Function EmbeddedStructNode:Int(node:TGenericTemplateNode)
 		If Not node Then Return True
 		' Self is represented with the closed Struct type, while member nodes carry
@@ -2480,13 +2488,15 @@ Type TCompilerGenericCUnitEmitter
 			Case TEMPLATE_NODE_NEW, TEMPLATE_NODE_THROW, TEMPLATE_NODE_CONSTRUCTOR_DELEGATION, TEMPLATE_NODE_ARRAY_LENGTH, TEMPLATE_NODE_ARRAY_ELEMENT, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ASSERT, TEMPLATE_NODE_ARRAY_LITERAL, TEMPLATE_NODE_TRY, TEMPLATE_NODE_USING, TEMPLATE_NODE_DATA, TEMPLATE_NODE_FUNCTION_LITERAL, TEMPLATE_NODE_RELEASE, TEMPLATE_NODE_YIELD
 				Return False
 			Case TEMPLATE_NODE_CALL
-				' C may evaluate arguments in any order. Several arguments are safe
-				' only when each is a stable read or a scalar literal.
+				' C may evaluate arguments in any order. Calls with allocating
+				' arguments use ordered, rooted temporaries in the embedded emitter.
 				If node.children.length < 1 Then Return False
 				If node.children[0].kind <> TEMPLATE_NODE_BLOCK Or node.children[0].valueText <> "ordinary-routine-signature" Then Return False
-				If node.children.length > 2 Then
-					For Local index:Int = 1 Until node.children.length
-						If Not EmbeddedStructStableCallArgument(node.children[index]) Then Return False
+				If EmbeddedStructCallRequiresSequence(node) Then
+					Local signature:TGenericTemplateNode = node.children[0]
+					If signature.identity.length Or signature.children.length <> node.children.length - 1 Then Return False
+					For Local parameter:TGenericTemplateNode = EachIn signature.children
+						If Int(parameter.valueText) <> PARAMETER_PASS_VALUE Then Return False
 					Next
 				End If
 			Case TEMPLATE_NODE_OPERATOR
@@ -10692,6 +10702,7 @@ Type TCompilerGenericCUnitEmitter
 							Return "({ " + valueType + " bmx_minmax_left = " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + "; " + valueType + " bmx_minmax_right = " + EmitExpression(node.children[2], ir, ownerMethod, diagnostics, locals) + "; bmx_minmax_left " + comparison + " bmx_minmax_right ? bmx_minmax_left : bmx_minmax_right; })"
 						End If
 						If node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
+							If EmbeddedTarget(ir) And ir.isStruct And EmbeddedStructCallRequiresSequence(node) Then Return EmitEmbeddedSequencedOrdinaryCall(node, ir, ownerMethod, diagnostics, locals)
 							Local ordinaryName:String = node.referencedSymbol.overloadKey
 							' Sqr maps directly to C math for source-owned generic units,
 							' which may not include BRL.Math's generated module header.
@@ -10962,6 +10973,44 @@ Type TCompilerGenericCUnitEmitter
 		Next
 		If Not result Then diagnostics :+ ["BMXC3061 generic Self call '" + call.valueText + "' has no exact canonical virtual slot"]
 		Return result
+	End Function
+
+	Function EmitEmbeddedSequencedOrdinaryCall:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
+		Local signature:TGenericTemplateNode = node.children[0]
+		Local result:String = "({ "
+		Local rootSlots:String[]
+		For Local index:Int = 1 Until node.children.length
+			Local parameterType:TTemplateTypeReference = signature.children[index - 1].semanticType
+			Local argumentName:String = "bmx_seq_arg" + (index - 1)
+			result :+ CValueDeclaration(parameterType, argumentName, ir) + " = " + DefaultValue(parameterType, ir) + "; "
+			Local slot:String = EmbeddedGenericRootSlot(parameterType, "&" + argumentName, ir)
+			If slot.length Then rootSlots :+ [slot]
+		Next
+		If rootSlots.length Then
+			result :+ "BMXEmbeddedRootFrame bmx_seq_frame; BMXEmbeddedRootSlot bmx_seq_slots[" + rootSlots.length + "] = { "
+			For Local index:Int = 0 Until rootSlots.length
+				If index Then result :+ ", "
+				result :+ rootSlots[index]
+			Next
+			result :+ " }; bmx_embedded_root_frame_enter(&bmx_seq_frame, bmx_seq_slots, " + rootSlots.length + "); "
+		End If
+		Local invocation:String = node.referencedSymbol.overloadKey + "("
+		For Local index:Int = 1 Until node.children.length
+			Local argumentName:String = "bmx_seq_arg" + (index - 1)
+			Local parameterType:TTemplateTypeReference = signature.children[index - 1].semanticType
+			result :+ argumentName + " = (" + CType(parameterType, ir) + ")( " + EmitExpression(node.children[index], ir, ownerMethod, diagnostics, locals) + " ); "
+			If index > 1 Then invocation :+ ", "
+			invocation :+ argumentName
+		Next
+		invocation :+ ")"
+		If VoidType(node.semanticType) Then
+			result :+ invocation + "; "
+		Else
+			result :+ CValueDeclaration(node.semanticType, "bmx_seq_result", ir) + " = " + invocation + "; "
+		End If
+		If rootSlots.length Then result :+ "bmx_embedded_root_frame_leave(&bmx_seq_frame); "
+		If Not VoidType(node.semanticType) Then result :+ "bmx_seq_result; "
+		Return result + "})"
 	End Function
 
 	Function EmitCallArgument:String(argument:TGenericTemplateNode, parameter:TGenericTemplateValueParameter, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
