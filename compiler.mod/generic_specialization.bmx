@@ -2408,6 +2408,25 @@ Type TCompilerGenericCUnitEmitter
 		Return True
 	End Function
 
+	Function EmbeddedRoutineValueType:Int(value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr = Null)
+		If EmbeddedScalarType(value) Or StringTemplateType(value) Then Return True
+		If Not value Then Return False
+		If value.kind = TEMPLATE_TYPE_ARRAY Then Return TCompilerGenericSpecializationLowerer.SupportedManagedArrayType(value, ir)
+		If value.kind = TEMPLATE_TYPE_BUILTIN Then Return value.symbolName.ToLower() = "object"
+		If value.kind = TEMPLATE_TYPE_NAMED And (value.runtimeKind = TEMPLATE_RUNTIME_CLASS Or value.runtimeKind = TEMPLATE_RUNTIME_INTERFACE) Then Return EmbeddedTypeValueType(value, ir)
+		Return False
+	End Function
+
+	Function EmbeddedRoutineNode:Int(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr)
+		If Not node Then Return True
+		If node.kind = TEMPLATE_NODE_OPERATOR And node.identity = "type-measure" Then Return EmbeddedScalarNode(node)
+		If node.semanticType And Not EmbeddedRoutineValueType(node.semanticType, ir) Then Return False
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If Not EmbeddedRoutineNode(child, ir) Then Return False
+		Next
+		Return True
+	End Function
+
 	Function EmbeddedStructValueType:Int(value:TTemplateTypeReference)
 		If EmbeddedScalarType(value) Then Return True
 		Return value And value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "string"
@@ -2547,14 +2566,14 @@ Type TCompilerGenericCUnitEmitter
 		If ir And Not ir.isRoutine And Not ir.isInterface Then Return EmbeddedTypeBaselineUnsupportedReason(ir)
 		If Not ir Or Not ir.isRoutine Or Not ir.routine Then Return "missing routine specialization IR"
 		If ir.routine.receiverType Then Return "generic method receiver ABI is unsupported"
-		If Not EmbeddedScalarType(ir.routine.returnType) Then Return "routine has unsupported return type '" + ir.routine.returnType.CanonicalName() + "'"
+		If Not EmbeddedRoutineValueType(ir.routine.returnType, ir) Then Return "routine has unsupported return type '" + ir.routine.returnType.CanonicalName() + "'"
 		For Local parameter:TGenericTemplateValueParameter = EachIn ir.routine.parameters
 			If Not parameter Then Return "routine has missing parameter IR"
 			If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "routine parameter '" + parameter.name + "' has unsupported passing mode"
-			If Not EmbeddedScalarType(parameter.semanticType) Then Return "routine parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+			If Not EmbeddedRoutineValueType(parameter.semanticType, ir) Then Return "routine parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
 			If parameter.passingMode = PARAMETER_PASS_VAR And parameter.semanticType.kind = TEMPLATE_TYPE_POINTER Then Return "routine parameter '" + parameter.name + "' has unsupported pointer Var ABI"
 		Next
-		If Not EmbeddedScalarNode(ir.routine.body) Then Return "routine body uses an unsupported ABI shape or operation"
+		If Not EmbeddedRoutineNode(ir.routine.body, ir) Then Return "routine body uses an unsupported ABI shape or operation"
 		Return ""
 	End Function
 
