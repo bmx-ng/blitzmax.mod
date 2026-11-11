@@ -2468,7 +2468,16 @@ Type TCompilerGenericCUnitEmitter
 		If Not ir Then Return "missing specialization IR"
 		If ir.isRoutine Or ir.isInterface Or ir.isStruct Then Return "specialization kind is not a Type"
 		If ir.staticFields.length Then Return "static fields are not supported"
-		If ir.implementedRuntimeInterfaces.length Then Return "ordinary imported Interface implementation is not supported"
+		For Local runtimeInterface:TTemplateTypeReference = EachIn ir.implementedRuntimeInterfaces
+			Local reference:TGenericTemplateInheritanceReference = TCompilerGenericSpecializationLowerer.RuntimeInterfaceReferenceForAbi(ir.specialization, runtimeInterface.runtimeAbiName)
+			If Not reference Or (Not reference.runtimeInterfaceLayoutPublished And runtimeInterface.runtimeAbiName.ToLower() <> "brl_blitz_icloseable") Then Return "ordinary Interface '" + runtimeInterface.runtimeAbiName + "' has no published slot layout"
+			For Local slot:TGenericTemplateMember = EachIn reference.runtimeInterfaceSlots
+				If Not slot Or Not slot.semanticType Or Not EmbeddedTypeValueType(slot.semanticType, ir) Then Return "ordinary Interface '" + runtimeInterface.runtimeAbiName + "' has an unsupported method return type"
+				For Local parameter:TGenericTemplateValueParameter = EachIn slot.parameters
+					If Not parameter Or (parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR) Or Not EmbeddedTypeValueType(parameter.semanticType, ir) Then Return "ordinary Interface '" + runtimeInterface.runtimeAbiName + "' has an unsupported method parameter"
+				Next
+			Next
+		Next
 		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
 			If Not genericField Then Return "missing field IR"
 			If Not EmbeddedTypeValueType(genericField.semanticType, ir) Then Return "field '" + genericField.name + "' has unsupported type '" + genericField.semanticType.CanonicalName() + "'"
@@ -4550,10 +4559,10 @@ Type TCompilerGenericCUnitEmitter
 			result.Append("};~n")
 		End If
 		Local interfaceEntries:String = "0"
-		Local interfaceCount:Int = ir.implementedInterfaces.length
+		Local interfaceCount:Int = ir.implementedInterfaces.length + ir.implementedRuntimeInterfaces.length
 		If interfaceCount Then
 			interfaceEntries = abiName + "_interfaces"
-			For Local interfaceIndex:Int = 0 Until interfaceCount
+			For Local interfaceIndex:Int = 0 Until ir.implementedInterfaces.length
 				Local interfaceNode:TGenericSpecializationNode = ir.implementedInterfaces[interfaceIndex]
 				Local requirements:TCompilerGenericMethodIr[] = TCompilerGenericSpecializationLowerer.EffectiveInterfaceMethods(interfaceNode, ir, diagnostics)
 				Local interfaceMethods:String = interfaceEntries + "_" + interfaceIndex
@@ -4578,13 +4587,72 @@ Type TCompilerGenericCUnitEmitter
 					interfaceMethods = "0"
 				End If
 			Next
+			Local declaredDefaults:TMap = New TMap
+			For Local runtimeIndex:Int = 0 Until ir.implementedRuntimeInterfaces.length
+				Local runtimeInterface:TTemplateTypeReference = ir.implementedRuntimeInterfaces[runtimeIndex]
+				Local reference:TGenericTemplateInheritanceReference = TCompilerGenericSpecializationLowerer.RuntimeInterfaceReferenceForAbi(ir.specialization, runtimeInterface.runtimeAbiName)
+				Local interfaceMethods:String = interfaceEntries + "_" + (ir.implementedInterfaces.length + runtimeIndex)
+				If Not reference Then Continue
+				If Not reference.runtimeInterfaceSlots.length And runtimeInterface.runtimeAbiName.ToLower() = "brl_blitz_icloseable" Then
+					Local implementation:TCompilerGenericMethodIr
+					For Local candidate:TCompilerGenericMethodIr = EachIn ir.methods
+						If candidate.name.ToLower() = "close" And candidate.parameters.length = 0 Then implementation = candidate; Exit
+					Next
+					If implementation Then
+						result.Append("static const BMXEmbeddedMethod " + interfaceMethods + "[1] = { (BMXEmbeddedMethod)" + implementation.abiName + " };~n")
+					Else
+						diagnostics :+ ["BMXC3017 generic Embedded Type '" + ir.specialization.artifact.identity.qualifiedName + "' does not implement ICloseable.Close"]
+					End If
+					Continue
+				End If
+				If Not reference.runtimeInterfaceSlots.length Then Continue
+				For Local slot:TGenericTemplateMember = EachIn reference.runtimeInterfaceSlots
+					If slot.interfaceMethodKind <> TEMPLATE_INTERFACE_METHOD_DEFAULT Or Not slot.linkageName.length Or declaredDefaults.Contains(slot.linkageName) Then Continue
+					Local parameters:String = "BMXEmbeddedObject *self"
+					For Local parameter:TGenericTemplateValueParameter = EachIn slot.parameters
+						parameters :+ ", " + CValueDeclaration(parameter.semanticType, TCompilerAbiNamer.Sanitize(parameter.name), ir, parameter.passingMode)
+					Next
+					result.Append("extern " + CFunctionDeclaration(slot.semanticType, slot.linkageName, parameters, ir) + ";~n")
+					declaredDefaults.Insert(slot.linkageName, slot)
+				Next
+				result.Append("static const BMXEmbeddedMethod " + interfaceMethods + "[" + reference.runtimeInterfaceSlots.length + "] = {~n")
+				For Local slot:TGenericTemplateMember = EachIn reference.runtimeInterfaceSlots
+					Local requirement:TCompilerGenericMethodIr = New TCompilerGenericMethodIr
+					requirement.name = slot.name
+					requirement.returnType = slot.semanticType
+					requirement.parameters = slot.parameters
+					Local implementation:TCompilerGenericMethodIr
+					For Local candidate:TCompilerGenericMethodIr = EachIn ir.methods
+						If TCompilerGenericSpecializationLowerer.ImplementationMatchesRequirement(candidate, requirement, ir) Then implementation = candidate; Exit
+					Next
+					If implementation Then
+						result.Append("    (BMXEmbeddedMethod)" + implementation.abiName + ",~n")
+					Else If slot.interfaceMethodKind = TEMPLATE_INTERFACE_METHOD_DEFAULT And slot.linkageName.length Then
+						result.Append("    (BMXEmbeddedMethod)" + slot.linkageName + ",~n")
+					Else
+						diagnostics :+ ["BMXC3017 generic Embedded Type '" + ir.specialization.artifact.identity.qualifiedName + "' has no implementation for ordinary Interface method '" + slot.name + "'"]
+						result.Append("    0,~n")
+					End If
+				Next
+				result.Append("};~n")
+			Next
 			result.Append("static const BMXEmbeddedInterfaceEntry " + interfaceEntries + "[" + interfaceCount + "] = {~n")
-			For Local interfaceIndex:Int = 0 Until interfaceCount
+			For Local interfaceIndex:Int = 0 Until ir.implementedInterfaces.length
 				Local interfaceNode:TGenericSpecializationNode = ir.implementedInterfaces[interfaceIndex]
 				Local requirements:TCompilerGenericMethodIr[] = TCompilerGenericSpecializationLowerer.EffectiveInterfaceMethods(interfaceNode, ir, diagnostics)
 				Local interfaceMethods:String = interfaceEntries + "_" + interfaceIndex
 				If Not requirements.length Then interfaceMethods = "0"
 				result.Append("    { &" + interfaceNode.readableAbiName + "_ifc, " + interfaceMethods + ", " + requirements.length + " },~n")
+			Next
+			For Local runtimeIndex:Int = 0 Until ir.implementedRuntimeInterfaces.length
+				Local runtimeInterface:TTemplateTypeReference = ir.implementedRuntimeInterfaces[runtimeIndex]
+				Local reference:TGenericTemplateInheritanceReference = TCompilerGenericSpecializationLowerer.RuntimeInterfaceReferenceForAbi(ir.specialization, runtimeInterface.runtimeAbiName)
+				Local methodCount:Int
+				If reference Then methodCount = reference.runtimeInterfaceSlots.length
+				If Not methodCount And runtimeInterface.runtimeAbiName.ToLower() = "brl_blitz_icloseable" Then methodCount = 1
+				Local interfaceMethods:String = "0"
+				If methodCount Then interfaceMethods = interfaceEntries + "_" + (ir.implementedInterfaces.length + runtimeIndex)
+				result.Append("    { &" + runtimeInterface.runtimeAbiName + "_ifc, " + interfaceMethods + ", " + methodCount + " },~n")
 			Next
 			result.Append("};~n")
 		End If
@@ -5743,6 +5811,9 @@ Type TCompilerGenericCUnitEmitter
 	Function EmitOrdinaryRuntimeTypeDeclarationsForMembers:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
 		Local emitted:TMap = New TMap
 		Local result:String
+		For Local runtimeInterface:TTemplateTypeReference = EachIn ir.implementedRuntimeInterfaces
+			result :+ EmitOrdinaryRuntimeTypeDeclaration(runtimeInterface, emitted, diagnostics, ir)
+		Next
 		For Local irField:TCompilerGenericFieldIr = EachIn ir.fields
 			result :+ EmitOrdinaryRuntimeSignatureTypeDeclarations(irField.semanticType, ir, emitted, diagnostics)
 		Next
@@ -5809,7 +5880,11 @@ Type TCompilerGenericCUnitEmitter
 					result :+ "extern struct BBClass_" + abiName + " " + abiName + ";~n"
 				End If
 			Case TEMPLATE_RUNTIME_INTERFACE
-				result :+ "extern const struct BBInterface " + abiName + "_ifc;~n"
+				If EmbeddedTarget(ir) Then
+					result :+ "static const BMXEmbeddedInterfaceDescriptor " + abiName + "_ifc = { " + CQuoted(value.symbolName) + ", " + CQuoted(abiName) + " };~n"
+				Else
+					result :+ "extern const struct BBInterface " + abiName + "_ifc;~n"
+				End If
 			Case TEMPLATE_RUNTIME_STRUCT
 				result :+ "struct " + abiName + ";~n"
 			Case TEMPLATE_RUNTIME_ENUM
