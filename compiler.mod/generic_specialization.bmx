@@ -1073,6 +1073,7 @@ Type TCompilerGenericSpecializationLowerer
 		If Not result.isRoutine And Not result.isInterface Then AppendMembers(result, node, New TMap, diagnostics)
 		If Not result.isRoutine And Not result.isInterface And Not result.isStruct Then InheritTypeConstructors(result, diagnostics)
 		If Not result.isRoutine And Not result.isInterface Then FinalizeMethodAbiNames(result)
+		If result.baseSpecialization Then AppendOverriddenRuntimeInterfaces(result)
 		If result.isStruct Then
 			FinalizeStructConstructors(result, diagnostics)
 		Else If Not result.isRoutine And Not result.isInterface And result.constructors.length Then
@@ -1098,6 +1099,32 @@ Type TCompilerGenericSpecializationLowerer
 				AppendRuntimeInterface(ir.implementedRuntimeInterfaces, runtimeInterface)
 			Next
 		Next
+	End Function
+
+	Function AppendOverriddenRuntimeInterfaces(ir:TCompilerGenericSpecializationIr)
+		Local baseNode:TGenericSpecializationNode = ir.baseSpecialization
+		Local seen:TMap = New TMap
+		While baseNode And Not seen.Contains(baseNode.key.CanonicalName())
+			seen.Insert(baseNode.key.CanonicalName(), baseNode)
+			For Local runtimeInterface:TTemplateTypeReference = EachIn DirectRuntimeInterfaceParents(baseNode, ir)
+				Local reference:TGenericTemplateInheritanceReference = RuntimeInterfaceReferenceForAbi(ir.specialization, runtimeInterface.runtimeAbiName)
+				If Not reference Then Continue
+				Local overridesSlot:Int
+				For Local slot:TGenericTemplateMember = EachIn reference.runtimeInterfaceSlots
+					If Not slot Or Not slot.semanticType Then Continue
+					Local requirement:TCompilerGenericMethodIr = New TCompilerGenericMethodIr
+					requirement.name = slot.name
+					requirement.returnType = slot.semanticType
+					requirement.parameters = slot.parameters
+					For Local candidate:TCompilerGenericMethodIr = EachIn ir.methods
+						If candidate.declaringSpecialization = ir.specialization And ImplementationMatchesRequirement(candidate, requirement, ir) Then overridesSlot = True; Exit
+					Next
+					If overridesSlot Then Exit
+				Next
+				If overridesSlot Then AppendRuntimeInterface(ir.implementedRuntimeInterfaces, runtimeInterface)
+			Next
+			baseNode = InheritanceTarget(baseNode)
+		Wend
 	End Function
 
 	Function AppendRuntimeInterface(values:TTemplateTypeReference[] Var, candidate:TTemplateTypeReference)
