@@ -2421,9 +2421,6 @@ Type TCompilerGenericCUnitEmitter
 		If Not node Then Return True
 		If node.kind = TEMPLATE_NODE_OPERATOR And node.identity = "type-measure" Then Return EmbeddedScalarNode(node)
 		If node.semanticType And Not EmbeddedRoutineValueType(node.semanticType, ir) Then Return False
-		If node.kind = TEMPLATE_NODE_OPERATOR And StringTemplateType(node.semanticType) And node.children.length = 2 Then
-			If EmbeddedStringConcatOperandAllocates(node.children[0]) And EmbeddedStringConcatOperandAllocates(node.children[1]) Then Return False
-		End If
 		For Local child:TGenericTemplateNode = EachIn node.children
 			If Not EmbeddedRoutineNode(child, ir) Then Return False
 		Next
@@ -2504,7 +2501,6 @@ Type TCompilerGenericCUnitEmitter
 					For Local operand:TGenericTemplateNode = EachIn node.children
 						If Not StringTemplateType(operand.semanticType) Then Return False
 					Next
-					If node.children.length = 2 And EmbeddedStringConcatOperandAllocates(node.children[0]) And EmbeddedStringConcatOperandAllocates(node.children[1]) Then Return False
 				End If
 		End Select
 		For Local child:TGenericTemplateNode = EachIn node.children
@@ -10367,7 +10363,10 @@ Type TCompilerGenericCUnitEmitter
 						Return DefaultValue(node.semanticType, ir)
 					End If
 					If stringConcatenation Then
-						If EmbeddedTarget(ir) Then Return "bmx_embedded_string_concat(" + EmitStringConcatOperand(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitStringConcatOperand(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
+						If EmbeddedTarget(ir) Then
+							If EmbeddedStringConcatOperandAllocates(node.children[0]) Or EmbeddedStringConcatOperandAllocates(node.children[1]) Then Return EmitEmbeddedSequencedStringConcat(node, ir, ownerMethod, diagnostics, locals)
+							Return "bmx_embedded_string_concat(" + EmitStringConcatOperand(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitStringConcatOperand(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
+						End If
 						Return "bbStringConcat(" + EmitStringConcatOperand(node.children[0], ir, ownerMethod, diagnostics, locals) + ", " + EmitStringConcatOperand(node.children[1], ir, ownerMethod, diagnostics, locals) + ")"
 					End If
 					If arrayConcatenation Then
@@ -11509,6 +11508,20 @@ Type TCompilerGenericCUnitEmitter
 
 	Function StringConcatOperandSupported:Int(value:TTemplateTypeReference)
 		Return StringTemplateType(value) Or ScalarNumericType(value)
+	End Function
+
+	Function EmitEmbeddedSequencedStringConcat:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
+		Local result:String = "({ const BMXEmbeddedString *bmx_concat_left = &bmx_embedded_empty_string; "
+		result :+ "const BMXEmbeddedString *bmx_concat_right = &bmx_embedded_empty_string; "
+		result :+ "BMXEmbeddedRootFrame bmx_concat_frame; BMXEmbeddedRootSlot bmx_concat_slots[2] = { "
+		result :+ "{ (void *)&bmx_concat_left, BMX_EMBEDDED_ROOT_STRING, 0 }, "
+		result :+ "{ (void *)&bmx_concat_right, BMX_EMBEDDED_ROOT_STRING, 0 } }; "
+		result :+ "bmx_embedded_root_frame_enter(&bmx_concat_frame, bmx_concat_slots, 2); "
+		result :+ "bmx_concat_left = " + EmitStringConcatOperand(node.children[0], ir, ownerMethod, diagnostics, locals) + "; "
+		result :+ "bmx_concat_right = " + EmitStringConcatOperand(node.children[1], ir, ownerMethod, diagnostics, locals) + "; "
+		result :+ "const BMXEmbeddedString *bmx_concat_result = bmx_embedded_string_concat(bmx_concat_left, bmx_concat_right); "
+		result :+ "bmx_embedded_root_frame_leave(&bmx_concat_frame); bmx_concat_result; })"
+		Return result
 	End Function
 
 	Function EmitStringConcatOperand:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
