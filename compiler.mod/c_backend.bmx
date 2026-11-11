@@ -5817,6 +5817,7 @@ Type TCompilerCBackend
 				result.Append(indent + "    }~n")
 				result.Append(EmitUsingCleanup(usingStatement.resources, indent + "    "))
 				result.Append(indent + "    if (" + failedName + ") bbExThrow((BBObject *)" + exceptionName + ");~n")
+				If BlockReturnsOnAllPaths(usingStatement.body) Then result.Append(indent + "    bbExThrowCString(~qInvalid Using control-flow state~q);~n")
 			End If
 			Return CompleteStatementOutput(result, indent + "}~n")
 		End If
@@ -6592,9 +6593,11 @@ Type TCompilerCBackend
 		result :+ indent + "        " + exceptionName + " = bbExCatch();~n"
 		result :+ indent + "        " + failedName + " = 1;~n"
 		result :+ indent + "    } break;~n"
+		result :+ indent + "    default: bbExThrowCString(~qInvalid exception state~q);~n"
 		result :+ indent + "    }~n"
 		result :+ EmitBlockContents(guarded.finallyBody, indent + "    ")
 		result :+ indent + "    if (" + failedName + ") bbExThrow((BBObject *)" + exceptionName + ");~n"
+		If StatementReturnsOnAllPaths(guarded) Then result :+ indent + "    bbExThrowCString(~qInvalid Try/Finally control-flow state~q);~n"
 		Return result + indent + "}~n"
 	End Method
 
