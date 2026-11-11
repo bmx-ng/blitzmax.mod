@@ -2408,9 +2408,71 @@ Type TCompilerGenericCUnitEmitter
 		Return True
 	End Function
 
+	Function EmbeddedRoutineValueType:Int(value:TTemplateTypeReference, ir:TCompilerGenericSpecializationIr = Null)
+		If EmbeddedScalarType(value) Or StringTemplateType(value) Then Return True
+		If Not value Then Return False
+		If value.kind = TEMPLATE_TYPE_ARRAY Then Return TCompilerGenericSpecializationLowerer.SupportedManagedArrayType(value, ir)
+		If value.kind = TEMPLATE_TYPE_BUILTIN Then Return value.symbolName.ToLower() = "object"
+		If value.kind = TEMPLATE_TYPE_NAMED And (value.runtimeKind = TEMPLATE_RUNTIME_CLASS Or value.runtimeKind = TEMPLATE_RUNTIME_INTERFACE) Then Return EmbeddedTypeValueType(value, ir)
+		Return False
+	End Function
+
+	Function EmbeddedRoutineNode:Int(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr)
+		If Not node Then Return True
+		If node.kind = TEMPLATE_NODE_OPERATOR And node.identity = "type-measure" Then Return EmbeddedScalarNode(node)
+		If node.semanticType And Not EmbeddedRoutineValueType(node.semanticType, ir) Then Return False
+		If node.kind = TEMPLATE_NODE_OPERATOR And StringTemplateType(node.semanticType) And node.children.length = 2 Then
+			If EmbeddedStringConcatOperandAllocates(node.children[0]) And EmbeddedStringConcatOperandAllocates(node.children[1]) Then Return False
+		End If
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If Not EmbeddedRoutineNode(child, ir) Then Return False
+		Next
+		Return True
+	End Function
+
 	Function EmbeddedStructValueType:Int(value:TTemplateTypeReference)
 		If EmbeddedScalarType(value) Then Return True
 		Return value And value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "string"
+	End Function
+
+	Function EmbeddedStringConcatOperandAllocates:Int(node:TGenericTemplateNode)
+		If Not node Then Return False
+		If ScalarNumericType(node.semanticType) Then Return True
+		Select node.kind
+			Case TEMPLATE_NODE_CALL, TEMPLATE_NODE_NEW, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_CONVERSION
+				Return True
+			Case TEMPLATE_NODE_LITERAL, TEMPLATE_NODE_OPERATOR
+				If StringTemplateType(node.semanticType) Then Return True
+		End Select
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If EmbeddedStringConcatOperandAllocates(child) Then Return True
+		Next
+		Return False
+	End Function
+
+	Function EmbeddedStructStableCallArgument:Int(node:TGenericTemplateNode)
+		If Not node Then Return False
+		Select node.kind
+			Case TEMPLATE_NODE_NAME, TEMPLATE_NODE_SELF
+				Return True
+			Case TEMPLATE_NODE_LITERAL
+				Return Not StringTemplateType(node.semanticType)
+			Case TEMPLATE_NODE_MEMBER
+				If node.identity = "ordinary-field-getter" Then Return False
+				For Local child:TGenericTemplateNode = EachIn node.children
+					If Not EmbeddedStructStableCallArgument(child) Then Return False
+				Next
+				Return True
+		End Select
+		Return False
+	End Function
+
+	Function EmbeddedStructCallRequiresSequence:Int(node:TGenericTemplateNode)
+		If Not node Or node.kind <> TEMPLATE_NODE_CALL Or node.children.length <= 2 Then Return False
+		For Local index:Int = 1 Until node.children.length
+			If Not EmbeddedStructStableCallArgument(node.children[index]) Then Return True
+		Next
+		Return False
 	End Function
 
 	Function EmbeddedStructNode:Int(node:TGenericTemplateNode)
@@ -2419,19 +2481,30 @@ Type TCompilerGenericCUnitEmitter
 		' the transported field value type. The receiver itself is stack storage,
 		' not a managed value admitted to the specialization body.
 		If node.kind <> TEMPLATE_NODE_SELF And node.semanticType And Not EmbeddedStructValueType(node.semanticType) Then Return False
-		' This first rooted tier still excludes operations whose Embedded lowering is
-		' not implemented here. String operators may allocate because specialization
-		' methods now own precise frames for Self, parameters, and managed locals.
+		' This rooted tier still excludes operations whose Embedded lowering is not
+		' implemented here. String literals and operators may allocate because the
+		' constructor and methods own precise frames for Self and managed values.
 		Select node.kind
-			Case TEMPLATE_NODE_CALL, TEMPLATE_NODE_NEW, TEMPLATE_NODE_THROW, TEMPLATE_NODE_CONSTRUCTOR_DELEGATION, TEMPLATE_NODE_ARRAY_LENGTH, TEMPLATE_NODE_ARRAY_ELEMENT, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ASSERT, TEMPLATE_NODE_ARRAY_LITERAL, TEMPLATE_NODE_TRY, TEMPLATE_NODE_USING, TEMPLATE_NODE_DATA, TEMPLATE_NODE_FUNCTION_LITERAL, TEMPLATE_NODE_RELEASE, TEMPLATE_NODE_YIELD
+			Case TEMPLATE_NODE_NEW, TEMPLATE_NODE_THROW, TEMPLATE_NODE_CONSTRUCTOR_DELEGATION, TEMPLATE_NODE_ARRAY_LENGTH, TEMPLATE_NODE_ARRAY_ELEMENT, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ASSERT, TEMPLATE_NODE_ARRAY_LITERAL, TEMPLATE_NODE_TRY, TEMPLATE_NODE_USING, TEMPLATE_NODE_DATA, TEMPLATE_NODE_FUNCTION_LITERAL, TEMPLATE_NODE_RELEASE, TEMPLATE_NODE_YIELD
 				Return False
-			Case TEMPLATE_NODE_LITERAL
-				If node.semanticType And node.semanticType.kind = TEMPLATE_TYPE_BUILTIN And node.semanticType.symbolName.ToLower() = "string" Then Return False
+			Case TEMPLATE_NODE_CALL
+				' C may evaluate arguments in any order. Calls with allocating
+				' arguments use ordered, rooted temporaries in the embedded emitter.
+				If node.children.length < 1 Then Return False
+				If node.children[0].kind <> TEMPLATE_NODE_BLOCK Or node.children[0].valueText <> "ordinary-routine-signature" Then Return False
+				If EmbeddedStructCallRequiresSequence(node) Then
+					Local signature:TGenericTemplateNode = node.children[0]
+					If signature.identity.length Or signature.children.length <> node.children.length - 1 Then Return False
+					For Local parameter:TGenericTemplateNode = EachIn signature.children
+						If Int(parameter.valueText) <> PARAMETER_PASS_VALUE Then Return False
+					Next
+				End If
 			Case TEMPLATE_NODE_OPERATOR
 				If StringTemplateType(node.semanticType) Then
 					For Local operand:TGenericTemplateNode = EachIn node.children
 						If Not StringTemplateType(operand.semanticType) Then Return False
 					Next
+					If node.children.length = 2 And EmbeddedStringConcatOperandAllocates(node.children[0]) And EmbeddedStringConcatOperandAllocates(node.children[1]) Then Return False
 				End If
 		End Select
 		For Local child:TGenericTemplateNode = EachIn node.children
@@ -2547,13 +2620,14 @@ Type TCompilerGenericCUnitEmitter
 		If ir And Not ir.isRoutine And Not ir.isInterface Then Return EmbeddedTypeBaselineUnsupportedReason(ir)
 		If Not ir Or Not ir.isRoutine Or Not ir.routine Then Return "missing routine specialization IR"
 		If ir.routine.receiverType Then Return "generic method receiver ABI is unsupported"
-		If Not EmbeddedScalarType(ir.routine.returnType) Then Return "routine has unsupported return type '" + ir.routine.returnType.CanonicalName() + "'"
+		If Not EmbeddedRoutineValueType(ir.routine.returnType, ir) Then Return "routine has unsupported return type '" + ir.routine.returnType.CanonicalName() + "'"
 		For Local parameter:TGenericTemplateValueParameter = EachIn ir.routine.parameters
 			If Not parameter Then Return "routine has missing parameter IR"
-			If parameter.passingMode <> PARAMETER_PASS_VALUE Then Return "routine parameter '" + parameter.name + "' has unsupported passing mode"
-			If Not EmbeddedScalarType(parameter.semanticType) Then Return "routine parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+			If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then Return "routine parameter '" + parameter.name + "' has unsupported passing mode"
+			If Not EmbeddedRoutineValueType(parameter.semanticType, ir) Then Return "routine parameter '" + parameter.name + "' has unsupported type '" + parameter.semanticType.CanonicalName() + "'"
+			If parameter.passingMode = PARAMETER_PASS_VAR And parameter.semanticType.kind = TEMPLATE_TYPE_POINTER Then Return "routine parameter '" + parameter.name + "' has unsupported pointer Var ABI"
 		Next
-		If Not EmbeddedScalarNode(ir.routine.body) Then Return "routine body uses an unsupported ABI shape or operation"
+		If Not EmbeddedRoutineNode(ir.routine.body, ir) Then Return "routine body uses an unsupported ABI shape or operation"
 		Return ""
 	End Function
 
@@ -5999,6 +6073,18 @@ Type TCompilerGenericCUnitEmitter
 		Local result:String = UnitPreamble(ir, True)
 		If Not declarationText.length Then declarationText = EmitStructDeclarations(ir, diagnostics)
 		result :+ declarationText + "~n"
+		Local ordinaryDeclarations:TMap = New TMap
+		Local ordinaryDeclarationText:String
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(genericField.initializer, ir, ordinaryDeclarations, diagnostics)
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(constructor.body, ir, ordinaryDeclarations, diagnostics)
+		Next
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(genericMethod.body, ir, ordinaryDeclarations, diagnostics)
+		Next
+		If ordinaryDeclarationText.length Then result :+ ordinaryDeclarationText + "~n"
 		result :+ EmitEmbeddedGenericStructDescriptor(ir)
 		result :+ EmitStructConstructorHelper(ir, Null, diagnostics, abiName + "_New_ObjectNew")
 		If ir.constructors.length Then
@@ -6650,6 +6736,8 @@ Type TCompilerGenericCUnitEmitter
 		If helperNameOverride.length Then helperName = helperNameOverride
 		Local result:String = "struct " + abiName + " " + helperName + "(" + StructConstructorParameters(constructor, ir, True) + ") {~n"
 		result :+ "    struct " + abiName + " bmx_value = {0};~n"
+		result :+ "    struct " + abiName + " *self = &bmx_value;~n"
+		result :+ "    (void)self;~n"
 		' Install valid sentinels before publishing the in-progress value to the
 		' collector. Field initializers may allocate after the frame is active.
 		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
@@ -10614,6 +10702,7 @@ Type TCompilerGenericCUnitEmitter
 							Return "({ " + valueType + " bmx_minmax_left = " + EmitExpression(node.children[1], ir, ownerMethod, diagnostics, locals) + "; " + valueType + " bmx_minmax_right = " + EmitExpression(node.children[2], ir, ownerMethod, diagnostics, locals) + "; bmx_minmax_left " + comparison + " bmx_minmax_right ? bmx_minmax_left : bmx_minmax_right; })"
 						End If
 						If node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
+							If EmbeddedTarget(ir) And ir.isStruct And EmbeddedStructCallRequiresSequence(node) Then Return EmitEmbeddedSequencedOrdinaryCall(node, ir, ownerMethod, diagnostics, locals)
 							Local ordinaryName:String = node.referencedSymbol.overloadKey
 							' Sqr maps directly to C math for source-owned generic units,
 							' which may not include BRL.Math's generated module header.
@@ -10886,6 +10975,44 @@ Type TCompilerGenericCUnitEmitter
 		Return result
 	End Function
 
+	Function EmitEmbeddedSequencedOrdinaryCall:String(node:TGenericTemplateNode, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
+		Local signature:TGenericTemplateNode = node.children[0]
+		Local result:String = "({ "
+		Local rootSlots:String[]
+		For Local index:Int = 1 Until node.children.length
+			Local parameterType:TTemplateTypeReference = signature.children[index - 1].semanticType
+			Local argumentName:String = "bmx_seq_arg" + (index - 1)
+			result :+ CValueDeclaration(parameterType, argumentName, ir) + " = " + DefaultValue(parameterType, ir) + "; "
+			Local slot:String = EmbeddedGenericRootSlot(parameterType, "&" + argumentName, ir)
+			If slot.length Then rootSlots :+ [slot]
+		Next
+		If rootSlots.length Then
+			result :+ "BMXEmbeddedRootFrame bmx_seq_frame; BMXEmbeddedRootSlot bmx_seq_slots[" + rootSlots.length + "] = { "
+			For Local index:Int = 0 Until rootSlots.length
+				If index Then result :+ ", "
+				result :+ rootSlots[index]
+			Next
+			result :+ " }; bmx_embedded_root_frame_enter(&bmx_seq_frame, bmx_seq_slots, " + rootSlots.length + "); "
+		End If
+		Local invocation:String = node.referencedSymbol.overloadKey + "("
+		For Local index:Int = 1 Until node.children.length
+			Local argumentName:String = "bmx_seq_arg" + (index - 1)
+			Local parameterType:TTemplateTypeReference = signature.children[index - 1].semanticType
+			result :+ argumentName + " = (" + CType(parameterType, ir) + ")( " + EmitExpression(node.children[index], ir, ownerMethod, diagnostics, locals) + " ); "
+			If index > 1 Then invocation :+ ", "
+			invocation :+ argumentName
+		Next
+		invocation :+ ")"
+		If VoidType(node.semanticType) Then
+			result :+ invocation + "; "
+		Else
+			result :+ CValueDeclaration(node.semanticType, "bmx_seq_result", ir) + " = " + invocation + "; "
+		End If
+		If rootSlots.length Then result :+ "bmx_embedded_root_frame_leave(&bmx_seq_frame); "
+		If Not VoidType(node.semanticType) Then result :+ "bmx_seq_result; "
+		Return result + "})"
+	End Function
+
 	Function EmitCallArgument:String(argument:TGenericTemplateNode, parameter:TGenericTemplateValueParameter, ir:TCompilerGenericSpecializationIr, ownerMethod:TCompilerGenericMethodIr, diagnostics:String[] Var, locals:TMap)
 		If Not parameter Or parameter.passingMode = PARAMETER_PASS_VALUE Then Return EmitExpression(argument, ir, ownerMethod, diagnostics, locals)
 		If parameter.passingMode <> PARAMETER_PASS_VAR Then
@@ -11138,8 +11265,9 @@ Type TCompilerGenericCUnitEmitter
 				Case "uint" Return "uint32_t"
 				Case "long" Return "int64_t"
 				Case "ulong" Return "uint64_t"
-				Case "longint" Return "intptr_t"
-				Case "ulongint", "size_t" Return "uintptr_t"
+				Case "longint" Return "long"
+				Case "ulongint" Return "unsigned long"
+				Case "size_t" Return "size_t"
 				Case "float" Return "float"
 				Case "double" Return "double"
 				Case "string" Return "const BMXEmbeddedString *"
@@ -11220,8 +11348,9 @@ Type TCompilerGenericCUnitEmitter
 				Case "uint" Return "uint32_t"
 				Case "long" Return "int64_t"
 				Case "ulong" Return "uint64_t"
-				Case "longint" Return "intptr_t"
-				Case "ulongint", "size_t" Return "uintptr_t"
+				Case "longint" Return "long"
+				Case "ulongint" Return "unsigned long"
+				Case "size_t" Return "size_t"
 			End Select
 			Return ""
 		End If
