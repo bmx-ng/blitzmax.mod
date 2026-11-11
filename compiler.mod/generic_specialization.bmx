@@ -10741,15 +10741,20 @@ Type TCompilerGenericCUnitEmitter
 					If node.children[0].kind = TEMPLATE_NODE_BLOCK And node.children[0].valueText = "runtime-header-routine" Then
 						If node.referencedSymbol And node.referencedSymbol.overloadKey.length Then
 							Local runtimeRoutineName:String = node.referencedSymbol.overloadKey
-							If EmbeddedTarget(ir) And node.children.length > 1 And StringTemplateType(node.children[1].semanticType) Then
-								runtimeRoutineName = EmbeddedStringRuntimeFunctionName(runtimeRoutineName)
+							Local runtimeSignature:TGenericTemplateNode = node.children[0]
+							Local embeddedStaticStringRuntime:Int = EmbeddedTarget(ir) And runtimeRoutineName.StartsWith("bbString")
+							Local embeddedBuiltinRuntime:Int = embeddedStaticStringRuntime
+							Local runtimeReceiverType:TTemplateTypeReference
+							If node.children.length > 1 Then runtimeReceiverType = node.children[1].semanticType
+							If EmbeddedTarget(ir) And runtimeReceiverType And (StringTemplateType(runtimeReceiverType) Or runtimeReceiverType.kind = TEMPLATE_TYPE_ARRAY) Then embeddedBuiltinRuntime = True
+							If embeddedBuiltinRuntime Then
+								If embeddedStaticStringRuntime Then runtimeRoutineName = EmbeddedStringRuntimeFunctionName(runtimeRoutineName) Else runtimeRoutineName = EmbeddedBuiltinRuntimeFunctionName(runtimeRoutineName, runtimeReceiverType)
 								If Not runtimeRoutineName.length Then
-									diagnostics :+ ["BMXC3048 builtin String operation '" + node.valueText + "' has no embedded runtime implementation"]
+									diagnostics :+ ["BMXC3048 builtin runtime operation '" + node.valueText + "' has no embedded implementation"]
 									Return DefaultValue(node.semanticType, ir)
 								End If
 							End If
 							Local runtimeCall:String = runtimeRoutineName + "("
-							Local runtimeSignature:TGenericTemplateNode = node.children[0]
 							Local runtimeNativeParameterTypes:String[] = TCompilerNativeDeclaration.ParameterTypes(runtimeSignature.identity)
 							For Local index:Int = 1 Until node.children.length
 								If index > 1 Then runtimeCall :+ ", "
@@ -11455,7 +11460,50 @@ Type TCompilerGenericCUnitEmitter
 			Case "bbStringJoinULongInts"; Return "bmx_embedded_string_join_ulong_ints"
 			Case "bbStringJoinFloats"; Return "bmx_embedded_string_join_floats"
 			Case "bbStringJoinDoubles"; Return "bmx_embedded_string_join_doubles"
+			Case "bbStringFromBytes"; Return "bmx_embedded_string_from_bytes"
+			Case "bbStringFromShorts"; Return "bmx_embedded_string_from_shorts"
+			Case "bbStringFromCString"; Return "bmx_embedded_string_from_c_string"
+			Case "bbStringFromWString"; Return "bmx_embedded_string_from_w_string"
+			Case "bbStringFromUTF8String"; Return "bmx_embedded_string_from_utf8_string"
+			Case "bbStringFromUTF8Bytes"; Return "bmx_embedded_string_from_utf8_bytes"
+			Case "bbStringToCString"; Return "bmx_embedded_string_to_c_string"
+			Case "bbStringToWString"; Return "bmx_embedded_string_to_w_string"
+			Case "bbStringToWStringBuffer"; Return "bmx_embedded_string_to_w_string_buffer"
+			Case "bbStringToUTF8String"; Return "bmx_embedded_string_to_utf8_string"
+			Case "bbStringToUTF8StringLen"; Return "bmx_embedded_string_to_utf8_string_len"
+			Case "bbStringToUTF8StringBuffer"; Return "bmx_embedded_string_to_utf8_string_buffer"
+			Case "bbStringToUTF32String"; Return "bmx_embedded_string_to_utf32_string"
+			Case "bbStringFromUTF32String"; Return "bmx_embedded_string_from_utf32_string"
+			Case "bbStringFromUTF32Bytes"; Return "bmx_embedded_string_from_utf32_bytes"
+			Case "bbStringFromBytesAsHex"; Return "bmx_embedded_string_from_bytes_as_hex"
+			Case "bbStringToBytesFromHex"; Return "bmx_embedded_string_to_bytes_from_hex"
+			Case "bbStringToBytesFromHexEx"; Return "bmx_embedded_string_to_bytes_from_hex_ex"
+			Case "bbStringFromInt"; Return "bmx_embedded_string_from_int32"
+			Case "bbStringFromUInt"; Return "bmx_embedded_string_from_uint32"
+			Case "bbStringFromLong"; Return "bmx_embedded_string_from_int64"
+			Case "bbStringFromULong"; Return "bmx_embedded_string_from_uint64"
+			Case "bbStringFromSizet"; Return "bmx_embedded_string_from_size"
+			Case "bbStringFromLongInt"; Return "bmx_embedded_string_from_long"
+			Case "bbStringFromULongInt"; Return "bmx_embedded_string_from_ulong"
+			Case "bbStringFromFloat"; Return "bmx_embedded_string_from_float"
+			Case "bbStringFromDouble"; Return "bmx_embedded_string_from_double"
+			Case "bbStringToInt"; Return "bmx_embedded_string_to_int32"
+			Case "bbStringToUInt"; Return "bmx_embedded_string_to_uint32"
+			Case "bbStringToLong"; Return "bmx_embedded_string_to_int64"
+			Case "bbStringToULong"; Return "bmx_embedded_string_to_uint64"
+			Case "bbStringToSizet"; Return "bmx_embedded_string_to_size"
+			Case "bbStringToLongInt"; Return "bmx_embedded_string_to_long"
+			Case "bbStringToULongInt"; Return "bmx_embedded_string_to_ulong"
+			Case "bbStringToFloat"; Return "bmx_embedded_string_to_float"
+			Case "bbStringToDouble"; Return "bmx_embedded_string_to_double"
 		End Select
+		Return ""
+	End Function
+
+	Function EmbeddedBuiltinRuntimeFunctionName:String(abiName:String, receiverType:TTemplateTypeReference)
+		If StringTemplateType(receiverType) Then Return EmbeddedStringRuntimeFunctionName(abiName)
+		' The compact embedded Array ABI currently exposes allocation and element
+		' operations, but not the desktop Array.Sort/Dimensions runtime helpers.
 		Return ""
 	End Function
 
@@ -13917,7 +13965,8 @@ Type TCompilerGenericTemplateBuilder
 				signature.kind = TEMPLATE_NODE_BLOCK
 				signature.valueText = "ordinary-routine-signature"
 				If routine.externalName.length And routine.externalName <> stableAbiName Then signature.identity = routine.externalName
-				If routine.originModule.ToLower() = "brl.blitz" And stableAbiName.StartsWith("bb") Then signature.valueText = "runtime-header-routine"
+				Local builtinStaticString:Int = routine.containingScope And routine.containingScope.owner And routine.containingScope.owner.name.ToLower() = "string" And stableAbiName.StartsWith("bbString")
+				If (routine.originModule.ToLower() = "brl.blitz" And stableAbiName.StartsWith("bb")) Or builtinStaticString Then signature.valueText = "runtime-header-routine"
 				signature.source = result.source
 				For Local parameter:TSemanticParameter = EachIn routine.parameters
 					Local parameterNode:TGenericTemplateNode = New TGenericTemplateNode
@@ -13955,36 +14004,42 @@ Type TCompilerGenericTemplateBuilder
 				If index < call.arguments.length Then argument = call.arguments[index]
 				result.children[index + 1] = TemplateResolvedCallArgument(argument, index, call.resolvedCall, model, parameters, diagnostics, parameterOwner, localRoutineContext)
 			Next
+			Local builtinReceiverName:String
 			If IsBuiltinSemanticType(call.receiver.semanticType, "string") Then
-				Local stringRoutineName:String = OrdinaryRoutineAbiName(call.resolvedCall.routine, model)
-				If Not stringRoutineName.length Then
-					diagnostics :+ ["BMXC3048 builtin String operation '" + result.valueText + "' has no stable runtime linkage identity"]
+				builtinReceiverName = "String"
+			Else If TArraySemanticType(call.receiver.semanticType) Then
+				builtinReceiverName = "Array"
+			End If
+			If builtinReceiverName.length Then
+				Local builtinRoutineName:String = OrdinaryRoutineAbiName(call.resolvedCall.routine, model)
+				If Not builtinRoutineName.length Then
+					diagnostics :+ ["BMXC3048 builtin " + builtinReceiverName + " operation '" + result.valueText + "' has no stable runtime linkage identity"]
 					Return Null
 				End If
-				Local stringSignature:TGenericTemplateNode = New TGenericTemplateNode
-				stringSignature.kind = TEMPLATE_NODE_BLOCK
-				stringSignature.valueText = "runtime-header-routine"
-				stringSignature.source = result.source
-				Local stringReceiverParameter:TGenericTemplateNode = New TGenericTemplateNode
-				stringReceiverParameter.kind = TEMPLATE_NODE_DECLARATION
-				stringReceiverParameter.valueText = PARAMETER_PASS_VALUE
-				stringReceiverParameter.semanticType = result.children[0].semanticType
-				stringReceiverParameter.source = result.source
-				stringSignature.children = [stringReceiverParameter]
+				Local builtinSignature:TGenericTemplateNode = New TGenericTemplateNode
+				builtinSignature.kind = TEMPLATE_NODE_BLOCK
+				builtinSignature.valueText = "runtime-header-routine"
+				builtinSignature.source = result.source
+				Local builtinReceiverParameter:TGenericTemplateNode = New TGenericTemplateNode
+				builtinReceiverParameter.kind = TEMPLATE_NODE_DECLARATION
+				builtinReceiverParameter.valueText = PARAMETER_PASS_VALUE
+				builtinReceiverParameter.semanticType = result.children[0].semanticType
+				builtinReceiverParameter.source = result.source
+				builtinSignature.children = [builtinReceiverParameter]
 				For Local parameter:TSemanticParameter = EachIn call.resolvedCall.routine.parameters
 					If parameter.passingMode <> PARAMETER_PASS_VALUE And parameter.passingMode <> PARAMETER_PASS_VAR Then
-						diagnostics :+ ["BMXC3048 builtin String operation '" + result.valueText + "' has an unsupported parameter mode"]
+						diagnostics :+ ["BMXC3048 builtin " + builtinReceiverName + " operation '" + result.valueText + "' has an unsupported parameter mode"]
 						Return Null
 					End If
-					Local stringParameter:TGenericTemplateNode = New TGenericTemplateNode
-					stringParameter.kind = TEMPLATE_NODE_DECLARATION
-					stringParameter.valueText = parameter.passingMode
-					stringParameter.semanticType = TemplateType(parameter.semanticType, model, parameters, diagnostics, parameterOwner)
-					stringParameter.source = result.source
-					stringSignature.children :+ [stringParameter]
+					Local builtinParameter:TGenericTemplateNode = New TGenericTemplateNode
+					builtinParameter.kind = TEMPLATE_NODE_DECLARATION
+					builtinParameter.valueText = parameter.passingMode
+					builtinParameter.semanticType = TemplateType(parameter.semanticType, model, parameters, diagnostics, parameterOwner)
+					builtinParameter.source = result.source
+					builtinSignature.children :+ [builtinParameter]
 				Next
-				result.children = [stringSignature] + result.children
-				result.referencedSymbol.overloadKey = stringRoutineName
+				result.children = [builtinSignature] + result.children
+				result.referencedSymbol.overloadKey = builtinRoutineName
 				Return result
 			End If
 			Local ordinaryReceiver:TNamedSemanticType = TNamedSemanticType(call.receiver.semanticType)
