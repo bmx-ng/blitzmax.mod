@@ -2421,6 +2421,9 @@ Type TCompilerGenericCUnitEmitter
 		If Not node Then Return True
 		If node.kind = TEMPLATE_NODE_OPERATOR And node.identity = "type-measure" Then Return EmbeddedScalarNode(node)
 		If node.semanticType And Not EmbeddedRoutineValueType(node.semanticType, ir) Then Return False
+		If node.kind = TEMPLATE_NODE_OPERATOR And StringTemplateType(node.semanticType) And node.children.length = 2 Then
+			If EmbeddedStringConcatOperandAllocates(node.children[0]) And EmbeddedStringConcatOperandAllocates(node.children[1]) Then Return False
+		End If
 		For Local child:TGenericTemplateNode = EachIn node.children
 			If Not EmbeddedRoutineNode(child, ir) Then Return False
 		Next
@@ -2432,25 +2435,41 @@ Type TCompilerGenericCUnitEmitter
 		Return value And value.kind = TEMPLATE_TYPE_BUILTIN And value.symbolName.ToLower() = "string"
 	End Function
 
+	Function EmbeddedStringConcatOperandAllocates:Int(node:TGenericTemplateNode)
+		If Not node Then Return False
+		If ScalarNumericType(node.semanticType) Then Return True
+		Select node.kind
+			Case TEMPLATE_NODE_CALL, TEMPLATE_NODE_NEW, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_CONVERSION
+				Return True
+			Case TEMPLATE_NODE_LITERAL, TEMPLATE_NODE_OPERATOR
+				If StringTemplateType(node.semanticType) Then Return True
+		End Select
+		For Local child:TGenericTemplateNode = EachIn node.children
+			If EmbeddedStringConcatOperandAllocates(child) Then Return True
+		Next
+		Return False
+	End Function
+
 	Function EmbeddedStructNode:Int(node:TGenericTemplateNode)
 		If Not node Then Return True
 		' Self is represented with the closed Struct type, while member nodes carry
 		' the transported field value type. The receiver itself is stack storage,
 		' not a managed value admitted to the specialization body.
 		If node.kind <> TEMPLATE_NODE_SELF And node.semanticType And Not EmbeddedStructValueType(node.semanticType) Then Return False
-		' This first rooted tier still excludes operations whose Embedded lowering is
-		' not implemented here. String operators may allocate because specialization
-		' methods now own precise frames for Self, parameters, and managed locals.
+		' This rooted tier still excludes operations whose Embedded lowering is not
+		' implemented here. String literals and operators may allocate because the
+		' constructor and methods own precise frames for Self and managed values.
 		Select node.kind
-			Case TEMPLATE_NODE_CALL, TEMPLATE_NODE_NEW, TEMPLATE_NODE_THROW, TEMPLATE_NODE_CONSTRUCTOR_DELEGATION, TEMPLATE_NODE_ARRAY_LENGTH, TEMPLATE_NODE_ARRAY_ELEMENT, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ASSERT, TEMPLATE_NODE_ARRAY_LITERAL, TEMPLATE_NODE_TRY, TEMPLATE_NODE_USING, TEMPLATE_NODE_DATA, TEMPLATE_NODE_FUNCTION_LITERAL, TEMPLATE_NODE_RELEASE, TEMPLATE_NODE_YIELD
+			Case TEMPLATE_NODE_NEW, TEMPLATE_NODE_THROW, TEMPLATE_NODE_CONSTRUCTOR_DELEGATION, TEMPLATE_NODE_ARRAY_LENGTH, TEMPLATE_NODE_ARRAY_ELEMENT, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ASSERT, TEMPLATE_NODE_ARRAY_LITERAL, TEMPLATE_NODE_TRY, TEMPLATE_NODE_USING, TEMPLATE_NODE_DATA, TEMPLATE_NODE_FUNCTION_LITERAL, TEMPLATE_NODE_RELEASE, TEMPLATE_NODE_YIELD
 				Return False
-			Case TEMPLATE_NODE_LITERAL
-				If node.semanticType And node.semanticType.kind = TEMPLATE_TYPE_BUILTIN And node.semanticType.symbolName.ToLower() = "string" Then Return False
+			Case TEMPLATE_NODE_CALL
+				If node.children.length <> 1 Or node.children[0].kind <> TEMPLATE_NODE_BLOCK Or node.children[0].valueText <> "ordinary-routine-signature" Then Return False
 			Case TEMPLATE_NODE_OPERATOR
 				If StringTemplateType(node.semanticType) Then
 					For Local operand:TGenericTemplateNode = EachIn node.children
 						If Not StringTemplateType(operand.semanticType) Then Return False
 					Next
+					If node.children.length = 2 And EmbeddedStringConcatOperandAllocates(node.children[0]) And EmbeddedStringConcatOperandAllocates(node.children[1]) Then Return False
 				End If
 		End Select
 		For Local child:TGenericTemplateNode = EachIn node.children
@@ -6019,6 +6038,18 @@ Type TCompilerGenericCUnitEmitter
 		Local result:String = UnitPreamble(ir, True)
 		If Not declarationText.length Then declarationText = EmitStructDeclarations(ir, diagnostics)
 		result :+ declarationText + "~n"
+		Local ordinaryDeclarations:TMap = New TMap
+		Local ordinaryDeclarationText:String
+		For Local genericField:TCompilerGenericFieldIr = EachIn ir.fields
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(genericField.initializer, ir, ordinaryDeclarations, diagnostics)
+		Next
+		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(constructor.body, ir, ordinaryDeclarations, diagnostics)
+		Next
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			ordinaryDeclarationText :+ EmitReferencedCallDeclarations(genericMethod.body, ir, ordinaryDeclarations, diagnostics)
+		Next
+		If ordinaryDeclarationText.length Then result :+ ordinaryDeclarationText + "~n"
 		result :+ EmitEmbeddedGenericStructDescriptor(ir)
 		result :+ EmitStructConstructorHelper(ir, Null, diagnostics, abiName + "_New_ObjectNew")
 		If ir.constructors.length Then
