@@ -2450,6 +2450,23 @@ Type TCompilerGenericCUnitEmitter
 		Return False
 	End Function
 
+	Function EmbeddedStructStableCallArgument:Int(node:TGenericTemplateNode)
+		If Not node Then Return False
+		Select node.kind
+			Case TEMPLATE_NODE_NAME, TEMPLATE_NODE_SELF
+				Return True
+			Case TEMPLATE_NODE_LITERAL
+				Return Not StringTemplateType(node.semanticType)
+			Case TEMPLATE_NODE_MEMBER
+				If node.identity = "ordinary-field-getter" Then Return False
+				For Local child:TGenericTemplateNode = EachIn node.children
+					If Not EmbeddedStructStableCallArgument(child) Then Return False
+				Next
+				Return True
+		End Select
+		Return False
+	End Function
+
 	Function EmbeddedStructNode:Int(node:TGenericTemplateNode)
 		If Not node Then Return True
 		' Self is represented with the closed Struct type, while member nodes carry
@@ -2463,10 +2480,15 @@ Type TCompilerGenericCUnitEmitter
 			Case TEMPLATE_NODE_NEW, TEMPLATE_NODE_THROW, TEMPLATE_NODE_CONSTRUCTOR_DELEGATION, TEMPLATE_NODE_ARRAY_LENGTH, TEMPLATE_NODE_ARRAY_ELEMENT, TEMPLATE_NODE_ARRAY_SLICE, TEMPLATE_NODE_ASSERT, TEMPLATE_NODE_ARRAY_LITERAL, TEMPLATE_NODE_TRY, TEMPLATE_NODE_USING, TEMPLATE_NODE_DATA, TEMPLATE_NODE_FUNCTION_LITERAL, TEMPLATE_NODE_RELEASE, TEMPLATE_NODE_YIELD
 				Return False
 			Case TEMPLATE_NODE_CALL
-				' A single argument has no competing C argument evaluations. Calls
-				' with several arguments need ordered, rooted temporaries first.
-				If node.children.length < 1 Or node.children.length > 2 Then Return False
+				' C may evaluate arguments in any order. Several arguments are safe
+				' only when each is a stable read or a scalar literal.
+				If node.children.length < 1 Then Return False
 				If node.children[0].kind <> TEMPLATE_NODE_BLOCK Or node.children[0].valueText <> "ordinary-routine-signature" Then Return False
+				If node.children.length > 2 Then
+					For Local index:Int = 1 Until node.children.length
+						If Not EmbeddedStructStableCallArgument(node.children[index]) Then Return False
+					Next
+				End If
 			Case TEMPLATE_NODE_OPERATOR
 				If StringTemplateType(node.semanticType) Then
 					For Local operand:TGenericTemplateNode = EachIn node.children
