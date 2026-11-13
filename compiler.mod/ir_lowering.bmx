@@ -252,6 +252,7 @@ Type TCompilerIrLowerer
 		profile.interfaceMilliseconds = MilliSecs() - started
 		started = MilliSecs()
 		lowerer.LowerFunctionBodies()
+		lowerer.RefreshImportedClassLayouts()
 		profile.bodyMilliseconds = MilliSecs() - started
 		started = MilliSecs()
 		lowerer.BuildCoverageCatalog()
@@ -11540,6 +11541,17 @@ Type TCompilerIrLowerer
 			If Not replaced Then merged :+ [slot]
 		Next
 		importedClass.functionSlots = merged
+	End Method
+
+	Method RefreshImportedClassLayouts()
+		' Some derived imported Types are discovered only as return or field Types.
+		' Their bases may be completed later without another use that calls
+		' EnsureImportedClass for the derived symbol.  Finalize every imported
+		' descriptor after body lowering so emission never observes a stale empty
+		' or partial inherited prefix.
+		For Local importedClass:TCompilerIrImportedClass = EachIn result.importedClasses
+			RefreshImportedClassBaseSlots(importedClass)
+		Next
 	End Method
 
 	Method EnsureImportedClassRoutineSlot(ownerSymbol:TSymbol, importedClass:TCompilerIrImportedClass, symbol:TSymbol)
