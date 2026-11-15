@@ -252,6 +252,7 @@ Type TCompilerIrLowerer
 		profile.interfaceMilliseconds = MilliSecs() - started
 		started = MilliSecs()
 		lowerer.LowerFunctionBodies()
+		lowerer.RefreshImportedClassLayouts()
 		profile.bodyMilliseconds = MilliSecs() - started
 		started = MilliSecs()
 		lowerer.BuildCoverageCatalog()
@@ -11412,7 +11413,10 @@ Type TCompilerIrLowerer
 	Method EnsureImportedClass:TCompilerIrImportedClass(symbol:TSymbol)
 		If Not symbol Or symbol.kind <> SYMBOL_TYPE Or Not symbol.isImported Then Return Null
 		Local known:TCompilerIrImportedClass = TCompilerIrImportedClass(importedClassesBySymbol.ValueForKey(symbol))
-		If known Then Return known
+		If known Then
+			RefreshImportedClassBaseSlots(known)
+			Return known
+		End If
 		If symbol.genericArity <> 0 Then
 			AddUnsupported("BMXC1168", TBccMessages.IrLoweringGenericImportedTypeRequiresSpecialization(symbol.QualifiedName()), symbol.declaration)
 			Return Null
@@ -11453,6 +11457,12 @@ Type TCompilerIrLowerer
 			Local namedBase:TNamedSemanticType = TNamedSemanticType(importedBaseType)
 			If namedBase And namedBase.symbol And namedBase.symbol.kind = SYMBOL_TYPE And namedBase.symbol.isImported Then
 				importedBaseClass = ImportedClassForType(importedBaseType)
+				' A consumer can encounter a derived imported Type before anything has
+				' required its base Type.  Build the base ABI now so inherited virtual
+				' slots are present in the derived descriptor regardless of source-use
+				' order.  The derived shell is already interned above, so recursive
+				' references remain safe.
+				If Not importedBaseClass Then importedBaseClass = EnsureImportedClass(namedBase.symbol)
 			End If
 		End If
 		If importedBaseClass Then importedClass.baseImportedClassId = importedBaseClass.importedClassId
@@ -11501,6 +11511,47 @@ Type TCompilerIrLowerer
 			Next
 		End If
 		Return importedClass
+	End Method
+
+	Method RefreshImportedClassBaseSlots(importedClass:TCompilerIrImportedClass)
+		If Not importedClass Or Not importedClass.baseImportedClassId.length Then Return
+		Local importedBase:TCompilerIrImportedClass = ImportedClassById(importedClass.baseImportedClassId)
+		' A lazily completed ancestor can itself have inherited an incomplete slot
+		' prefix.  Repair the chain base-first before using it as this Type's ABI.
+		If importedBase Then RefreshImportedClassBaseSlots(importedBase)
+		If Not importedBase Or Not importedBase.functionSlots.length Then Return
+		Local merged:TCompilerIrClassFunctionSlot[] = New TCompilerIrClassFunctionSlot[0]
+		For Local inheritedSlot:TCompilerIrClassFunctionSlot = EachIn importedBase.functionSlots
+			merged :+ [CloneClassSlot(inheritedSlot)]
+		Next
+		For Local slot:TCompilerIrClassFunctionSlot = EachIn importedClass.functionSlots
+			' Slots already inherited from this base are represented by the freshly
+			' cloned prefix.  Retain only declarations owned by the derived Type,
+			' replacing an overridden base key at its stable ABI index.
+			If slot.declaringImportedClassId <> importedClass.importedClassId And ..
+					slot.receiverImportedClassId <> importedClass.importedClassId Then Continue
+			Local replaced:Int
+			For Local index:Int = 0 Until merged.length
+				If merged[index].dispatchKey = slot.dispatchKey Then
+					merged[index] = slot
+					replaced = True
+					Exit
+				End If
+			Next
+			If Not replaced Then merged :+ [slot]
+		Next
+		importedClass.functionSlots = merged
+	End Method
+
+	Method RefreshImportedClassLayouts()
+		' Some derived imported Types are discovered only as return or field Types.
+		' Their bases may be completed later without another use that calls
+		' EnsureImportedClass for the derived symbol.  Finalize every imported
+		' descriptor after body lowering so emission never observes a stale empty
+		' or partial inherited prefix.
+		For Local importedClass:TCompilerIrImportedClass = EachIn result.importedClasses
+			RefreshImportedClassBaseSlots(importedClass)
+		Next
 	End Method
 
 	Method EnsureImportedClassRoutineSlot(ownerSymbol:TSymbol, importedClass:TCompilerIrImportedClass, symbol:TSymbol)
