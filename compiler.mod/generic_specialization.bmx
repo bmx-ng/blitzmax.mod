@@ -2657,11 +2657,11 @@ Type TCompilerGenericCUnitEmitter
 		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
 			If NodeUsesRawPointerElement(constructor.body) Then Return True
 		Next
-		For Local field:TCompilerGenericFieldIr = EachIn ir.fields
-			If NodeUsesRawPointerElement(field.initializer) Then Return True
+		For Local instanceField:TCompilerGenericFieldIr = EachIn ir.fields
+			If NodeUsesRawPointerElement(instanceField.initializer) Then Return True
 		Next
-		For Local field:TCompilerGenericFieldIr = EachIn ir.staticFields
-			If NodeUsesRawPointerElement(field.initializer) Then Return True
+		For Local staticField:TCompilerGenericFieldIr = EachIn ir.staticFields
+			If NodeUsesRawPointerElement(staticField.initializer) Then Return True
 		Next
 		Return False
 	End Function

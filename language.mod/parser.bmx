@@ -2470,8 +2470,8 @@ Type TBlitzMaxSyntaxParser
 		node.span = SpanOfTokens(values)
 		' Step is the one keyword that cannot subsequently begin an assignment
 		' statement because it is reserved for a For range clause. Retain the
-		' established contextual-keyword extension for other declarations; the
-		' compiler itself uses Local field and native mappings use Field Object.
+		' established contextual-keyword extension for other declarations; native
+		' mappings may, for example, use Field Object.
 		Local keywordIsUsable:Int
 		If values.length Then keywordIsUsable = IsNameToken(values[0]) And (allowKeywordName Or values[0].text.ToLower() <> "step")
 		If values.length And keywordIsUsable Then
