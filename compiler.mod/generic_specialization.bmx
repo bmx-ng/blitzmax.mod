@@ -2651,8 +2651,8 @@ Type TCompilerGenericCUnitEmitter
 	Function UnitUsesRawPointerElement:Int(ir:TCompilerGenericSpecializationIr)
 		If Not ir Then Return False
 		If ir.routine And NodeUsesRawPointerElement(ir.routine.body) Then Return True
-		For Local method:TCompilerGenericMethodIr = EachIn ir.methods
-			If NodeUsesRawPointerElement(method.body) Then Return True
+		For Local genericMethod:TCompilerGenericMethodIr = EachIn ir.methods
+			If NodeUsesRawPointerElement(genericMethod.body) Then Return True
 		Next
 		For Local constructor:TCompilerGenericMethodIr = EachIn ir.constructors
 			If NodeUsesRawPointerElement(constructor.body) Then Return True
