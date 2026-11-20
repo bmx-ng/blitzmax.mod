@@ -2762,6 +2762,16 @@ Type TCompilerGenericCUnitEmitter
 		If specialization And specialization.artifact And specialization.artifact.identity And value.kind = TEMPLATE_TYPE_NAMED Then
 			Local ownIdentity:TGenericTemplateIdentity = specialization.artifact.identity
 			If value.moduleName.ToLower() = ownIdentity.moduleName.ToLower() And value.symbolName.ToLower() = ownIdentity.qualifiedName.ToLower() Then Return result
+			' A generic Method imported from a quoted source already includes its
+			' containing Type/Struct's physical runtime header. The routine artifact's
+			' qualified name includes the Method, so the declaration-identity test
+			' above cannot recognize its receiver as self-owned. Match the serialized
+			' containing type instead of inventing an application.mod header for it.
+			If specialization.definingSourceUnitPath.length And specialization.artifact.containingType Then
+				Local containingType:TTemplateTypeReference = specialization.artifact.containingType
+				If value.CanonicalName() = containingType.CanonicalName() Then Return result
+				If value.runtimeAbiName.length And value.runtimeAbiName = containingType.runtimeAbiName Then Return result
+			End If
 		End If
 		If value.runtimeKind <> TEMPLATE_RUNTIME_STRUCT Or Not value.moduleName.length Then Return result
 		Local sourceUnitPath:String
@@ -5839,6 +5849,12 @@ Type TCompilerGenericCUnitEmitter
 
 	Function EmitRoutineOwnerDeclaration:String(ir:TCompilerGenericSpecializationIr, diagnostics:String[] Var)
 		If Not ir Or Not ir.routine Or Not ir.routine.receiverType Or ir.routine.receiverType.runtimeKind = TEMPLATE_RUNTIME_NONE Then Return ""
+		' A quoted application source owns its ordinary Type layout in the sibling
+		' generated runtime header already included by UnitPreamble. Re-emitting the
+		' same struct here gives every imported generic Method specialization a
+		' second C definition of that owner. The primary application source has no
+		' definingSourceUnitPath and still needs its local declaration below.
+		If ir.specialization And ir.specialization.definingSourceUnitPath.length Then Return ""
 		Local artifact:TGenericTemplateArtifact = ir.specialization.artifact
 		Local abiName:String = ir.routine.receiverType.runtimeAbiName
 		If Not abiName.length Then Return ""
