@@ -8023,6 +8023,22 @@ Type TCompilerIrLowerer
 		routine.functionId = "fn" + nextFunctionId
 		nextFunctionId :+ 1
 		routine.name = "New"
+		' Inherited constructors are synthesized after the ordinary routine-shell
+		' pass, so they do not pass through the normal ABI-name assignment.  A
+		' bare function-id fallback is only unique inside one generated C unit and
+		' can collide with an application's routines when a module header is
+		' included.  Keep application-local spelling unchanged, but give module
+		' forwarders an owner-qualified public identity when they cross the module
+		' boundary and a module-qualified private identity otherwise.
+		If analysis And analysis.model And analysis.model.moduleName.length Then
+			If owner.isPublished Then
+				routine.abiName = TCompilerAbiNamer.PublicTypeRoutineName(owner.abiName, routine.name, symbol.parameters)
+				routine.implementationAbiName = "_" + routine.abiName
+				routine.abiName = routine.implementationAbiName
+			Else
+				routine.abiName = TCompilerAbiNamer.PrivateRoutineName(analysis.model, symbol, routine.functionId)
+			End If
+		End If
 		routine.returnType = "Void"
 		routine.source = SourceOf(useSyntax)
 		routine.isMethod = True
