@@ -69,6 +69,19 @@ Type TCompilerAbiNamer
 		Return Sanitize(result)
 	End Function
 
+	' A compiler-synthesized routine has no declaration symbol in its actual
+	' owner Type. Build the same stable, owner-qualified spelling used by an
+	' explicitly declared public Type routine from the owner's established ABI.
+	Function PublicTypeRoutineName:String(ownerAbiName:String, routineName:String, parameters:TSemanticParameter[])
+		Local result:String = ownerAbiName + "_" + RoutineSourceName(routineName)
+		For Local parameter:TSemanticParameter = EachIn parameters
+			result :+ "__"
+			If parameter And parameter.semanticType Then result :+ TypeKey(parameter.semanticType) Else result :+ "unknown"
+			If parameter And parameter.passingMode = PARAMETER_PASS_VAR Then result :+ "V"
+		Next
+		Return Sanitize(result)
+	End Function
+
 	Function ClassName:String(model:TSemanticModel, symbol:TSymbol, classId:String)
 		If model And model.moduleName.length And symbol And symbol.visibility = VISIBILITY_PUBLIC Then
 			Return PublishedLayoutTypeName(model, symbol)
