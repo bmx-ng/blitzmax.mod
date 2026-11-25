@@ -11,6 +11,8 @@ bbdoc: Configures parser-aware formatting independently of an editor.
 about: A new instance contains the default styles; copy it before applying temporary overrides.
 End Rem
 Type TBlitzMaxFormatOptions
+	Field splitStatements:Int
+	Field expandInlineRoutines:Int
 	Field thenStyle:String = "preserve"
 	Field endStyle:String = "preserve"
 	Field inlineIfStyle:String = "preserve"
@@ -18,6 +20,8 @@ Type TBlitzMaxFormatOptions
 	Field insertSpaces:Int
 	Field indent:Int = True
 	Field spaceAfterComma:Int = True
+	Field indentConditionalBodies:Int
+	Field flushConditionalDirectives:Int
 	Field caseIndent:String = "indented"
 	Field metadataBraceSpacing:String = "preserve"
 	Field callParenSpacing:String = "preserve"
@@ -29,6 +33,8 @@ Type TBlitzMaxFormatOptions
 
 	Method Copy:TBlitzMaxFormatOptions()
 		Local result:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
+		result.splitStatements = splitStatements
+		result.expandInlineRoutines = expandInlineRoutines
 		result.thenStyle = thenStyle
 		result.endStyle = endStyle
 		result.inlineIfStyle = inlineIfStyle
@@ -36,6 +42,8 @@ Type TBlitzMaxFormatOptions
 		result.insertSpaces = insertSpaces
 		result.indent = indent
 		result.spaceAfterComma = spaceAfterComma
+		result.indentConditionalBodies = indentConditionalBodies
+		result.flushConditionalDirectives = flushConditionalDirectives
 		result.caseIndent = caseIndent
 		result.metadataBraceSpacing = metadataBraceSpacing
 		result.callParenSpacing = callParenSpacing
@@ -143,28 +151,102 @@ Type TBlitzMaxFormatter
 			Local statement:TIfStatementSyntax = TIfStatementSyntax(node)
 			If statement Then
 				If statement.singleLine Then
-					If inlineIfStyle = "expand" Then ExpandInlineIf(edits, source, navigator, statement, thenStyle, endStyle, tabSize, insertSpaces, formatIndent, caseIndent, spacingEdits, expandedLines)
+					If inlineIfStyle = "expand" Then ExpandInlineIf(edits, source, navigator, statement, thenStyle, endStyle, tabSize, insertSpaces, formatIndent, caseIndent, spacingEdits, expandedLines, options.indentConditionalBodies)
 				Else
 					FormatThen(edits, source, statement.condition, statement.thenToken, thenStyle, trimTrailingWhitespace, coveredTrailingLines)
 				End If
 			End If
 			Local elseIfClause:TElseIfClauseSyntax = TElseIfClauseSyntax(node)
-			If elseIfClause Then FormatThen(edits, source, elseIfClause.condition, elseIfClause.thenToken, thenStyle, trimTrailingWhitespace, coveredTrailingLines)
+			If elseIfClause And Not expandedLines.Contains(String(source.Position(elseIfClause.span.start).line)) Then FormatThen(edits, source, elseIfClause.condition, elseIfClause.thenToken, thenStyle, trimTrailingWhitespace, coveredTrailingLines)
 			Local terminator:TBlockTerminatorSyntax = TBlockTerminatorSyntax(node)
 			If terminator Then FormatEnd(edits, source, terminator, endStyle)
 		Next
+		If options.splitStatements Or options.expandInlineRoutines Then SplitStatementLines(edits, source, navigator, options, expandedLines)
 		If declarationBlankLines <> "preserve" Or controlBlankLines <> "preserve" Then FormatBlankLines(edits, source, navigator, declarationBlankLines, controlBlankLines, coveredTrailingLines)
-		If formatIndent Then FormatIndentation(edits, source, parsed.syntaxTree.root.tokens, navigator, tabSize, insertSpaces, caseIndent, expandedLines)
-		If formatIndent Then FormatCommentIndentation(edits, source, parsed.syntaxTree.root.tokens, navigator, tabSize, insertSpaces, caseIndent, expandedLines)
+		If formatIndent Then FormatIndentation(edits, source, parsed.syntaxTree.root.tokens, navigator, tabSize, insertSpaces, caseIndent, expandedLines, options.indentConditionalBodies, options.flushConditionalDirectives)
+		If formatIndent Then FormatCommentIndentation(edits, source, parsed.syntaxTree.root.tokens, navigator, tabSize, insertSpaces, caseIndent, expandedLines, options.indentConditionalBodies, options.flushConditionalDirectives)
 		If trimTrailingWhitespace Then FormatTrailingWhitespace(edits, source, parsed.syntaxTree.root.tokens, expandedLines, coveredTrailingLines)
 		For Local index:Int = 0 Until spacingEdits.Size()
 				Local edit:TBlitzMaxFormatEdit = spacingEdits.Get(index)
 				If Not expandedLines.Contains(String(source.Position(edit.start).line)) Then edits.Append(edit)
 		Next
-		Return ProtectMultilineStrings(edits, source, parsed.syntaxTree.root.tokens)
+		edits = ProtectMultilineStrings(edits, source, parsed.syntaxTree.root.tokens)
+		If Not EditsPreserveSyntax(text, path, edits, navigator) Then Return New TBlitzMaxFormatEdits
+		Return edits
+	End Function
+
+	Function EditsPreserveSyntax:Int(text:String, path:String, edits:TBlitzMaxFormatEdits, original:TSyntaxNavigator = Null)
+		If Not edits.Size() Then Return True
+		Local candidate:String
+		Try
+			candidate = edits.Apply(text)
+		Catch invalidEdits:String
+			Return False
+		End Try
+		Local parsed:TParseResult = TBlitzMaxParser.ParseText(candidate, path)
+		If Not parsed Or Not parsed.syntaxTree Or parsed.syntaxTree.diagnostics.length Then Return False
+		If Not original Then
+			Local before:TParseResult = TBlitzMaxParser.ParseText(text, path)
+			If Not before Or Not before.syntaxTree Or before.syntaxTree.diagnostics.length Then Return False
+			original = TSyntaxNavigator.Create(before.syntaxTree)
+		End If
+		Local after:TSyntaxNavigator = TSyntaxNavigator.Create(parsed.syntaxTree)
+		Return original And after And NormalizedSyntax(original) = NormalizedSyntax(after)
+	End Function
+
+	Function NormalizedSyntax:String(navigator:TSyntaxNavigator)
+		Local omitted:TMap = New TMap
+		Local endings:TMap = New TMap
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local conditional:TIfStatementSyntax = TIfStatementSyntax(node)
+			Local clause:TElseIfClauseSyntax = TElseIfClauseSyntax(node)
+			If conditional And conditional.thenToken Then omitted.Insert(conditional.thenToken, conditional.thenToken)
+			If clause And clause.thenToken Then omitted.Insert(clause.thenToken, clause.thenToken)
+			Local terminator:TBlockTerminatorSyntax = TBlockTerminatorSyntax(node)
+			If Not terminator Or Not terminator.endToken Then Continue
+			If TIfStatementSyntax(navigator.Parent(node)) And terminator.actualBlockKind.ToLower() = "if" Then
+				omitted.Insert(terminator.endToken, terminator.endToken)
+			Else If terminator.blockToken Then
+				endings.Insert(terminator.endToken, terminator.endToken.text + terminator.blockToken.text)
+			End If
+			If terminator.blockToken Then omitted.Insert(terminator.blockToken, terminator.blockToken)
+		Next
+
+		Local result:TStringBuilder = New TStringBuilder
+		For Local token:TSyntaxToken = EachIn navigator.tree.root.tokens
+			If omitted.Contains(token) Or token.kind = TOKEN_NEWLINE Then Continue
+			If token.kind = TOKEN_SYMBOL And token.text = ";" Then Continue
+			Local spelling:String = token.text
+			If endings.Contains(token) Then spelling = String(endings.ValueForKey(token))
+			result.Append(String(token.kind) + ":" + spelling.length + ":" + spelling)
+		Next
+		result.Append("~n")
+		Local positions:TMap = New TMap
+		Local index:Int
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local terminator:TBlockTerminatorSyntax = TBlockTerminatorSyntax(node)
+			If terminator And omitted.Contains(terminator.endToken) Then Continue
+			Local parentIndex:String = String(positions.ValueForKey(navigator.Parent(node)))
+			result.Append(String(node.kind) + ":" + parentIndex + ";")
+			index :+ 1
+			positions.Insert(node, String(index))
+		Next
+		Return result.ToString()
 	End Function
 
 	Function FormatBlankLines(edits:TBlitzMaxFormatEdits, source:TSourceText, navigator:TSyntaxNavigator, declarationStyle:String, controlStyle:String, coveredTrailingLines:TMap)
+		Local remStarts:Int[] = New Int[source.LineCount()]
+		If declarationStyle = "one" Or declarationStyle = "none" Then
+			For Local token:TSyntaxToken = EachIn navigator.tree.root.tokens
+				For Local trivia:TSyntaxTrivia = EachIn token.leadingTrivia
+					If trivia.kind <> TRIVIA_BLOCK_COMMENT Then Continue
+					Local firstLine:Int = source.Position(trivia.span.start).line
+					If source.text[source.Offset(firstLine, 0)..trivia.span.start].Trim().length Then Continue
+					Local lastLine:Int = source.Position(trivia.span.EndOffset() - 1).line
+					remStarts[lastLine] = firstLine + 1
+				Next
+			Next
+		End If
 		For Local node:TSyntaxNode = EachIn navigator.nodes
 			Local siblings:TSyntaxNode[]
 			Local unit:TCompilationUnitSyntax = TCompilationUnitSyntax(node)
@@ -190,6 +272,12 @@ Type TBlitzMaxFormatter
 				Local nextLine:Int = source.Position(start).line
 				If nextLine <= closeLine Then Continue
 				Local lineEnd:Int = source.Offset(closeLine, 2147483647)
+				If TRoutineDeclarationSyntax(current) And TRoutineDeclarationSyntax(following) Then
+					' Keep an immediately preceding Rem block attached to the next routine.
+					While nextLine > closeLine + 1 And remStarts[nextLine - 1]
+						nextLine = remStarts[nextLine - 1] - 1
+					Wend
+				End If
 				Local nextLineStart:Int = source.Offset(nextLine, 0)
 				If finish > lineEnd Or nextLineStart < lineEnd Then Continue
 				' Leave comments, directives and other content between siblings in place.
@@ -426,37 +514,105 @@ Type TBlitzMaxFormatter
 		Next
 	End Function
 
-	Function ExpandInlineIf(edits:TBlitzMaxFormatEdits, source:TSourceText, navigator:TSyntaxNavigator, statement:TIfStatementSyntax, thenStyle:String, endStyle:String, tabSize:Int, insertSpaces:Int, formatIndent:Int, caseIndent:String, spacingEdits:TBlitzMaxFormatEdits, expandedLines:TMap)
-		If Not statement.ifToken Or Not statement.thenToken Or Not statement.thenBlock Or statement.elseClause Then Return
-		If statement.thenBlock.statements.length <> 1 Then Return
-		Local bodyStatement:TSyntaxNode = statement.thenBlock.statements[0]
-		If Not TCallStatementSyntax(bodyStatement) And Not TAssignmentStatementSyntax(bodyStatement) And Not TReturnStatementSyntax(bodyStatement) And Not TThrowStatementSyntax(bodyStatement) And Not TExitStatementSyntax(bodyStatement) And Not TContinueStatementSyntax(bodyStatement) Then Return
-		Local body:TSourceSpan = bodyStatement.span
-		If Not body Then Return
+	Function ExpandInlineIf(edits:TBlitzMaxFormatEdits, source:TSourceText, navigator:TSyntaxNavigator, statement:TIfStatementSyntax, thenStyle:String, endStyle:String, tabSize:Int, insertSpaces:Int, formatIndent:Int, caseIndent:String, spacingEdits:TBlitzMaxFormatEdits, expandedLines:TMap, indentConditionalBodies:Int)
+		If Not statement.ifToken Or Not statement.condition Or Not statement.thenBlock Or statement.elseIfClauses.length Then Return
+		If Not statement.thenBlock.statements.length Then Return
+		Local body:TSourceSpan = statement.thenBlock.statements[0].span
 		Local line:Int = source.Position(statement.ifToken.span.start).line
 		Local lineStart:Int = source.Offset(line, 0)
 		Local lineEnd:Int = source.Offset(line, 2147483647)
-		If source.Position(body.EndOffset()).line <> line Then Return
+		If source.Position(statement.span.EndOffset()).line <> line Then Return
 		If source.text[lineStart..statement.ifToken.span.start].Trim().length Then Return
-		If source.text[body.EndOffset()..lineEnd].Trim().length Then Return
-		If source.text[statement.thenToken.span.EndOffset()..body.start].Trim().length Then Return
+		If source.text[statement.span.EndOffset()..lineEnd].Trim().length Then Return
+		Local headerEnd:Int = statement.condition.span.EndOffset()
+		If statement.thenToken Then headerEnd = statement.thenToken.span.EndOffset()
+		Local separator:String = source.text[headerEnd..body.start].Trim()
+		If separator.length And separator <> ";" Then Return
 		Local indent:String = source.text[lineStart..statement.ifToken.span.start]
-		If formatIndent Then indent = IndentText(IndentationDepth(navigator, statement, caseIndent), tabSize, insertSpaces)
+		If formatIndent Then indent = IndentText(IndentationDepth(navigator, statement, caseIndent, indentConditionalBodies), tabSize, insertSpaces)
 		Local stepIndent:String = IndentText(1, tabSize, insertSpaces)
 		Local newline:String = "~n"
 		If lineEnd < source.text.length And source.text[lineEnd] = 13 Then newline = "~r~n"
-		Local headerEnd:Int = statement.thenToken.span.EndOffset()
-		If thenStyle = "remove" Then headerEnd = statement.thenToken.span.start
+		If thenStyle = "remove" And statement.thenToken Then headerEnd = statement.thenToken.span.start
 		Local header:String = TextWithEdits(source, statement.ifToken.span.start, headerEnd, spacingEdits).Trim()
+		If thenStyle = "add" And Not statement.thenToken Then header :+ " Then"
 		Local ending:String = "End If"
 		If endStyle = "combined" Then ending = "EndIf"
-		Local bodyText:String = TextWithEdits(source, body.start, body.EndOffset(), spacingEdits).Trim()
-		Local expanded:String = indent + header + newline + indent + stepIndent + bodyText + newline + indent + ending
+		Local expanded:String = indent + header
+		For Local branch:Int = 0 To 1
+			Local block:TBlockSyntax = statement.thenBlock
+			If branch Then
+				If Not statement.elseClause Then Exit
+				block = statement.elseClause.block
+				If Not block Or Not block.statements.length Then Return
+				expanded :+ newline + indent + statement.elseClause.elseToken.text
+			End If
+			For Local child:TSyntaxNode = EachIn block.statements
+				If Not TCallStatementSyntax(child) And Not TAssignmentStatementSyntax(child) And Not TReturnStatementSyntax(child) And Not TThrowStatementSyntax(child) And Not TExitStatementSyntax(child) And Not TContinueStatementSyntax(child) Then Return
+				expanded :+ newline + indent + stepIndent + TextWithEdits(source, child.span.start, child.span.EndOffset(), spacingEdits)
+			Next
+		Next
+		expanded :+ newline + indent + ending
 		AppendEdit(edits, source, lineStart, lineEnd, expanded)
 		expandedLines.Insert(String(line), String(line))
 	End Function
 
-	Function FormatIndentation(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, tabSize:Int, insertSpaces:Int, caseIndent:String, expandedLines:TMap)
+	Function SplitStatementLines(edits:TBlitzMaxFormatEdits, source:TSourceText, navigator:TSyntaxNavigator, options:TBlitzMaxFormatOptions, expandedLines:TMap)
+		For Local node:TSyntaxNode = EachIn navigator.nodes
+			Local routine:TRoutineDeclarationSyntax = TRoutineDeclarationSyntax(node)
+			If options.expandInlineRoutines And routine And routine.terminator And routine.body And routine.headerTokens.length Then
+				Local start:Int = routine.declarationToken.span.start
+				Local finish:Int = routine.terminator.span.start
+				If source.Position(start).line = source.Position(finish).line Then
+					Local headerEnd:Int = routine.headerTokens[routine.headerTokens.length - 1].span.EndOffset()
+					Local children:TSyntaxNode[] = routine.body.statements
+					For Local child:TSyntaxNode = EachIn children
+						SplitStatementGap(edits, source, navigator, options, expandedLines, headerEnd, child, False)
+						headerEnd = child.span.EndOffset()
+					Next
+					SplitStatementGap(edits, source, navigator, options, expandedLines, headerEnd, routine.terminator, False)
+				End If
+			End If
+			If Not options.splitStatements Then Continue
+			Local siblings:TSyntaxNode[]
+			Local unit:TCompilationUnitSyntax = TCompilationUnitSyntax(node)
+			If unit Then siblings = unit.members
+			Local block:TBlockSyntax = TBlockSyntax(node)
+			If block Then
+				Local owner:TSyntaxNode = navigator.Parent(block)
+				Local conditional:TIfStatementSyntax = TIfStatementSyntax(owner)
+				If TElseClauseSyntax(owner) Or TElseIfClauseSyntax(owner) Then conditional = TIfStatementSyntax(navigator.Parent(owner))
+				If conditional And conditional.singleLine Then Continue
+				Local parentRoutine:TRoutineDeclarationSyntax = TRoutineDeclarationSyntax(owner)
+				If parentRoutine And parentRoutine.terminator Then
+					If source.Position(parentRoutine.span.start).line = source.Position(parentRoutine.terminator.span.start).line Then Continue
+				End If
+				siblings = block.statements
+			End If
+			For Local index:Int = 1 Until siblings.length
+				SplitStatementGap(edits, source, navigator, options, expandedLines, siblings[index - 1].span.EndOffset(), siblings[index], True)
+			Next
+		Next
+	End Function
+
+	Function SplitStatementGap(edits:TBlitzMaxFormatEdits, source:TSourceText, navigator:TSyntaxNavigator, options:TBlitzMaxFormatOptions, expandedLines:TMap, start:Int, following:TSyntaxNode, requireSeparator:Int)
+		Local finish:Int = following.span.start
+		If start >= finish Then Return
+		Local line:Int = source.Position(start).line
+		If source.Position(finish).line <> line Or expandedLines.Contains(String(line)) Then Return
+		Local gap:String = source.text[start..finish].Trim()
+		If requireSeparator And Not gap.length Then Return
+		For Local index:Int = 0 Until gap.length
+			If gap[index] <> 59 And gap[index] <> 32 And gap[index] <> 9 Then Return
+		Next
+		Local newline:String = "~n"
+		Local lineEnd:Int = source.Offset(line, 2147483647)
+		If lineEnd < source.text.length And source.text[lineEnd] = 13 Then newline = "~r~n"
+		Local depth:Int = IndentationDepth(navigator, following, options.caseIndent.ToLower(), options.indentConditionalBodies)
+		AppendEdit(edits, source, start, finish, newline + IndentText(depth, options.tabSize, options.insertSpaces))
+	End Function
+
+	Function FormatIndentation(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, tabSize:Int, insertSpaces:Int, caseIndent:String, expandedLines:TMap, indentConditionalBodies:Int, flushConditionalDirectives:Int)
 		Local anchors:TMap = New TMap
 		For Local node:TSyntaxNode = EachIn navigator.nodes
 			If node.span And IsIndentationAnchor(node, navigator.Parent(node)) Then anchors.Insert(String(node.span.start), node)
@@ -468,7 +624,8 @@ Type TBlitzMaxFormatter
 			If line = previousLine Then Continue
 			previousLine = line
 			If expandedLines.Contains(String(line)) Then Continue
-			If token.kind = TOKEN_DIRECTIVE Or token.kind = TOKEN_NATIVE_LINE Or token.kind = TOKEN_PRAGMA Or token.kind = TOKEN_MULTILINE_STRING_LITERAL Then Continue
+			If token.kind = TOKEN_DIRECTIVE And Not flushConditionalDirectives Then Continue
+			If token.kind = TOKEN_NATIVE_LINE Or token.kind = TOKEN_PRAGMA Or token.kind = TOKEN_MULTILINE_STRING_LITERAL Then Continue
 			Local lineStart:Int = source.Offset(line, 0)
 			If token.span.start < lineStart Then Continue
 			Local original:String = source.text[lineStart..token.span.start]
@@ -476,14 +633,18 @@ Type TBlitzMaxFormatter
 				If original[index] <> 32 And original[index] <> 9 Then original = ""; Exit
 			Next
 			If token.span.start > lineStart And Not original.length Then Continue
+			If token.kind = TOKEN_DIRECTIVE Then
+				If original.length Then AppendEdit(edits, source, lineStart, token.span.start, "")
+				Continue
+			End If
 			Local anchor:TSyntaxNode = TSyntaxNode(anchors.ValueForKey(String(token.span.start)))
 			If Not anchor Then Continue
-			Local desired:String = IndentText(IndentationDepth(navigator, anchor, caseIndent), tabSize, insertSpaces)
+			Local desired:String = IndentText(IndentationDepth(navigator, anchor, caseIndent, indentConditionalBodies), tabSize, insertSpaces)
 			If original <> desired Then AppendEdit(edits, source, lineStart, token.span.start, desired)
 		Next
 	End Function
 
-	Function FormatCommentIndentation(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, tabSize:Int, insertSpaces:Int, caseIndent:String, expandedLines:TMap)
+	Function FormatCommentIndentation(edits:TBlitzMaxFormatEdits, source:TSourceText, tokens:TSyntaxToken[], navigator:TSyntaxNavigator, tabSize:Int, insertSpaces:Int, caseIndent:String, expandedLines:TMap, indentConditionalBodies:Int, flushConditionalDirectives:Int)
 		Local anchors:TMap = New TMap
 		For Local node:TSyntaxNode = EachIn navigator.nodes
 			If node.span And IsIndentationAnchor(node, navigator.Parent(node)) Then anchors.Insert(String(node.span.start), node)
@@ -507,7 +668,7 @@ Type TBlitzMaxFormatter
 				Wend
 				If nextAnchorIndex = orderedAnchors.length Then Continue
 				Local following:TSyntaxNode = orderedAnchors[nextAnchorIndex]
-				Local depth:Int = IndentationDepth(navigator, following, caseIndent)
+				Local depth:Int = IndentationDepth(navigator, following, caseIndent, indentConditionalBodies)
 				If TBlockTerminatorSyntax(following) Then depth :+ 1
 				Local desiredIndent:String = IndentText(depth, tabSize, insertSpaces)
 				Local lastLine:Int = firstLine
@@ -530,11 +691,14 @@ Type TBlitzMaxFormatter
 		Next
 	End Function
 
-	Function IndentationDepth:Int(navigator:TSyntaxNavigator, node:TSyntaxNode, caseIndent:String)
+	Function IndentationDepth:Int(navigator:TSyntaxNavigator, node:TSyntaxNode, caseIndent:String, indentConditionalBodies:Int = False)
 		Local depth:Int
 		Local caseDepth:Int
 		For Local ancestor:TSyntaxNode = EachIn navigator.Ancestors(node)
-			If TBlockSyntax(ancestor) Then depth :+ 1
+			If TBlockSyntax(ancestor) Then
+				If indentConditionalBodies Or Not TConditionalBranchSyntax(navigator.Parent(ancestor)) Then depth :+ 1
+			End If
+			If TEnumValueSyntax(ancestor) Then depth :+ 1
 			If TCaseClauseSyntax(ancestor) Or TDefaultClauseSyntax(ancestor) Then caseDepth :+ 1
 		Next
 		If caseIndent <> "aligned" Then depth :+ caseDepth
@@ -553,7 +717,7 @@ Type TBlitzMaxFormatter
 	End Function
 
 	Function IsIndentationAnchor:Int(node:TSyntaxNode, parent:TSyntaxNode)
-		If TBlockSyntax(parent) Or TCompilationUnitSyntax(parent) Then Return True
+		If TEnumValueSyntax(node) Or TBlockSyntax(parent) Or TCompilationUnitSyntax(parent) Then Return True
 		If TBlockTerminatorSyntax(node) Or TElseIfClauseSyntax(node) Or TElseClauseSyntax(node) Or TCaseClauseSyntax(node) Or TDefaultClauseSyntax(node) Or TCatchClauseSyntax(node) Or TFinallyClauseSyntax(node) Then Return True
 		Return False
 	End Function
