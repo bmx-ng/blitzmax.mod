@@ -151,6 +151,7 @@ Type TCompilerIrLowerer
 	Field closureCapturePlansBySymbol:TMap = New TMap
 	Field moduleClosureCapturePlan:TCompilerClosureCapturePlan
 	Field nextFunctionId:Int
+	Field nextImportedSlotId:Int
 	Field nextExternalFunctionId:Int
 	Field nextExternalGlobalId:Int
 	Field nextStringLiteralId:Int
@@ -11654,7 +11655,11 @@ Type TCompilerIrLowerer
 			End If
 		Else
 			slot = New TCompilerIrClassFunctionSlot
-			slot.slotId = "icfs" + importedClass.functionSlots.length
+			' Imported base layouts may be completed after this class is discovered.
+			' A temporary array position can collide with an ancestor's slot ID
+			' when that prefix is inserted. Keep identity independent of layout.
+			slot.slotId = "icfs" + nextImportedSlotId
+			nextImportedSlotId :+ 1
 			slot.dispatchKey = dispatchKey
 			slot.declaringImportedClassId = importedClass.importedClassId
 			slot.slotName = dispatchKey
