@@ -59,4 +59,39 @@ Check(TBlitzMaxFormatter.FormatText(crlf) = "SuperStrict~r~nFunction Probe()~r~n
 Local malformed:String = "SuperStrict~nFunction Broken:Int(~nEnd Function~n"
 Check(TBlitzMaxFormatter.Query(malformed).Size() = 0 And TBlitzMaxFormatter.FormatText(malformed) = malformed, "source with parse errors is unchanged")
 
+Local remGap:String = "SuperStrict~nType TProbe~n~tMethod First()~n~tEndMethod~n~tRem~n~t  second method~n~tEnd Rem~n~tMethod Second()~n~tEnd Method~nEnd Type~n"
+Local remOptions:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
+remOptions.declarationBlankLines = "one"
+Local remExpected:String = remGap.Replace("EndMethod~n", "EndMethod~n~n")
+Check(TBlitzMaxFormatter.FormatText(remGap, "", remOptions) = remExpected, "declaration spacing goes before the next method's Rem")
+Check(TBlitzMaxFormatter.FormatText(remExpected, "", remOptions) = remExpected, "Rem declaration spacing is idempotent")
+remOptions.declarationBlankLines = "none"
+Check(TBlitzMaxFormatter.FormatText(remExpected, "", remOptions) = remGap, "none removes the blank line before Rem")
+
+Local splitOptions:TBlitzMaxFormatOptions = New TBlitzMaxFormatOptions
+splitOptions.splitStatements = True
+Local splitSource:String = "SuperStrict~nPrint ~qa;b~q; Print ~qc~q ' keep~nIf True Then Print 1; Print 2 Else Print 3; Print 4~n"
+Local splitExpected:String = "SuperStrict~nPrint ~qa;b~q~nPrint ~qc~q ' keep~nIf True Then Print 1; Print 2 Else Print 3; Print 4~n"
+Check(TBlitzMaxFormatter.FormatText(splitSource, "", splitOptions) = splitExpected, "split preserves strings, trailing comments and inline If")
+splitOptions.inlineIfStyle = "expand"
+Local branchesExpected:String = "SuperStrict~nPrint ~qa;b~q~nPrint ~qc~q ' keep~nIf True Then~n~tPrint 1~n~tPrint 2~nElse~n~tPrint 3~n~tPrint 4~nEnd If~n"
+Check(TBlitzMaxFormatter.FormatText(splitSource, "", splitOptions) = branchesExpected, "expansion keeps statements in their original branches")
+Check(TBlitzMaxFormatter.FormatText(branchesExpected, "", splitOptions) = branchesExpected, "branch expansion is idempotent")
+Check(TBlitzMaxParser.ParseText(branchesExpected).syntaxTree.diagnostics.length = 0, "expanded branches parse")
+
+Local routineSource:String = "SuperStrict~nFunction Run:Int() Return 1 EndFunction~nType TProbe~n~tMethod Run() Print 1 End Method~nEnd Type~n"
+Local routineExpected:String = "SuperStrict~nFunction Run:Int()~n~tReturn 1~nEndFunction~nType TProbe~n~tMethod Run()~n~t~tPrint 1~n~tEnd Method~nEnd Type~n"
+Check(TBlitzMaxFormatter.FormatText(routineSource, "", splitOptions) = routineSource, "splitting alone preserves inline routines")
+splitOptions.expandInlineRoutines = True
+Check(TBlitzMaxFormatter.FormatText(routineSource, "", splitOptions) = routineExpected, "inline functions and methods expand")
+Check(TBlitzMaxFormatter.FormatText(routineExpected, "", splitOptions) = routineExpected, "routine expansion is idempotent")
+Check(TBlitzMaxParser.ParseText(routineExpected).syntaxTree.diagnostics.length = 0, "expanded routines parse")
+
+Local branchBefore:String = "SuperStrict~nIf True Then~nPrint 1~nElse~nPrint 2~nPrint 3~nEnd If~n"
+Local branchAfter:String = "SuperStrict~nIf True Then~nPrint 1~nPrint 2~nElse~nPrint 3~nEnd If~n"
+Local unsafeEdits:TBlitzMaxFormatEdits = New TBlitzMaxFormatEdits
+unsafeEdits.Append(TBlitzMaxFormatEdit.Create(0, branchBefore.length, branchAfter))
+Check(TBlitzMaxParser.ParseText(branchAfter).syntaxTree.diagnostics.length = 0, "changed branch fixture still parses")
+Check(Not TBlitzMaxFormatter.EditsPreserveSyntax(branchBefore, "", unsafeEdits), "validation rejects moving a statement between branches")
+
 Print "BlitzMax.Format standalone tests passed"

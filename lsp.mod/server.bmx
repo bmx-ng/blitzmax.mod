@@ -382,6 +382,7 @@ Type TBlitzMaxLspServer
 		Local startOffset:Int = TLspPositions.Offset(source, Int(selectionStart.GetInteger("line")), Int(selectionStart.GetInteger("character")))
 		Local endOffset:Int = TLspPositions.Offset(source, Int(selectionEnd.GetInteger("line")), Int(selectionEnd.GetInteger("character")))
 		Local selected:TJSONArray = JsonArray()
+		Local selectedEdits:TBlitzMaxFormatEdits = New TBlitzMaxFormatEdits
 		If endOffset <= startOffset Then Return [JsonResponse(id, selected).SaveString(JSON_COMPACT)]
 		Local edits:TJSONArray = FormatDocumentEdits(document, params)
 		For Local index:Int = 0 Until edits.Size()
@@ -391,8 +392,12 @@ Type TBlitzMaxLspServer
 			Local editEnd:TJSONObject = TJSONObject(editRange.Get("end"))
 			Local editStartOffset:Int = TLspPositions.Offset(source, Int(editStart.GetInteger("line")), Int(editStart.GetInteger("character")))
 			Local editEndOffset:Int = TLspPositions.Offset(source, Int(editEnd.GetInteger("line")), Int(editEnd.GetInteger("character")))
-			If editStartOffset >= startOffset And editStartOffset < endOffset And editEndOffset <= endOffset Then selected.Append(edit)
+			If editStartOffset >= startOffset And editStartOffset < endOffset And editEndOffset <= endOffset Then
+				selected.Append(edit)
+				selectedEdits.Append(TBlitzMaxFormatEdit.Create(editStartOffset, editEndOffset, edit.GetString("newText")))
+			End If
 		Next
+		If selectedEdits.Size() <> edits.Size() And Not TBlitzMaxFormatter.EditsPreserveSyntax(document.text, document.path, selectedEdits) Then selected = JsonArray()
 		Return [JsonResponse(id, selected).SaveString(JSON_COMPACT)]
 	End Method
 
